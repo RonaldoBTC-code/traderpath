@@ -1,0 +1,226 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root {
+  --tp-bg-primary: #0D1B2A;
+  --tp-bg-secondary: #1A2B3C;
+  --tp-bg-tertiary: #0A1628;
+  --tp-accent-green: #00C896;
+  --tp-accent-gold: #FFD700;
+  --tp-accent-red: #FF4757;
+  --tp-accent-blue: #4A90E2;
+  --tp-accent-cyan: #00E5FF;
+  --tp-text-primary: #FFFFFF;
+  --tp-text-secondary: #A0B0C0;
+  --tp-border: #2A3F55;
+
+  /* Zonas del gráfico (TradingView) */
+  --tp-zone-demand: rgba(0, 200, 150, 0.15);
+  --tp-zone-supply: rgba(255, 71, 87, 0.15);
+  --tp-zone-premium: rgba(255, 71, 87, 0.08);
+  --tp-zone-discount: rgba(0, 200, 150, 0.08);
+}
+
+body {
+  background-color: var(--tp-bg-primary);
+  color: var(--tp-text-primary);
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* Monospace para precios */
+.font-price {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Smooth page transitions */
+main {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--tp-border);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--tp-accent-green);
+}
+
+/* ─── GAME UI SYSTEM ─────────────────────────────────── */
+
+/* Glass cards */
+.glass-card {
+  background: rgba(26, 43, 60, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(42, 63, 85, 0.45);
+  border-radius: 20px;
+}
+
+.glass-card-strong {
+  background: rgba(26, 43, 60, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(42, 63, 85, 0.6);
+  border-radius: 24px;
+}
+
+/* Glow effects */
+.glow-green {
+  box-shadow: 0 0 24px rgba(0, 200, 150, 0.15), 0 4px 32px rgba(0, 200, 150, 0.08);
+}
+
+.glow-blue {
+  box-shadow: 0 0 24px rgba(74, 144, 226, 0.15), 0 4px 32px rgba(74, 144, 226, 0.08);
+}
+
+.glow-gold {
+  box-shadow: 0 0 24px rgba(255, 215, 0, 0.12), 0 4px 32px rgba(255, 215, 0, 0.06);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 24px rgba(0, 229, 255, 0.12), 0 4px 32px rgba(0, 229, 255, 0.06);
+}
+
+/* Game buttons */
+.btn-game-primary {
+  background: linear-gradient(135deg, #00C896 0%, #00E5FF 100%);
+  color: #0D1B2A;
+  font-weight: 700;
+  border-radius: 14px;
+  padding: 12px 24px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 20px rgba(0, 200, 150, 0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+.btn-game-primary:hover {
+  filter: brightness(1.1);
+  transform: scale(1.03);
+  box-shadow: 0 6px 28px rgba(0, 200, 150, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+.btn-game-primary:active {
+  transform: scale(0.97);
+}
+
+.btn-game-secondary {
+  background: rgba(0, 200, 150, 0.08);
+  border: 1.5px solid rgba(0, 200, 150, 0.4);
+  color: var(--tp-accent-green);
+  font-weight: 600;
+  border-radius: 14px;
+  padding: 10px 20px;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.btn-game-secondary:hover {
+  background: rgba(0, 200, 150, 0.15);
+  border-color: rgba(0, 200, 150, 0.7);
+  transform: scale(1.02);
+}
+
+/* Pulse glow animation for active mission */
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(0, 200, 150, 0.2), 0 0 20px rgba(0, 200, 150, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(0, 200, 150, 0.4), 0 0 40px rgba(0, 200, 150, 0.15);
+  }
+}
+
+.animate-glow-pulse {
+  animation: glowPulse 2.5s ease-in-out infinite;
+}
+
+/* Subtle float animation */
+@keyframes subtleFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.animate-float {
+  animation: subtleFloat 3s ease-in-out infinite;
+}
+
+/* Background candlestick decoration */
+.bg-candles::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(180deg, transparent 0%, transparent 40%, rgba(0, 200, 150, 0.03) 40%, rgba(0, 200, 150, 0.03) 60%, transparent 60%),
+    linear-gradient(180deg, transparent 0%, transparent 20%, rgba(255, 71, 87, 0.03) 20%, rgba(255, 71, 87, 0.03) 45%, transparent 45%),
+    linear-gradient(180deg, transparent 0%, transparent 55%, rgba(0, 200, 150, 0.025) 55%, rgba(0, 200, 150, 0.025) 80%, transparent 80%);
+  background-size: 60px 100%, 45px 100%, 55px 100%;
+  background-position: 10% 0, 35% 0, 65% 0;
+  background-repeat: repeat-x;
+  opacity: 0.4;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ─── MISSION PATH SYSTEM ─────────────────────────────── */
+
+/* Mission node active glow */
+.mission-node-active {
+  animation: glowPulse 2.5s ease-in-out infinite;
+  border-color: rgba(0, 200, 150, 0.5);
+}
+
+/* Mission node locked */
+.mission-node-locked {
+  opacity: 0.4;
+  filter: saturate(0.3);
+}
+
+/* Mission path connector line */
+.mission-path-line {
+  background: linear-gradient(180deg, rgba(0, 200, 150, 0.3), rgba(42, 63, 85, 0.2));
+  width: 2px;
+  border-radius: 99px;
+}
+
+/* Game gradient background utility */
+.game-gradient-bg {
+  background: radial-gradient(ellipse at 30% 20%, rgba(0, 200, 150, 0.04) 0%, transparent 50%),
+              radial-gradient(ellipse at 70% 60%, rgba(0, 229, 255, 0.03) 0%, transparent 50%),
+              radial-gradient(ellipse at 50% 90%, rgba(74, 144, 226, 0.02) 0%, transparent 40%);
+}
+
+/* Game card base */
+.game-card {
+  background: rgba(26, 43, 60, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(42, 63, 85, 0.45);
+  border-radius: 20px;
+  transition: all 0.2s ease;
+}
+
+.game-card:hover {
+  border-color: rgba(0, 200, 150, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Shimmer animation */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
