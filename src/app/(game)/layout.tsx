@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { useGameStore } from "@/store/gameStore";
+import { useHasMounted } from "@/hooks/useHasMounted";
+import { formatCurrency } from "@/lib/utils/format";
 
 export default function GameLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const hasMounted = useHasMounted();
   const { xp, virtualCapital, rank } = useGameStore();
 
   return (
@@ -19,11 +22,17 @@ export default function GameLayout({
             <span className="text-tp-accent-green">Trader</span>Path
           </Link>
 
-          {/* Stats in header */}
+          {/* Stats in header — only show real values after mount to avoid hydration mismatch */}
           <div className="flex items-center gap-4 text-sm">
-            <span className="font-mono text-tp-accent-green">${virtualCapital.toLocaleString()}</span>
-            <span className="text-tp-text-secondary">{xp} XP</span>
-            <span className="text-tp-accent-gold">{rank}</span>
+            <span className="font-mono text-tp-accent-green">
+              {hasMounted ? formatCurrency(virtualCapital) : "$1,000"}
+            </span>
+            <span className="text-tp-text-secondary">
+              {hasMounted ? `${xp} XP` : "0 XP"}
+            </span>
+            <span className="text-tp-accent-gold">
+              {hasMounted ? rank : "Novato"}
+            </span>
           </div>
         </div>
       </header>

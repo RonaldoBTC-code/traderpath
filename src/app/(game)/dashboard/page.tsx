@@ -1,6 +1,8 @@
 "use client";
 
 import { useGameStore, type MissionStatus } from "@/store/gameStore";
+import { useHasMounted } from "@/hooks/useHasMounted";
+import { formatCurrency, formatNumber } from "@/lib/utils/format";
 import { level1 } from "@/lib/content/level1";
 import { level2 } from "@/lib/content/level2";
 import Link from "next/link";
@@ -22,6 +24,7 @@ function getMissionStatusColor(status: MissionStatus) {
 }
 
 export default function DashboardPage() {
+  const hasMounted = useHasMounted();
   const {
     xp,
     virtualCapital,
@@ -29,16 +32,28 @@ export default function DashboardPage() {
     currentLevelId,
     currentMissionId,
     completedMissions,
-    streakDays,
     getMissionStatus,
     resetProgress,
   } = useGameStore();
 
+  // Show stable skeleton until client is mounted (prevents hydration mismatch)
+  if (!hasMounted) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-8 w-64 bg-tp-bg-secondary rounded" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-tp-bg-secondary border border-tp-border rounded-xl p-4 h-20" />
+          ))}
+        </div>
+        <div className="bg-tp-bg-secondary border border-tp-border rounded-xl p-6 h-24" />
+      </div>
+    );
+  }
+
   // Get current level data
   const currentLevel = currentLevelId === "level_2" ? level2 : level1;
   const missions = currentLevel.missions;
-
-  // Find current mission data
   const currentMission = missions.find((m) => m.id === currentMissionId);
 
   return (
@@ -58,13 +73,13 @@ export default function DashboardPage() {
         <div className="bg-tp-bg-secondary border border-tp-border rounded-xl p-4">
           <p className="text-tp-text-secondary text-xs uppercase tracking-wide">Capital Virtual</p>
           <p className="text-xl font-mono font-bold text-tp-accent-green mt-1">
-            ${virtualCapital.toLocaleString()}
+            {formatCurrency(virtualCapital)}
           </p>
         </div>
         <div className="bg-tp-bg-secondary border border-tp-border rounded-xl p-4">
           <p className="text-tp-text-secondary text-xs uppercase tracking-wide">Experiencia</p>
           <p className="text-xl font-bold mt-1">
-            {xp} <span className="text-sm text-tp-text-secondary">XP</span>
+            {formatNumber(xp)} <span className="text-sm text-tp-text-secondary">XP</span>
           </p>
         </div>
         <div className="bg-tp-bg-secondary border border-tp-border rounded-xl p-4">
@@ -83,13 +98,13 @@ export default function DashboardPage() {
       {/* Current Mission CTA */}
       {currentMission && (
         <div className="bg-tp-bg-secondary border border-tp-accent-green/30 rounded-xl p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <p className="text-xs text-tp-accent-green uppercase tracking-wide">Próxima misión</p>
               <h3 className="text-lg font-semibold mt-1">{currentMission.title}</h3>
               <p className="text-tp-text-secondary text-sm mt-0.5">{currentMission.subtitle}</p>
               <p className="text-xs text-tp-text-secondary mt-2">
-                +{currentMission.rewards.xp} XP · +${currentMission.rewards.virtualCapital}
+                +{currentMission.rewards.xp} XP · +{formatCurrency(currentMission.rewards.virtualCapital)}
               </p>
             </div>
             <Link
@@ -106,22 +121,17 @@ export default function DashboardPage() {
       <div className="bg-tp-bg-secondary border border-tp-border rounded-xl p-6">
         <h3 className="text-lg font-semibold mb-4">Mapa de Misiones — {currentLevel.title}</h3>
         <div className="space-y-3">
-          {missions.map((mission, index) => {
+          {missions.map((mission) => {
             const status = getMissionStatus(currentLevelId, mission.id);
             const statusIcon = getMissionStatusIcon(status);
             const statusColor = getMissionStatusColor(status);
 
             return (
-              <div key={mission.id} className="flex items-center gap-3">
-                {/* Connector line */}
-                {index > 0 && (
-                  <div className="absolute -mt-6 ml-4 w-0.5 h-3 bg-tp-border" />
-                )}
-                {/* Mission card */}
+              <div key={mission.id}>
                 {status === "available" ? (
                   <Link
                     href={`/mission/${mission.id}`}
-                    className={`flex-1 flex items-center gap-3 px-4 py-3 rounded-lg border ${statusColor} hover:brightness-110 transition`}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${statusColor} hover:brightness-110 transition`}
                   >
                     <span className="text-lg">{statusIcon}</span>
                     <div className="flex-1">
@@ -131,7 +141,7 @@ export default function DashboardPage() {
                     <span className="text-xs text-tp-accent-green">+{mission.rewards.xp} XP</span>
                   </Link>
                 ) : status === "completed" ? (
-                  <div className={`flex-1 flex items-center gap-3 px-4 py-3 rounded-lg border ${statusColor}`}>
+                  <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${statusColor}`}>
                     <span className="text-lg">{statusIcon}</span>
                     <div className="flex-1">
                       <p className="font-medium text-sm">{mission.title}</p>
@@ -140,7 +150,7 @@ export default function DashboardPage() {
                     <span className="text-xs text-tp-accent-green">Completada</span>
                   </div>
                 ) : (
-                  <div className={`flex-1 flex items-center gap-3 px-4 py-3 rounded-lg border ${statusColor} cursor-not-allowed`}>
+                  <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${statusColor} cursor-not-allowed`}>
                     <span className="text-lg">{statusIcon}</span>
                     <div className="flex-1">
                       <p className="font-medium text-sm">{mission.title}</p>

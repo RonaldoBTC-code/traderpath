@@ -6,7 +6,10 @@ import { level1, getMissionById } from "@/lib/content/level1";
 import { level2, getLevel2MissionById } from "@/lib/content/level2";
 import CharacterDialogue from "@/components/narrative/CharacterDialogue";
 import QuizEngine from "@/components/game/QuizEngine";
+import MatchTermMinigame from "@/components/game/MatchTermMinigame";
 import { useGameStore } from "@/store/gameStore";
+import { useHasMounted } from "@/hooks/useHasMounted";
+import { formatCurrency } from "@/lib/utils/format";
 
 type Phase = "intro" | "minigame" | "quiz" | "outro" | "complete";
 
@@ -79,9 +82,9 @@ export default function MissionPage() {
     }
   };
 
-  const handleMinigameComplete = () => {
+  const handleMinigameComplete = (minigameScore?: number) => {
     if (mission.quiz.length > 0) setPhase("quiz");
-    else handleMissionComplete(100);
+    else handleMissionComplete(minigameScore ?? 100);
   };
 
   const handleQuizComplete = (score: number, total: number) => {
@@ -126,7 +129,7 @@ export default function MissionPage() {
         <p className="text-tp-text-secondary text-sm mt-0.5 italic">{mission.subtitle}</p>
         <div className="mt-2 flex gap-3 text-xs">
           <span className="text-tp-accent-green">+{mission.rewards.xp} XP</span>
-          <span className="text-tp-accent-gold">+${mission.rewards.virtualCapital}</span>
+          <span className="text-tp-accent-gold">+{formatCurrency(mission.rewards.virtualCapital)}</span>
           {alreadyCompleted && <span className="text-tp-text-secondary">(ya completada)</span>}
         </div>
       </div>
@@ -150,16 +153,29 @@ export default function MissionPage() {
           <div className="bg-tp-bg-secondary border border-tp-border rounded-xl p-6">
             <h3 className="font-semibold text-lg mb-2">🎮 {mission.minigame.title}</h3>
             <p className="text-tp-text-secondary text-sm mb-3">{mission.minigame.description}</p>
-            <div className="bg-tp-bg-primary border border-tp-border rounded-lg p-4">
-              <p className="text-sm text-tp-text-secondary italic">{mission.minigame.instructions}</p>
-            </div>
+
+            {/* Render real minigame based on type */}
+            {mission.minigame.type === "match_term" && mission.minigame.config?.pairs ? (
+              <MatchTermMinigame
+                pairs={mission.minigame.config.pairs as { term: string; definition: string }[]}
+                timeLimit={mission.minigame.config.timeLimit as number | undefined}
+                onComplete={handleMinigameComplete}
+              />
+            ) : (
+              /* Fallback for other minigame types (placeholder until implemented) */
+              <div className="space-y-3">
+                <div className="bg-tp-bg-primary border border-tp-border rounded-lg p-4">
+                  <p className="text-sm text-tp-text-secondary italic">{mission.minigame.instructions}</p>
+                </div>
+                <button
+                  onClick={() => handleMinigameComplete()}
+                  className="px-6 py-2 bg-tp-accent-green text-black font-semibold rounded-lg hover:brightness-110 transition"
+                >
+                  Completar mini-juego →
+                </button>
+              </div>
+            )}
           </div>
-          <button
-            onClick={handleMinigameComplete}
-            className="px-6 py-2 bg-tp-accent-green text-black font-semibold rounded-lg hover:brightness-110 transition"
-          >
-            Completar mini-juego →
-          </button>
         </div>
       )}
 
@@ -196,7 +212,7 @@ export default function MissionPage() {
             <p className="text-tp-text-secondary">
               Has ganado <span className="text-tp-accent-green font-bold">+{mission.rewards.xp} XP</span>
               {" y "}
-              <span className="text-tp-accent-gold font-bold">+${mission.rewards.virtualCapital}</span>
+              <span className="text-tp-accent-gold font-bold">+{formatCurrency(mission.rewards.virtualCapital)}</span>
             </p>
           )}
           {mission.rewards.badge && (
