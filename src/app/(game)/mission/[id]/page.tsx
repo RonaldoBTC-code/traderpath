@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { level1, getMissionById } from "@/lib/content/level1";
 import { level2, getLevel2MissionById } from "@/lib/content/level2";
+import { getLevel3CryptoMissionById } from "@/lib/content/level3-crypto";
 import CharacterDialogue from "@/components/narrative/CharacterDialogue";
 import QuizEngine from "@/components/game/QuizEngine";
 import MatchTermMinigame from "@/components/game/MatchTermMinigame";
@@ -25,9 +26,9 @@ export default function MissionPage() {
     completeMission,
   } = useGameStore();
 
-  // Find mission in both levels
-  const mission = getMissionById(missionId) || getLevel2MissionById(missionId);
-  const levelId = missionId.startsWith("m1_") ? "level_1" : "level_2";
+  // Find mission in all levels
+  const mission = getMissionById(missionId) || getLevel2MissionById(missionId) || getLevel3CryptoMissionById(missionId);
+  const levelId = missionId.startsWith("m1_") ? "level_1" : missionId.startsWith("m2_") ? "level_2" : "level_3_crypto";
 
   const [phase, setPhase] = useState<Phase>("intro");
   const [dialogueIndex, setDialogueIndex] = useState(0);
@@ -90,7 +91,7 @@ export default function MissionPage() {
   const handleQuizComplete = (score: number, total: number) => {
     const percent = Math.round((score / total) * 100);
     // Boss mission requires 75%
-    const isBoss = mission.id === "m1_5" || mission.id === "m2_5";
+    const isBoss = mission.id === "m1_5" || mission.id === "m2_5" || mission.id === "m3c_5";
     if (isBoss && percent < 75) {
       // Failed — don't complete
       return;
@@ -185,7 +186,7 @@ export default function MissionPage() {
           <QuizEngine
             questions={mission.quiz}
             onComplete={handleQuizComplete}
-            minPassPercent={mission.id === "m1_5" || mission.id === "m2_5" ? 75 : undefined}
+            minPassPercent={mission.id === "m1_5" || mission.id === "m2_5" || mission.id === "m3c_5" ? 75 : undefined}
           />
         </div>
       )}

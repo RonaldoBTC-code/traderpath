@@ -5,6 +5,7 @@ import { useHasMounted } from "@/hooks/useHasMounted";
 import { formatCurrency, formatNumber } from "@/lib/utils/format";
 import { level1 } from "@/lib/content/level1";
 import { level2 } from "@/lib/content/level2";
+import { level3Crypto } from "@/lib/content/level3-crypto";
 import Link from "next/link";
 
 function getMissionStatusIcon(status: MissionStatus) {
@@ -12,14 +13,6 @@ function getMissionStatusIcon(status: MissionStatus) {
     case "completed": return "✅";
     case "available": return "🟢";
     case "locked": return "🔒";
-  }
-}
-
-function getMissionStatusColor(status: MissionStatus) {
-  switch (status) {
-    case "completed": return "border-tp-accent-green/50 bg-tp-accent-green/5";
-    case "available": return "border-tp-accent-green bg-tp-accent-green/10";
-    case "locked": return "border-tp-border opacity-50";
   }
 }
 
@@ -36,80 +29,86 @@ export default function DashboardPage() {
     resetProgress,
   } = useGameStore();
 
-  // Show stable skeleton until client is mounted (prevents hydration mismatch)
+  // Skeleton while hydrating
   if (!hasMounted) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-8 w-64 bg-tp-bg-secondary rounded" />
+        <div className="h-10 w-72 bg-tp-surface rounded-md" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-tp-bg-secondary border border-tp-border rounded-xl p-4 h-20" />
+            <div key={i} className="bg-tp-surface border border-tp-border rounded-md h-24" />
           ))}
         </div>
-        <div className="bg-tp-bg-secondary border border-tp-border rounded-xl p-6 h-24" />
+        <div className="bg-tp-surface border border-tp-border rounded-md h-28" />
       </div>
     );
   }
 
-  // Get current level data
-  const currentLevel = currentLevelId === "level_2" ? level2 : level1;
+  const currentLevel = currentLevelId === "level_2" ? level2 : currentLevelId === "level_3_crypto" ? level3Crypto : level1;
   const missions = currentLevel.missions;
   const currentMission = missions.find((m) => m.id === currentMissionId);
+  const completedInLevel = completedMissions.filter((m) => m.levelId === currentLevelId).length;
 
   return (
-    <div className="space-y-6">
-      {/* Welcome */}
+    <div className="space-y-8">
+      {/* Level Title */}
       <div>
-        <h2 className="text-2xl font-bold">
-          <span className="text-tp-accent-green">{currentLevel.title}</span>
-        </h2>
-        <p className="text-tp-text-secondary text-sm mt-1">
+        <h1 className="font-display text-3xl font-bold text-tp-gold">
+          {currentLevel.title}
+        </h1>
+        <p className="text-tp-text-muted text-sm mt-1">
           {currentLevel.tagline}
         </p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-tp-bg-secondary border border-tp-border rounded-xl p-4">
-          <p className="text-tp-text-secondary text-xs uppercase tracking-wide">Capital Virtual</p>
-          <p className="text-xl font-mono font-bold text-tp-accent-green mt-1">
+        <div className="bg-tp-surface border border-tp-border rounded-md p-4">
+          <p className="text-tp-text-muted text-[10px] uppercase tracking-widest">Capital</p>
+          <p className="font-data text-xl text-tp-demand mt-1">
             {formatCurrency(virtualCapital)}
           </p>
         </div>
-        <div className="bg-tp-bg-secondary border border-tp-border rounded-xl p-4">
-          <p className="text-tp-text-secondary text-xs uppercase tracking-wide">Experiencia</p>
-          <p className="text-xl font-bold mt-1">
-            {formatNumber(xp)} <span className="text-sm text-tp-text-secondary">XP</span>
+        <div className="bg-tp-surface border border-tp-border rounded-md p-4">
+          <p className="text-tp-text-muted text-[10px] uppercase tracking-widest">Experiencia</p>
+          <p className="font-data text-xl text-tp-gold mt-1">
+            {formatNumber(xp)} <span className="text-sm text-tp-text-muted">XP</span>
           </p>
         </div>
-        <div className="bg-tp-bg-secondary border border-tp-border rounded-xl p-4">
-          <p className="text-tp-text-secondary text-xs uppercase tracking-wide">Rango</p>
-          <p className="text-xl font-bold text-tp-accent-gold mt-1">{rank}</p>
+        <div className="bg-tp-surface border border-tp-border rounded-md p-4">
+          <p className="text-tp-text-muted text-[10px] uppercase tracking-widest">Rango</p>
+          <p className="font-display text-xl text-tp-text mt-1">{rank}</p>
         </div>
-        <div className="bg-tp-bg-secondary border border-tp-border rounded-xl p-4">
-          <p className="text-tp-text-secondary text-xs uppercase tracking-wide">Misiones</p>
-          <p className="text-xl font-bold mt-1">
-            {completedMissions.filter((m) => m.levelId === currentLevelId).length}
-            <span className="text-sm text-tp-text-secondary">/{missions.length}</span>
+        <div className="bg-tp-surface border border-tp-border rounded-md p-4">
+          <p className="text-tp-text-muted text-[10px] uppercase tracking-widest">Progreso</p>
+          <p className="font-data text-xl text-tp-text mt-1">
+            {completedInLevel}<span className="text-tp-text-muted">/{missions.length}</span>
           </p>
+          {/* Mini progress bar */}
+          <div className="w-full h-1.5 bg-tp-base rounded-full mt-2 overflow-hidden">
+            <div
+              className="h-full bg-tp-gold rounded-full transition-all duration-500"
+              style={{ width: `${(completedInLevel / missions.length) * 100}%` }}
+            />
+          </div>
         </div>
       </div>
 
       {/* Current Mission CTA */}
       {currentMission && (
-        <div className="bg-tp-bg-secondary border border-tp-accent-green/30 rounded-xl p-6">
+        <div className="bg-tp-surface border border-tp-gold/20 rounded-md p-6 shadow-gold">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <p className="text-xs text-tp-accent-green uppercase tracking-wide">Próxima misión</p>
-              <h3 className="text-lg font-semibold mt-1">{currentMission.title}</h3>
-              <p className="text-tp-text-secondary text-sm mt-0.5">{currentMission.subtitle}</p>
-              <p className="text-xs text-tp-text-secondary mt-2">
+              <p className="text-[10px] text-tp-gold uppercase tracking-widest font-semibold">Próxima misión</p>
+              <h3 className="font-display text-lg font-bold mt-1">{currentMission.title}</h3>
+              <p className="text-tp-text-muted text-sm mt-0.5">{currentMission.subtitle}</p>
+              <p className="font-data text-xs text-tp-text-muted mt-2">
                 +{currentMission.rewards.xp} XP · +{formatCurrency(currentMission.rewards.virtualCapital)}
               </p>
             </div>
             <Link
               href={`/mission/${currentMission.id}`}
-              className="px-5 py-2.5 bg-tp-accent-green text-black font-semibold rounded-lg hover:brightness-110 transition whitespace-nowrap"
+              className="px-5 py-2.5 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition whitespace-nowrap"
             >
               Jugar →
             </Link>
@@ -118,58 +117,66 @@ export default function DashboardPage() {
       )}
 
       {/* Mission Path Map */}
-      <div className="bg-tp-bg-secondary border border-tp-border rounded-xl p-6">
-        <h3 className="text-lg font-semibold mb-4">Mapa de Misiones — {currentLevel.title}</h3>
-        <div className="space-y-3">
-          {missions.map((mission) => {
+      <div className="bg-tp-surface border border-tp-border rounded-md p-6">
+        <h3 className="font-display text-lg font-bold mb-5">
+          Mapa de Misiones
+        </h3>
+        <div className="space-y-2">
+          {missions.map((mission, index) => {
             const status = getMissionStatus(currentLevelId, mission.id);
-            const statusIcon = getMissionStatusIcon(status);
-            const statusColor = getMissionStatusColor(status);
+            const icon = getMissionStatusIcon(status);
 
-            return (
-              <div key={mission.id}>
-                {status === "available" ? (
-                  <Link
-                    href={`/mission/${mission.id}`}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${statusColor} hover:brightness-110 transition`}
-                  >
-                    <span className="text-lg">{statusIcon}</span>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{mission.title}</p>
-                      <p className="text-xs text-tp-text-secondary">{mission.subtitle}</p>
-                    </div>
-                    <span className="text-xs text-tp-accent-green">+{mission.rewards.xp} XP</span>
-                  </Link>
-                ) : status === "completed" ? (
-                  <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${statusColor}`}>
-                    <span className="text-lg">{statusIcon}</span>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{mission.title}</p>
-                      <p className="text-xs text-tp-text-secondary">{mission.subtitle}</p>
-                    </div>
-                    <span className="text-xs text-tp-accent-green">Completada</span>
-                  </div>
-                ) : (
-                  <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${statusColor} cursor-not-allowed`}>
-                    <span className="text-lg">{statusIcon}</span>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{mission.title}</p>
-                      <p className="text-xs text-tp-text-secondary">{mission.subtitle}</p>
-                    </div>
-                    <span className="text-xs text-tp-text-secondary">Bloqueada</span>
-                  </div>
+            const baseClasses = "flex items-center gap-3 px-4 py-3 rounded-sm border transition";
+            const statusClasses = {
+              completed: "border-tp-demand/30 bg-tp-demand/5",
+              available: "border-tp-gold/40 bg-tp-gold/5 shadow-gold",
+              locked: "border-tp-border bg-tp-base/50 opacity-50 cursor-not-allowed",
+            };
+
+            const content = (
+              <>
+                {/* Node indicator */}
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm border ${
+                  status === "completed" ? "border-tp-demand bg-tp-demand/20" :
+                  status === "available" ? "border-tp-gold bg-tp-gold/20 animate-pulse-soft" :
+                  "border-tp-border bg-tp-base"
+                }`}>
+                  {status === "completed" ? "✓" : status === "available" ? index + 1 : "🔒"}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-body text-sm font-medium truncate">{mission.title}</p>
+                  <p className="text-xs text-tp-text-muted truncate">{mission.subtitle}</p>
+                </div>
+                {status === "available" && (
+                  <span className="font-data text-xs text-tp-gold">+{mission.rewards.xp} XP</span>
                 )}
+                {status === "completed" && (
+                  <span className="text-xs text-tp-demand">Completada</span>
+                )}
+              </>
+            );
+
+            if (status === "available") {
+              return (
+                <Link key={mission.id} href={`/mission/${mission.id}`} className={`${baseClasses} ${statusClasses[status]} hover:brightness-110`}>
+                  {content}
+                </Link>
+              );
+            }
+            return (
+              <div key={mission.id} className={`${baseClasses} ${statusClasses[status]}`}>
+                {content}
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Dev reset button */}
+      {/* Dev tools */}
       <div className="pt-4 border-t border-tp-border">
         <button
           onClick={() => { resetProgress(); window.location.reload(); }}
-          className="text-xs text-tp-text-secondary/50 hover:text-tp-accent-red transition"
+          className="text-[10px] text-tp-text-muted/40 hover:text-tp-supply transition font-data"
         >
           [DEV] Reset Progress
         </button>

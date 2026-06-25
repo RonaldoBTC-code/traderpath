@@ -14,23 +14,24 @@ export default function GameLayout({
   const { xp, virtualCapital, rank } = useGameStore();
 
   return (
-    <div className="min-h-screen bg-tp-bg-primary">
+    <div className="min-h-screen bg-tp-base">
       {/* Top header bar */}
-      <header className="sticky top-0 z-50 border-b border-tp-border bg-tp-bg-secondary/95 backdrop-blur">
+      <header className="sticky top-0 z-50 border-b border-tp-border bg-tp-surface/95 backdrop-blur">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/dashboard" className="text-lg font-bold">
-            <span className="text-tp-accent-green">Trader</span>Path
+          <Link href="/dashboard" className="font-display text-lg font-bold">
+            <span className="text-tp-gold">Trader</span>
+            <span className="text-tp-text">Path</span>
           </Link>
 
-          {/* Stats in header — only show real values after mount to avoid hydration mismatch */}
+          {/* Stats in header */}
           <div className="flex items-center gap-4 text-sm">
-            <span className="font-mono text-tp-accent-green">
+            <span className="font-data text-tp-demand">
               {hasMounted ? formatCurrency(virtualCapital) : "$1,000"}
             </span>
-            <span className="text-tp-text-secondary">
+            <span className="font-data text-tp-gold">
               {hasMounted ? `${xp} XP` : "0 XP"}
             </span>
-            <span className="text-tp-accent-gold">
+            <span className="text-tp-text-muted">
               {hasMounted ? rank : "Novato"}
             </span>
           </div>

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { level1 } from "@/lib/content/level1";
 import { level2 } from "@/lib/content/level2";
+import { level3Crypto } from "@/lib/content/level3-crypto";
 
 // ─── TYPES ──────────────────────────────────────────────────
 
@@ -24,15 +25,19 @@ interface GameState {
   completedMissions: CompletedMissionEntry[];
   streakDays: number;
   lastActivity: string | null;
+  marketSpecialization: string | null;
+  marketChangeUsed: boolean;
 
   // Actions
   completeMission: (levelId: string, missionId: string, score: number) => void;
   isMissionCompleted: (levelId: string, missionId: string) => boolean;
   isMissionUnlocked: (levelId: string, missionId: string) => boolean;
   getCurrentMission: () => { levelId: string; missionId: string };
-  getCurrentLevel: () => typeof level1 | typeof level2;
+  getCurrentLevel: () => typeof level1 | typeof level2 | typeof level3Crypto;
   getMissionStatus: (levelId: string, missionId: string) => MissionStatus;
   calculateRank: (totalXp: number) => string;
+  setMarketSpecialization: (market: string) => void;
+  useMarketChange: (newMarket: string) => void;
   resetProgress: () => void;
 }
 
@@ -56,11 +61,17 @@ function calculateRankFromXP(xp: number): string {
   return "Novato";
 }
 
+/** Get level config by id */
+function getLevelConfig(levelId: string) {
+  if (levelId === "level_1") return level1;
+  if (levelId === "level_2") return level2;
+  if (levelId === "level_3_crypto") return level3Crypto;
+  return level1;
+}
+
 /** Get ordered missions for a level */
 function getLevelMissions(levelId: string) {
-  if (levelId === "level_1") return level1.missions;
-  if (levelId === "level_2") return level2.missions;
-  return [];
+  return getLevelConfig(levelId).missions;
 }
 
 /** Get the next mission after the given one in the same level */
@@ -72,10 +83,35 @@ function getNextMission(levelId: string, missionId: string) {
 }
 
 /** Get the next level after the given one */
-function getNextLevelId(levelId: string): string | null {
+function getNextLevelId(levelId: string, specialization: string | null): string | null {
   if (levelId === "level_1") return "level_2";
-  if (levelId === "level_2") return null; // Future: level_3
+  if (levelId === "level_2") {
+    // After level 2, go to specialization
+    if (specialization === "crypto") return "level_3_crypto";
+    // Default to crypto for MVP
+    return "level_3_crypto";
+  }
+  if (levelId === "level_3_crypto") return null; // Future: level_4
   return null;
+}
+
+/** Check if a level is unlocked based on completed missions */
+function isLevelUnlocked(levelId: string, completedMissions: CompletedMissionEntry[], specialization: string | null): boolean {
+  if (levelId === "level_1") return true;
+  if (levelId === "level_2") {
+    const l1Missions = getLevelMissions("level_1");
+    return l1Missions.every((m) =>
+      completedMissions.some((c) => c.levelId === "level_1" && c.missionId === m.id)
+    );
+  }
+  if (levelId === "level_3_crypto") {
+    if (specialization !== "crypto") return false;
+    const l2Missions = getLevelMissions("level_2");
+    return l2Missions.every((m) =>
+      completedMissions.some((c) => c.levelId === "level_2" && c.missionId === m.id)
+    );
+  }
+  return false;
 }
 
 const INITIAL_STATE = {
@@ -87,6 +123,8 @@ const INITIAL_STATE = {
   completedMissions: [] as CompletedMissionEntry[],
   streakDays: 0,
   lastActivity: null as string | null,
+  marketSpecialization: null as string | null,
+  marketChangeUsed: false,
 };
 
 // ─── STORE ──────────────────────────────────────────────────
@@ -134,12 +172,11 @@ export const useGameStore = create<GameState>()(
         let newCurrentMissionId = state.currentMissionId;
 
         if (nextMission) {
-          // There's a next mission in this level
           newCurrentMissionId = nextMission.id;
           console.log("Next mission unlocked:", nextMission.id);
         } else {
-          // Level complete — check if there's a next level
-          const nextLevelId = getNextLevelId(levelId);
+          // Level complete — advance to next level
+          const nextLevelId = getNextLevelId(levelId, state.marketSpecialization);
           if (nextLevelId) {
             const nextLevelMissions = getLevelMissions(nextLevelId);
             newCurrentLevelId = nextLevelId;
@@ -179,20 +216,13 @@ export const useGameStore = create<GameState>()(
 
         if (missionIndex === -1) return false;
 
-        // First mission of current level is always available
-        if (missionIndex === 0) {
-          // But only if this level is unlocked
-          // level_1 is always unlocked
-          if (levelId === "level_1") return true;
-          // level_2 is unlocked if level_1 is fully completed
-          if (levelId === "level_2") {
-            const l1Missions = getLevelMissions("level_1");
-            return l1Missions.every((m) =>
-              state.completedMissions.some((c) => c.levelId === "level_1" && c.missionId === m.id)
-            );
-          }
+        // Check if the level itself is unlocked
+        if (!isLevelUnlocked(levelId, state.completedMissions, state.marketSpecialization)) {
           return false;
         }
+
+        // First mission of an unlocked level is always available
+        if (missionIndex === 0) return true;
 
         // For other missions, the previous mission must be completed
         const previousMission = missions[missionIndex - 1];
@@ -208,8 +238,7 @@ export const useGameStore = create<GameState>()(
 
       getCurrentLevel: () => {
         const state = get();
-        if (state.currentLevelId === "level_2") return level2;
-        return level1;
+        return getLevelConfig(state.currentLevelId);
       },
 
       getMissionStatus: (levelId: string, missionId: string): MissionStatus => {
@@ -221,6 +250,32 @@ export const useGameStore = create<GameState>()(
 
       calculateRank: (totalXp: number) => {
         return calculateRankFromXP(totalXp);
+      },
+
+      setMarketSpecialization: (market: string) => {
+        console.log("Market specialization set:", market);
+        set({ marketSpecialization: market });
+      },
+
+      useMarketChange: (newMarket: string) => {
+        const state = get();
+        if (state.marketChangeUsed) {
+          console.log("Market change already used — cannot change again.");
+          return;
+        }
+        console.log("Market changed from", state.marketSpecialization, "to", newMarket);
+        // Remove level 3 progress when changing market
+        const filteredMissions = state.completedMissions.filter(
+          (m) => !m.levelId.startsWith("level_3")
+        );
+        set({
+          marketSpecialization: newMarket,
+          marketChangeUsed: true,
+          completedMissions: filteredMissions,
+          // Reset to first mission of new level 3
+          currentLevelId: `level_3_${newMarket}`,
+          currentMissionId: `m3${newMarket.charAt(0)}_1`,
+        });
       },
 
       resetProgress: () => {

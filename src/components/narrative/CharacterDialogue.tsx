@@ -1,67 +1,55 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import type { DialogueEntry, CharacterId } from "@/lib/content/level1";
-import CharacterAvatar from "./characters";
 
-const CHARACTER_CONFIG: Record<
-  CharacterId,
-  {
-    name: string;
-    color: string;
-    bgColor: string;
-    borderColor: string;
-    role: string;
-    textStyle: string;
-  }
-> = {
+const CHARACTER_CONFIG: Record<CharacterId, {
+  name: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  icon: string;
+}> = {
   el_viejo_marco: {
     name: "El Viejo Marco",
-    color: "text-tp-accent-gold",
-    bgColor: "bg-gradient-to-br from-tp-accent-gold/10 to-tp-bg-secondary",
-    borderColor: "border-tp-accent-gold/40",
-    role: "Mentor",
-    textStyle: "italic",
+    color: "text-tp-gold",
+    bgColor: "bg-tp-gold/5",
+    borderColor: "border-tp-gold/30",
+    icon: "📖",
   },
   aria: {
     name: "ARIA",
-    color: "text-tp-accent-blue",
-    bgColor: "bg-gradient-to-br from-tp-accent-blue/10 to-tp-bg-secondary",
-    borderColor: "border-tp-accent-blue/40",
-    role: "Asistente IA",
-    textStyle: "",
+    color: "text-tp-info",
+    bgColor: "bg-tp-info/5",
+    borderColor: "border-tp-info/30",
+    icon: "💠",
   },
   el_especulador: {
     name: "El Especulador",
-    color: "text-tp-accent-red",
-    bgColor: "bg-gradient-to-br from-tp-accent-red/10 to-tp-bg-secondary",
-    borderColor: "border-tp-accent-red/40",
-    role: "Antagonista",
-    textStyle: "",
+    color: "text-tp-supply",
+    bgColor: "bg-tp-supply/5",
+    borderColor: "border-tp-supply/30",
+    icon: "📱",
   },
   la_señorita_fomo: {
     name: "La Señorita FOMO",
-    color: "text-orange-400",
-    bgColor: "bg-gradient-to-br from-orange-400/10 to-tp-bg-secondary",
-    borderColor: "border-orange-400/40",
-    role: "Villana",
-    textStyle: "",
+    color: "text-[#EC4899]",
+    bgColor: "bg-[#EC4899]/5",
+    borderColor: "border-[#EC4899]/30",
+    icon: "🏃‍♀️",
   },
   don_panico: {
     name: "Don Pánico",
-    color: "text-purple-400",
-    bgColor: "bg-gradient-to-br from-purple-400/10 to-tp-bg-secondary",
-    borderColor: "border-purple-400/40",
-    role: "Villano",
-    textStyle: "",
+    color: "text-tp-info",
+    bgColor: "bg-tp-info/5",
+    borderColor: "border-tp-info/30",
+    icon: "📰",
   },
   narrator: {
-    name: "Narrador",
-    color: "text-tp-text-secondary",
-    bgColor: "bg-tp-bg-tertiary",
+    name: "",
+    color: "text-tp-text-muted",
+    bgColor: "bg-tp-surface-alt",
     borderColor: "border-tp-border",
-    role: "",
-    textStyle: "italic",
+    icon: "✦",
   },
 };
 
@@ -71,48 +59,22 @@ interface Props {
 
 export default function CharacterDialogue({ dialogue }: Props) {
   const config = CHARACTER_CONFIG[dialogue.character];
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    setVisible(false);
-    const timer = setTimeout(() => setVisible(true), 50);
-    return () => clearTimeout(timer);
-  }, [dialogue.id]);
 
   return (
-    <div
-      className={`${config.bgColor} border ${config.borderColor} rounded-2xl p-5 transition-all duration-300 ${
-        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
-      }`}
-    >
-      {/* Character header */}
-      <div className="flex items-center gap-3 mb-3">
-        {/* SVG Avatar */}
-        <CharacterAvatar character={dialogue.character} size={48} />
-        {/* Name & role */}
-        <div>
-          <p className={`${config.color} font-semibold text-sm`}>{config.name}</p>
-          {config.role && (
-            <p className="text-tp-text-secondary/60 text-[10px] uppercase tracking-wider">
-              {config.role}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Dialogue text */}
-      <div className="pl-[60px]">
-        <p
-          className={`text-tp-text-primary text-[15px] leading-relaxed ${config.textStyle}`}
-        >
-          &quot;{dialogue.text}&quot;
+    <div className={`${config.bgColor} border ${config.borderColor} rounded-md p-5`}>
+      {config.name && (
+        <p className={`${config.color} text-xs font-semibold uppercase tracking-widest mb-2`}>
+          {config.icon} {config.name}
         </p>
-        {dialogue.footnote && (
-          <p className="text-tp-text-secondary/50 text-xs mt-3 border-t border-tp-border/30 pt-2">
-            {dialogue.footnote}
-          </p>
-        )}
-      </div>
+      )}
+      <p className="text-tp-text text-sm leading-relaxed">
+        {dialogue.character !== "narrator" && "\u201C"}{dialogue.text}{dialogue.character !== "narrator" && "\u201D"}
+      </p>
+      {dialogue.footnote && (
+        <p className="text-tp-text-muted/50 text-xs mt-3 italic">
+          {dialogue.footnote}
+        </p>
+      )}
     </div>
   );
 }
