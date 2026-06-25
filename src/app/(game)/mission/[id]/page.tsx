@@ -16,10 +16,104 @@ import ZonePainter from "@/components/game/ZonePainter";
 import PatternIdentifier from "@/components/game/PatternIdentifier";
 import OrderSimulator from "@/components/game/OrderSimulator";
 import MarketPreview from "@/components/game/MarketPreview";
+import MissionTutorial, { type TutorialContent } from "@/components/game/MissionTutorial";
 import { useGameStore } from "@/store/gameStore";
 import { formatCurrency } from "@/lib/utils/format";
 
-type Phase = "intro" | "minigame" | "quiz" | "outro" | "complete";
+type Phase = "intro" | "tutorial" | "minigame" | "quiz" | "outro" | "complete";
+
+// ─── TUTORIAL CONTENT PER MISSION ───────────────────────────
+
+function getMissionTutorial(missionId: string): TutorialContent {
+  const tutorials: Record<string, TutorialContent> = {
+    m1_1: {
+      title: "Oferta, Demanda y Precio",
+      learningObjective: "Entender que el precio es el acuerdo entre compradores y vendedores, y que se mueve por oferta y demanda.",
+      conceptExplanation: "Un mercado financiero es un lugar donde compradores y vendedores intercambian activos. El precio sube cuando hay más compradores que vendedores (demanda > oferta) y baja cuando hay más vendedores que compradores (oferta > demanda).",
+      practicalExample: "Si 100 personas quieren comprar Bitcoin pero solo 10 quieren venderlo, el precio sube porque los compradores compiten. Si 100 quieren vender y solo 10 quieren comprar, el precio baja.",
+      stepByStepInstructions: [
+        "Lee cada término de la columna izquierda.",
+        "Busca su definición correcta en la columna derecha.",
+        "Haz clic en el término primero, luego en su definición.",
+        "Si es correcto, la pareja se marca en verde.",
+        "Si es incorrecto, se marca en rojo y puedes intentar de nuevo.",
+      ],
+      commonMistakes: ["Confundir 'liquidez' con 'demanda' — la liquidez es la facilidad de comprar/vender, no la presión compradora."],
+      hint: "Piensa en un mercado de frutas: oferta es cuántas hay disponibles, demanda es cuántas personas las quieren.",
+    },
+    m1_2: {
+      title: "Construir Velas Japonesas",
+      learningObjective: "Entender cómo se forma una vela japonesa usando los datos Open, High, Low y Close.",
+      conceptExplanation: "Una vela japonesa representa el movimiento del precio durante un período de tiempo. Tiene cuatro datos: Open (apertura), High (máximo alcanzado), Low (mínimo alcanzado), Close (cierre). Si Close > Open → vela alcista (verde). Si Close < Open → vela bajista (roja).",
+      practicalExample: "Si BTC abre en $100, sube hasta $120 (High), baja hasta $90 (Low) y cierra en $115 (Close), la vela es ALCISTA porque cerró ($115) por encima de donde abrió ($100).",
+      stepByStepInstructions: [
+        "Observa el High y Low que te dan — son los límites de la vela.",
+        "Lee si la vela debe ser alcista o bajista.",
+        "Si es alcista: coloca Open DEBAJO del Close.",
+        "Si es bajista: coloca Open ENCIMA del Close.",
+        "Ambos valores deben estar entre Low y High.",
+      ],
+      commonMistakes: [
+        "Poner Open mayor que High — imposible, High es el máximo.",
+        "Confundir alcista con bajista — alcista = Close > Open.",
+      ],
+      hint: "Primero decide la dirección. Si es verde (alcista), Close debe ser mayor que Open. Siempre entre Low y High.",
+    },
+    m1_3: {
+      title: "Identificar Tendencias",
+      learningObjective: "Distinguir si un gráfico muestra tendencia alcista, bajista o lateral analizando la estructura de máximos y mínimos.",
+      conceptExplanation: "Tendencia alcista: los máximos (HH) y mínimos (HL) son cada vez más altos. Bajista: los máximos (LH) y mínimos (LL) son cada vez más bajos. Lateral: el precio oscila sin dirección clara.",
+      practicalExample: "Si el precio hace máximos en $100, $110, $120 y mínimos en $90, $95, $105 → eso es alcista porque cada pico y valle son más altos que el anterior.",
+      stepByStepInstructions: [
+        "Observa el gráfico completo de izquierda a derecha.",
+        "Identifica los picos (máximos) y los valles (mínimos).",
+        "¿Los picos son cada vez más altos? → Alcista.",
+        "¿Los picos son cada vez más bajos? → Bajista.",
+        "¿No hay dirección clara? → Lateral.",
+      ],
+      commonMistakes: ["Mirar solo las últimas velas — analiza TODO el gráfico.", "Confundir un retroceso temporal con cambio de tendencia."],
+      hint: "Ignora las velas individuales. Mira la dirección general: ¿el gráfico sube, baja, o va de lado?",
+    },
+    m1_4: {
+      title: "Cálculo de Riesgo",
+      learningObjective: "Calcular cuántas unidades de un activo puedes comprar sin arriesgar más del 2% de tu capital.",
+      conceptExplanation: "La regla del 2% dice: nunca arriesgues más del 2% de tu capital total en una sola operación. El riesgo por unidad = precio de entrada - stop loss. Unidades = (capital × 0.02) ÷ riesgo por unidad.",
+      practicalExample: "Capital: $1,000. Entrada: $100. Stop Loss: $95. Riesgo por unidad = $5. Máximo riesgo = $1,000 × 0.02 = $20. Unidades = $20 ÷ $5 = 4 unidades.",
+      stepByStepInstructions: [
+        "Identifica tu capital total.",
+        "Calcula el 2% de tu capital (capital × 0.02).",
+        "Calcula el riesgo por unidad (entrada - stop loss).",
+        "Divide: unidades = (2% del capital) ÷ (riesgo por unidad).",
+        "Redondea hacia abajo para no superar el riesgo.",
+      ],
+      commonMistakes: ["Dividir al revés (riesgo ÷ capital)", "Olvidar redondear hacia abajo", "Usar más del 2% 'porque el análisis es bueno'"],
+      hint: "Fórmula: Unidades = (Capital × 0.02) ÷ (Entrada - StopLoss)",
+    },
+    m1_5: {
+      title: "Análisis Integrado",
+      learningObjective: "Combinar lectura de tendencia, análisis de velas, colocación de stop loss y cálculo de posición en una decisión de trading completa.",
+      conceptExplanation: "Un trade disciplinado requiere: 1) identificar tendencia, 2) leer velas en zonas clave, 3) definir dónde se invalida el escenario (stop loss), 4) calcular tamaño de posición.",
+      practicalExample: "BTC en rango $80K-$98K. El precio toca resistencia por 4ª vez con Shooting Star. → Tendencia: lateral. → Vela: rechazo en resistencia. → SL: encima de resistencia. → Posición: según el 2%.",
+      stepByStepInstructions: [
+        "Identifica la tendencia del gráfico (alcista/bajista/lateral).",
+        "Busca la vela más significativa en una zona clave.",
+        "Define dónde colocarías el Stop Loss.",
+        "Decide si entrar o esperar según toda la evidencia.",
+      ],
+      commonMistakes: ["Entrar sin confirmar la tendencia", "Poner SL donde el precio lo toca fácilmente", "No calcular posición antes de ejecutar"],
+      hint: "Sigue la secuencia: tendencia → vela → stop → decisión. Si no puedes responder uno, no operes.",
+    },
+  };
+
+  return tutorials[missionId] || {
+    title: "Preparación",
+    learningObjective: "Comprender el concepto principal de esta misión antes de practicar.",
+    conceptExplanation: "Revisa los diálogos anteriores para entender el concepto.",
+    practicalExample: "Aplica lo que aprendiste en los diálogos al ejercicio siguiente.",
+    stepByStepInstructions: ["Lee las instrucciones del mini-juego.", "Aplica el concepto que acabas de aprender.", "Si no estás seguro, usa el botón de pista."],
+    hint: "Usa la información de los diálogos como guía.",
+  };
+}
 
 function getLevelLabel(levelId: string): string {
   if (levelId === "level_1") return "Nivel 1";
@@ -72,10 +166,15 @@ export default function MissionPage() {
     if (dialogueIndex < mission.introDialogues.length - 1) {
       setDialogueIndex((i) => i + 1);
     } else {
-      if (mission.minigame) setPhase("minigame");
+      // Go to tutorial if minigame exists, otherwise quiz or complete
+      if (mission.minigame) setPhase("tutorial");
       else if (mission.quiz.length > 0) setPhase("quiz");
       else handleMissionComplete(100);
     }
+  };
+
+  const handleTutorialComplete = () => {
+    setPhase("minigame");
   };
 
   const handleMinigameComplete = (minigameScore?: number) => {
@@ -125,6 +224,14 @@ export default function MissionPage() {
             {dialogueIndex < mission.introDialogues.length - 1 ? "Continuar →" : "Comenzar misión →"}
           </button>
         </div>
+      )}
+
+      {/* Phase: Tutorial (before minigame) */}
+      {phase === "tutorial" && mission.minigame && (
+        <MissionTutorial
+          tutorial={getMissionTutorial(mission.id)}
+          onContinue={handleTutorialComplete}
+        />
       )}
 
       {/* Phase: Mini-game */}

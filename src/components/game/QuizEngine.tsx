@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { QuizQuestion } from "@/lib/content/level1";
+import { shuffleArray } from "@/lib/utils/shuffle";
 
 interface QuizEngineProps {
   questions: QuizQuestion[];
@@ -10,13 +11,29 @@ interface QuizEngineProps {
 }
 
 export default function QuizEngine({ questions, onComplete, minPassPercent }: QuizEngineProps) {
+  const [randomizedQuestions, setRandomizedQuestions] = useState<QuizQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [showHint, setShowHint] = useState(false);
 
-  const current = questions[currentIndex];
+  // Randomize questions and options on mount (avoids hydration mismatch)
+  useEffect(() => {
+    const shuffled = shuffleArray(questions).map((q) => ({
+      ...q,
+      options: shuffleArray(q.options),
+    }));
+    setRandomizedQuestions(shuffled);
+  }, [questions]);
+
+  // Show loading until randomization is ready
+  if (randomizedQuestions.length === 0) {
+    return <div className="text-center py-4 text-tp-text-muted">Preparando preguntas...</div>;
+  }
+
+  const current = randomizedQuestions[currentIndex];
   const selectedOption = current?.options.find((o) => o.id === selectedAnswer);
   const isCorrect = selectedOption?.isCorrect ?? false;
 
@@ -24,28 +41,28 @@ export default function QuizEngine({ questions, onComplete, minPassPercent }: Qu
     if (showFeedback) return;
     setSelectedAnswer(optionId);
     setShowFeedback(true);
-    const opt = current.options.find((o) => o.id === optionId);
-    if (opt?.isCorrect) {
+    setShowHint(false);
+    if (current.options.find((o) => o.id === optionId)?.isCorrect) {
       setCorrectCount((c) => c + 1);
     }
   };
 
   const handleNext = () => {
-    if (currentIndex < questions.length - 1) {
+    if (currentIndex < randomizedQuestions.length - 1) {
       setCurrentIndex((i) => i + 1);
       setSelectedAnswer(null);
       setShowFeedback(false);
+      setShowHint(false);
     } else {
       setFinished(true);
-      // FIX: Calculate final score including the current answer
       const finalScore = correctCount + (isCorrect ? 1 : 0);
-      onComplete(finalScore, questions.length);
+      onComplete(finalScore, randomizedQuestions.length);
     }
   };
 
   if (finished) {
     const finalScore = correctCount;
-    const percent = Math.round((finalScore / questions.length) * 100);
+    const percent = Math.round((finalScore / randomizedQuestions.length) * 100);
     const passed = !minPassPercent || percent >= minPassPercent;
 
     return (
@@ -54,13 +71,13 @@ export default function QuizEngine({ questions, onComplete, minPassPercent }: Qu
           {percent}%
         </div>
         <p className="text-tp-text-muted">
-          {finalScore} de {questions.length} correctas
+          {finalScore} de {randomizedQuestions.length} correctas
         </p>
         {passed ? (
           <p className="text-tp-demand font-medium">¡Aprobado! 🎉</p>
         ) : (
           <p className="text-tp-supply font-medium">
-            Necesitas {minPassPercent}% para aprobar. Revisa las lecciones e intenta de nuevo.
+            Necesitas {minPassPercent}% para aprobar. Revisa el concepto e intenta de nuevo.
           </p>
         )}
       </div>
@@ -68,80 +85,82 @@ export default function QuizEngine({ questions, onComplete, minPassPercent }: Qu
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Progress */}
       <div className="flex items-center justify-between text-sm text-tp-text-muted">
-        <span>Pregunta {currentIndex + 1} de {questions.length}</span>
+        <span>Pregunta {currentIndex + 1} de {randomizedQuestions.length}</span>
         <span>{correctCount} correctas</span>
       </div>
       <div className="w-full h-2 bg-tp-base rounded-full overflow-hidden">
-        <div
-          className="h-full bg-tp-demand transition-all"
-          style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
-        />
+        <div className="h-full bg-tp-demand transition-all" style={{ width: `${((currentIndex + 1) / randomizedQuestions.length) * 100}%` }} />
       </div>
 
-      {/* Difficulty badge */}
+      {/* Difficulty + concept */}
       <div className="flex items-center gap-2">
-        <span className={`text-xs px-2 py-0.5 rounded-full ${
-          current.difficulty === "basico" ? "bg-tp-demand/20 text-tp-demand" :
-          current.difficulty === "intermedio" ? "bg-tp-gold/20 text-tp-gold" :
-          "bg-tp-supply/20 text-tp-supply"
+        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+          current.difficulty === "basico" ? "bg-tp-demand/15 text-tp-demand" :
+          current.difficulty === "intermedio" ? "bg-tp-gold/15 text-tp-gold" :
+          "bg-tp-supply/15 text-tp-supply"
         }`}>
           {current.difficulty}
         </span>
-        <span className="text-xs text-tp-text-muted">{current.conceptEvaluated}</span>
+        <span className="text-[10px] text-tp-text-muted">{current.conceptEvaluated}</span>
       </div>
 
       {/* Question */}
-      <h3 className="text-lg font-semibold">{current.question}</h3>
+      <h3 className="text-sm font-semibold leading-relaxed">{current.question}</h3>
+
+      {/* Hint button */}
+      {!showFeedback && !showHint && (
+        <button onClick={() => setShowHint(true)} className="text-[10px] text-tp-info hover:underline">
+          💡 ¿Necesitas una pista?
+        </button>
+      )}
+      {showHint && !showFeedback && (
+        <div className="bg-tp-info/5 border border-tp-info/20 rounded-sm p-3">
+          <p className="text-xs text-tp-info">💡 Piensa en el concepto: {current.conceptEvaluated}. Lee cada opción con cuidado.</p>
+        </div>
+      )}
 
       {/* Options */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {current.options.map((opt) => {
           let borderColor = "border-tp-border";
           let bgColor = "bg-tp-base";
 
           if (showFeedback) {
-            if (opt.isCorrect) {
-              borderColor = "border-tp-demand";
-              bgColor = "bg-tp-demand/10";
-            } else if (opt.id === selectedAnswer && !isCorrect) {
-              borderColor = "border-tp-supply";
-              bgColor = "bg-tp-supply/10";
-            }
+            if (opt.isCorrect) { borderColor = "border-tp-demand"; bgColor = "bg-tp-demand/10"; }
+            else if (opt.id === selectedAnswer) { borderColor = "border-tp-supply"; bgColor = "bg-tp-supply/10"; }
           } else if (opt.id === selectedAnswer) {
             borderColor = "border-tp-info";
           }
 
           return (
-            <button
-              key={opt.id}
-              onClick={() => handleSelect(opt.id)}
-              disabled={showFeedback}
-              className={`w-full text-left px-4 py-3 rounded-sm border ${borderColor} ${bgColor} transition hover:border-tp-demand/50 disabled:cursor-default`}
-            >
-              <span className="font-data text-tp-demand mr-2">{opt.id.toUpperCase()})</span>
-              {opt.text}
+            <button key={opt.id} onClick={() => handleSelect(opt.id)} disabled={showFeedback}
+              className={`w-full text-left px-4 py-3 rounded-sm border ${borderColor} ${bgColor} transition hover:border-tp-gold/50 disabled:cursor-default`}>
+              <span className="font-data text-tp-gold mr-2 text-xs">{opt.id.toUpperCase()})</span>
+              <span className="text-sm">{opt.text}</span>
             </button>
           );
         })}
       </div>
 
-      {/* Feedback & Next */}
+      {/* Feedback */}
       {showFeedback && (
         <div className="space-y-3">
-          <div className={`px-4 py-2 rounded-sm text-sm ${isCorrect ? "bg-tp-demand/10 text-tp-demand" : "bg-tp-supply/10 text-tp-supply"}`}>
-            {selectedOption?.feedback}
+          <div className={`px-4 py-3 rounded-sm text-sm ${isCorrect ? "bg-tp-demand/10 border border-tp-demand/30" : "bg-tp-supply/10 border border-tp-supply/30"}`}>
+            <p className={`font-medium mb-1 ${isCorrect ? "text-tp-demand" : "text-tp-supply"}`}>
+              {isCorrect ? "✅ ¡Correcto!" : "❌ No exactamente."}
+            </p>
+            <p className="text-tp-text-muted text-xs">{selectedOption?.feedback}</p>
           </div>
-          <div className="px-4 py-2 rounded-sm bg-tp-surface border border-tp-border text-sm text-tp-text-muted">
-            💡 {current.explanation}
+          <div className="px-4 py-3 rounded-sm bg-tp-surface-alt border border-tp-border">
+            <p className="text-[10px] text-tp-gold uppercase tracking-widest mb-1">Explicación</p>
+            <p className="text-xs text-tp-text-muted leading-relaxed">{current.explanation}</p>
           </div>
-          <button
-            onClick={handleNext}
-            className="px-6 py-2 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition"
-          >
-            {currentIndex < questions.length - 1 ? "Siguiente →" : "Ver resultado"}
+          <button onClick={handleNext}
+            className="w-full px-5 py-2 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition">
+            {currentIndex < randomizedQuestions.length - 1 ? "Siguiente pregunta →" : "Ver resultado →"}
           </button>
         </div>
       )}
