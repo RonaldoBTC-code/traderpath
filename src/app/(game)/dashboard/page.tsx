@@ -173,13 +173,28 @@ export default function DashboardPage() {
       </div>
 
       {/* Dev tools */}
-      <div className="pt-4 border-t border-tp-border">
-        <button
-          onClick={() => { resetProgress(); window.location.reload(); }}
-          className="text-[10px] text-tp-text-muted/40 hover:text-tp-supply transition font-data"
-        >
-          [DEV] Reset Progress
-        </button>
+      <div className="pt-4 border-t border-tp-border space-y-3">
+        <p className="text-[10px] text-tp-text-muted/60 uppercase tracking-widest">Dev Tools</p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => { resetProgress(); window.location.reload(); }}
+            className="text-[10px] px-2 py-1 bg-tp-supply/10 border border-tp-supply/30 rounded-sm text-tp-supply hover:bg-tp-supply/20 transition font-data"
+          >
+            Reset Progress
+          </button>
+        </div>
+        {/* Quick mission navigation */}
+        <div>
+          <p className="text-[10px] text-tp-text-muted/40 mb-1">Ir directo a misión (ignora bloqueo):</p>
+          <div className="flex flex-wrap gap-1">
+            {["m1_1","m1_2","m1_3","m1_4","m1_5","m2_1","m2_2","m2_3","m2_4","m2_5","m3c_1","m3c_2","m3c_3","m3c_4","m3c_5"].map((id) => (
+              <Link key={id} href={`/mission/${id}?dev=true`}
+                className="text-[9px] px-1.5 py-0.5 bg-tp-surface-alt border border-tp-border rounded-sm text-tp-text-muted hover:text-tp-gold hover:border-tp-gold/30 transition font-data">
+                {id}
+              </Link>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

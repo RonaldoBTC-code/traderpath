@@ -37,26 +37,29 @@ export default function QuizEngine({ questions, onComplete, minPassPercent }: Qu
       setShowFeedback(false);
     } else {
       setFinished(true);
-      onComplete(correctCount, questions.length);
+      // FIX: Calculate final score including the current answer
+      const finalScore = correctCount + (isCorrect ? 1 : 0);
+      onComplete(finalScore, questions.length);
     }
   };
 
   if (finished) {
-    const percent = Math.round((correctCount / questions.length) * 100);
+    const finalScore = correctCount;
+    const percent = Math.round((finalScore / questions.length) * 100);
     const passed = !minPassPercent || percent >= minPassPercent;
 
     return (
       <div className="text-center space-y-4">
-        <div className={`text-4xl font-bold ${passed ? "text-tp-accent-green" : "text-tp-accent-red"}`}>
+        <div className={`font-display text-4xl font-bold ${passed ? "text-tp-demand" : "text-tp-supply"}`}>
           {percent}%
         </div>
-        <p className="text-tp-text-secondary">
-          {correctCount} de {questions.length} correctas
+        <p className="text-tp-text-muted">
+          {finalScore} de {questions.length} correctas
         </p>
         {passed ? (
-          <p className="text-tp-accent-green font-medium">¡Aprobado! 🎉</p>
+          <p className="text-tp-demand font-medium">¡Aprobado! 🎉</p>
         ) : (
-          <p className="text-tp-accent-red font-medium">
+          <p className="text-tp-supply font-medium">
             Necesitas {minPassPercent}% para aprobar. Revisa las lecciones e intenta de nuevo.
           </p>
         )}
@@ -67,13 +70,13 @@ export default function QuizEngine({ questions, onComplete, minPassPercent }: Qu
   return (
     <div className="space-y-6">
       {/* Progress */}
-      <div className="flex items-center justify-between text-sm text-tp-text-secondary">
+      <div className="flex items-center justify-between text-sm text-tp-text-muted">
         <span>Pregunta {currentIndex + 1} de {questions.length}</span>
         <span>{correctCount} correctas</span>
       </div>
-      <div className="w-full h-2 bg-tp-bg-primary rounded-full overflow-hidden">
+      <div className="w-full h-2 bg-tp-base rounded-full overflow-hidden">
         <div
-          className="h-full bg-tp-accent-green transition-all"
+          className="h-full bg-tp-demand transition-all"
           style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
         />
       </div>
@@ -81,13 +84,13 @@ export default function QuizEngine({ questions, onComplete, minPassPercent }: Qu
       {/* Difficulty badge */}
       <div className="flex items-center gap-2">
         <span className={`text-xs px-2 py-0.5 rounded-full ${
-          current.difficulty === "basico" ? "bg-tp-accent-green/20 text-tp-accent-green" :
-          current.difficulty === "intermedio" ? "bg-tp-accent-gold/20 text-tp-accent-gold" :
-          "bg-tp-accent-red/20 text-tp-accent-red"
+          current.difficulty === "basico" ? "bg-tp-demand/20 text-tp-demand" :
+          current.difficulty === "intermedio" ? "bg-tp-gold/20 text-tp-gold" :
+          "bg-tp-supply/20 text-tp-supply"
         }`}>
           {current.difficulty}
         </span>
-        <span className="text-xs text-tp-text-secondary">{current.conceptEvaluated}</span>
+        <span className="text-xs text-tp-text-muted">{current.conceptEvaluated}</span>
       </div>
 
       {/* Question */}
@@ -97,18 +100,18 @@ export default function QuizEngine({ questions, onComplete, minPassPercent }: Qu
       <div className="space-y-3">
         {current.options.map((opt) => {
           let borderColor = "border-tp-border";
-          let bgColor = "bg-tp-bg-primary";
+          let bgColor = "bg-tp-base";
 
           if (showFeedback) {
             if (opt.isCorrect) {
-              borderColor = "border-tp-accent-green";
-              bgColor = "bg-tp-accent-green/10";
+              borderColor = "border-tp-demand";
+              bgColor = "bg-tp-demand/10";
             } else if (opt.id === selectedAnswer && !isCorrect) {
-              borderColor = "border-tp-accent-red";
-              bgColor = "bg-tp-accent-red/10";
+              borderColor = "border-tp-supply";
+              bgColor = "bg-tp-supply/10";
             }
           } else if (opt.id === selectedAnswer) {
-            borderColor = "border-tp-accent-blue";
+            borderColor = "border-tp-info";
           }
 
           return (
@@ -116,9 +119,9 @@ export default function QuizEngine({ questions, onComplete, minPassPercent }: Qu
               key={opt.id}
               onClick={() => handleSelect(opt.id)}
               disabled={showFeedback}
-              className={`w-full text-left px-4 py-3 rounded-lg border ${borderColor} ${bgColor} transition hover:border-tp-accent-green/50 disabled:cursor-default`}
+              className={`w-full text-left px-4 py-3 rounded-sm border ${borderColor} ${bgColor} transition hover:border-tp-demand/50 disabled:cursor-default`}
             >
-              <span className="font-mono text-tp-accent-green mr-2">{opt.id.toUpperCase()})</span>
+              <span className="font-data text-tp-demand mr-2">{opt.id.toUpperCase()})</span>
               {opt.text}
             </button>
           );
@@ -128,17 +131,15 @@ export default function QuizEngine({ questions, onComplete, minPassPercent }: Qu
       {/* Feedback & Next */}
       {showFeedback && (
         <div className="space-y-3">
-          {/* Per-option feedback */}
-          <div className={`px-4 py-2 rounded-lg text-sm ${isCorrect ? "bg-tp-accent-green/10 text-tp-accent-green" : "bg-tp-accent-red/10 text-tp-accent-red"}`}>
+          <div className={`px-4 py-2 rounded-sm text-sm ${isCorrect ? "bg-tp-demand/10 text-tp-demand" : "bg-tp-supply/10 text-tp-supply"}`}>
             {selectedOption?.feedback}
           </div>
-          {/* Explanation */}
-          <div className="px-4 py-2 rounded-lg bg-tp-bg-secondary border border-tp-border text-sm text-tp-text-secondary">
+          <div className="px-4 py-2 rounded-sm bg-tp-surface border border-tp-border text-sm text-tp-text-muted">
             💡 {current.explanation}
           </div>
           <button
             onClick={handleNext}
-            className="px-6 py-2 bg-tp-accent-green text-black font-semibold rounded-lg hover:brightness-110 transition"
+            className="px-6 py-2 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition"
           >
             {currentIndex < questions.length - 1 ? "Siguiente →" : "Ver resultado"}
           </button>
