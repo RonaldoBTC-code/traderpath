@@ -34,8 +34,11 @@ export default function ZonePainter({ correctZones, requiredCorrect, onComplete 
     setSelectedZones(updated);
 
     if (updated.length === correctZones.length) {
-      // Calculate score
-      const correct = updated.filter((s, i) => s.type === correctZones[i].type).length;
+      // Calculate score — compare each selected zone to the original by matching low values
+      const correct = updated.filter((s) => {
+        const original = correctZones.find((cz) => cz.low === s.low);
+        return original && original.type === s.type;
+      }).length;
       const finalScore = Math.round((correct / correctZones.length) * 100);
       setTimeout(() => onComplete(finalScore), 1000);
     }
