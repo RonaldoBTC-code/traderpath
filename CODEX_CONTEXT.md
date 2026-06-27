@@ -36,7 +36,9 @@ Un videojuego educativo web de trading financiero. El jugador aprende mercados f
 - ✅ Autenticación con Supabase (registro + login)
 - ✅ Sincronización de progreso con Supabase (DB como source of truth + migración inicial desde localStorage)
 - ✅ Simulador de trading con replay de datos históricos reales, Lightweight Charts, checklist y diario obligatorio
-- ✅ Contexto visual con velas Lightweight Charts integrado en las 16 misiones
+- ✅ Contexto visual con velas Lightweight Charts integrado en 15 misiones; Ciudad Origen evita deliberadamente reducir Bitcoin a su precio
+- ✅ Herramientas de dibujo técnico reutilizables: lápiz, tendencia, nivel horizontal, zona, etiquetas, deshacer y limpiar
+- ✅ Escenarios técnicos por misión con swings, rechazos, soporte/resistencia, BOS, CHoCH, retesteos e invalidación basados en evidencia visible
 - ✅ Ciudad Origen: introducción obligatoria a Bitcoin antes del mercado cripto
 - ✅ Base de datos con schema completo (6 tablas + RLS + triggers + funciones)
 - ✅ Design system VDD v1.0 (tema oscuro gaming)
