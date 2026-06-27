@@ -25,6 +25,7 @@ export type Level3CryptoMinigameType =
   | "cycle_mapper"
   | "volume_reader"
   | "fear_greed_slider"
+  | "bitcoin_origin"
   | "pair_calculator"
   | "timeframe_switcher"
 
@@ -61,17 +62,129 @@ export const level3Crypto: Level3CryptoConfig = {
   specialization: "crypto",
   title: "El Mundo de los Bloques",
   tagline: "Este mercado no cierra, no descansa y no perdona. Pero tampoco olvida.",
-  description: "Bienvenido a Ciudad Nexus. Aquí el mercado opera las 24 horas, los 7 días de la semana, los 365 días del año. Aprenderás qué hace único al mundo crypto: su volatilidad, sus ciclos, la dominancia de Bitcoin, el halving, el Fear & Greed Index, y cómo aplicar análisis técnico en activos que pueden subir un 40% o caer un 30% en una sola semana.",
-  cityName: "Ciudad Nexus",
-  cityTagline: "El mercado que nunca duerme — neón, bloques y volatilidad eterna.",
+  description: "La ruta comienza en Ciudad Origen, donde comprenderás Bitcoin antes de operar BTC o estudiar otros criptoactivos. Después entrarás a Ciudad Nexus para aprender mercados 24/7, custodia, volatilidad, ciclos, dominancia, halving y análisis técnico con gestión de riesgo.",
+  cityName: "Ciudad Origen / Ciudad Nexus",
+  cityTagline: "Primero comprende el protocolo. Después aprende a leer el mercado.",
   startingCapitalEstimate: 3_500,
-  totalMissions: 5,
+  totalMissions: 6,
   xpRequired: 950,
   missions: [
+    // ── MISIÓN 3C.0 — Ciudad Origen: Bitcoin ──
+    {
+      id: "m3c_0",
+      order: 1,
+      title: "Ciudad Origen: Bitcoin",
+      subtitle: "Antes del mercado existió un problema que resolver",
+      description: "La entrada obligatoria al mundo cripto. Aprenderás qué es Bitcoin, cómo coordina una red sin autoridad central, qué papel cumplen nodos y mineros, cómo funciona la custodia y por qué BTC no debe confundirse con una promesa de rentabilidad.",
+      learningObjectives: [
+        "Diferenciar Bitcoin, bitcoin, BTC y satoshi",
+        "Explicar el doble gasto y la función de la cadena de bloques",
+        "Distinguir el trabajo de nodos completos y mineros",
+        "Comprender claves, direcciones, wallets y autocustodia",
+        "Separar el protocolo Bitcoin del mercado especulativo de BTC",
+      ],
+      keyConcepts: ["Bitcoin", "BTC", "satoshi", "peer-to-peer", "doble gasto", "UTXO", "nodo completo", "minería", "prueba de trabajo", "clave privada", "autocustodia", "Lightning"],
+      cryptoConcepts: ["Bitcoin protocol", "proof of work", "UTXO", "full node", "self-custody", "Lightning Network"],
+      referenceAssets: ["Bitcoin white paper", "Bitcoin Core", "BTC/USDT", "Lightning Network"],
+      requiredMissions: ["m2_5"],
+      introDialogues: [
+        { id: "m3c0_intro_1", character: "narrator", type: "diary", text: "Antes de las pantallas de Ciudad Nexus hay una isla luminosa. En su plaza no aparecen precios. Solo una pregunta grabada en piedra: ¿cómo puede existir dinero digital sin que una empresa lleve las cuentas?" },
+        { id: "m3c0_intro_2", character: "el_viejo_marco", type: "diary", text: "Muchos llegan buscando una gráfica. Empiezan por el final. Bitcoin no nació como una vela verde ni como una promesa de riqueza. Nació como un sistema de efectivo electrónico entre pares.", footnote: "— Primera entrada desde Ciudad Origen" },
+        { id: "m3c0_intro_3", character: "aria", type: "aria_message", text: "Usaremos nombres precisos. Bitcoin es el protocolo y la red. bitcoin es la unidad que circula. BTC es el símbolo con el que los mercados cotizan el activo. Un satoshi es una cienmillonésima parte de un bitcoin." },
+        { id: "m3c0_intro_4", character: "aria", type: "warning", text: "Esta misión nunca pedirá una frase de recuperación, una clave privada ni dinero real. Una simulación educativa legítima no necesita ninguno de esos datos." },
+      ],
+      outroDialogues: [
+        { id: "m3c0_outro_1", character: "aria", type: "tip", text: "Ya puedes explicar Bitcoin sin depender del precio: firmas autorizan, nodos verifican, mineros ordenan mediante prueba de trabajo y la red conserva un historial compartido." },
+        { id: "m3c0_outro_2", character: "el_viejo_marco", type: "diary", text: "Comprender una tecnología no obliga a comprar su activo. Ahora que sabes qué es Bitcoin, estás preparado para estudiar qué ocurre cuando BTC entra en un mercado.", footnote: "— Salida de Ciudad Origen" },
+      ],
+      quiz: [
+        {
+          id: "q_m3c0_01",
+          difficulty: "basico",
+          conceptEvaluated: "Bitcoin, bitcoin y BTC",
+          question: "¿Cuál es la descripción más precisa?",
+          options: [
+            { id: "a", text: "Bitcoin es la red y el protocolo; BTC es el símbolo usado en mercados", isCorrect: true, feedback: "Correcto. Distinguir sistema, unidad y ticker evita muchas confusiones." },
+            { id: "b", text: "Bitcoin es una empresa y BTC es una acción de esa empresa", isCorrect: false, feedback: "Bitcoin no tiene una empresa emisora ni acciones." },
+            { id: "c", text: "BTC es la blockchain y Bitcoin es una stablecoin", isCorrect: false, feedback: "BTC es un ticker; Bitcoin no busca mantener paridad con una moneda fiat." },
+            { id: "d", text: "Bitcoin y BTC son dos redes diferentes", isCorrect: false, feedback: "BTC representa al activo bitcoin en mercados; no es una red separada." },
+          ],
+          explanation: "Bitcoin nombra al protocolo y la red. bitcoin puede nombrar la unidad y BTC es el símbolo habitual de cotización. Un bitcoin se divide en 100.000.000 satoshis.",
+          conceptRef: "docs/BITCOIN_CURRICULUM.md#propósito",
+        },
+        {
+          id: "q_m3c0_02",
+          difficulty: "intermedio",
+          conceptEvaluated: "Nodos y mineros",
+          question: "¿Quién decide si un bloque cumple las reglas de Bitcoin?",
+          options: [
+            { id: "a", text: "Los nodos que lo verifican según las reglas de consenso", isCorrect: true, feedback: "Correcto. Los mineros proponen; los nodos verifican y pueden rechazar." },
+            { id: "b", text: "El exchange con mayor volumen", isCorrect: false, feedback: "Los exchanges son participantes comerciales, no autoridades del protocolo." },
+            { id: "c", text: "El minero, porque gastó energía", isCorrect: false, feedback: "La prueba de trabajo no valida un bloque que rompe las reglas." },
+            { id: "d", text: "Satoshi Nakamoto desde un servidor central", isCorrect: false, feedback: "Bitcoin no depende de un servidor controlado por su creador." },
+          ],
+          explanation: "Los nodos completos validan independientemente bloques y transacciones. La minería aporta orden y coste de modificación, pero no permite cambiar unilateralmente el consenso.",
+          conceptRef: "docs/BITCOIN_CURRICULUM.md#3-nodos-y-mineros",
+        },
+        {
+          id: "q_m3c0_03",
+          difficulty: "intermedio",
+          conceptEvaluated: "Wallet y autocustodia",
+          question: "¿Qué controla una wallet de autocustodia?",
+          options: [
+            { id: "a", text: "Las claves que autorizan gastar las salidas registradas por la red", isCorrect: true, feedback: "Correcto. La wallet administra claves; los fondos se reflejan en el libro contable compartido." },
+            { id: "b", text: "Archivos BTC descargados dentro del teléfono", isCorrect: false, feedback: "Los bitcoins no son archivos almacenados físicamente en la wallet." },
+            { id: "c", text: "Una cuenta que soporte puede restaurar sin la semilla", isCorrect: false, feedback: "En autocustodia no existe una autoridad capaz de reconstruir tus claves." },
+            { id: "d", text: "El precio futuro de Bitcoin", isCorrect: false, feedback: "Una wallet gestiona transacciones y claves, no predice el mercado." },
+          ],
+          explanation: "Una wallet permite generar y usar claves. La frase de recuperación puede reconstruirlas y nunca debe compartirse. Quien controla las claves puede autorizar el gasto.",
+          conceptRef: "docs/BITCOIN_CURRICULUM.md#6-custodia",
+        },
+        {
+          id: "q_m3c0_04",
+          difficulty: "avanzado",
+          conceptEvaluated: "Escasez y precio",
+          question: "El límite cercano a 21 millones de BTC significa que...",
+          options: [
+            { id: "a", text: "La emisión es escasa por protocolo, pero el precio no está garantizado", isCorrect: true, feedback: "Correcto. Escasez programada y rentabilidad futura son conceptos diferentes." },
+            { id: "b", text: "Cada halving obliga al precio a duplicarse", isCorrect: false, feedback: "El halving reduce emisión; no controla la demanda ni garantiza el precio." },
+            { id: "c", text: "No se pueden comprar fracciones de bitcoin", isCorrect: false, feedback: "Bitcoin es divisible; 1 BTC equivale a 100 millones de satoshis." },
+            { id: "d", text: "Los mineros pueden ampliar el límite cuando quieran", isCorrect: false, feedback: "Los nodos rechazarían bloques que incumplan las reglas que ejecutan." },
+          ],
+          explanation: "La política monetaria limita la emisión, pero un activo escaso puede subir o bajar. TraderPath enseña el protocolo sin prometer resultados de inversión.",
+          conceptRef: "docs/BITCOIN_CURRICULUM.md#4-emisión-y-escasez",
+        },
+        {
+          id: "q_m3c0_05",
+          difficulty: "avanzado",
+          conceptEvaluated: "Lightning Network",
+          question: "¿Cuál es la relación correcta entre Lightning y Bitcoin?",
+          options: [
+            { id: "a", text: "Lightning usa canales anclados en Bitcoin para pagos rápidos", isCorrect: true, feedback: "Correcto. Es una capa de pagos que depende de la capa base para liquidar y resolver." },
+            { id: "b", text: "Lightning es una altcoin que reemplaza BTC", isCorrect: false, feedback: "Lightning no emite una moneda alternativa." },
+            { id: "c", text: "Lightning elimina para siempre las comisiones", isCorrect: false, feedback: "Puede reducir costes de pago, pero abrir y cerrar canales usa la capa base y existen comisiones de enrutamiento." },
+            { id: "d", text: "Lightning vuelve privadas todas las transacciones", isCorrect: false, feedback: "Mejora ciertas propiedades, pero no convierte automáticamente el sistema en anonimato total." },
+          ],
+          explanation: "Lightning permite pagos mediante canales respaldados por Bitcoin. Complementa la liquidación en cadena; no cambia el activo ni sustituye el consenso de la capa base.",
+          conceptRef: "docs/BITCOIN_CURRICULUM.md#8-capas-de-pago",
+        },
+      ],
+      minigame: {
+        id: "mg_m3c0",
+        type: "bitcoin_origin",
+        title: "El Recorrido de Ciudad Origen",
+        description: "Visita cuatro lugares y resuelve una decisión en cada uno: Genesis, Bloques, Custodia y Lightning.",
+        instructions: "Explora cada estación, selecciona la respuesta y lee la explicación antes de avanzar. Las estaciones y respuestas cambian de orden en cada intento.",
+        config: { stations: 4 },
+        passingScore: 75,
+        virtualCapitalReward: 0,
+      },
+      rewards: { xp: 150, virtualCapital: 0, badge: "ciudadano_de_origen" },
+    },
     // ── MISIÓN 3C.1 — La Ciudad que Nunca Duerme ──
     {
       id: "m3c_1",
-      order: 1,
+      order: 2,
       title: "La Ciudad que Nunca Duerme",
       subtitle: "El mercado más diferente que jamás operarás",
       description: "Primera misión en Ciudad Nexus. Descubrirás qué hace único al mercado crypto: disponibilidad 24/7, alta volatilidad estructural, CEX vs DEX, y los fundamentos de un par de trading.",
@@ -82,9 +195,9 @@ export const level3Crypto: Level3CryptoConfig = {
         "Aplicar reglas de gestión de riesgo a la alta volatilidad crypto",
       ],
       keyConcepts: ["mercado 24/7", "CEX", "DEX", "par de trading", "order book", "volatilidad estructural", "spot trading", "USDT / stablecoin"],
-      cryptoConcepts: ["CEX vs DEX", "trading pair", "stablecoin como refugio", "order book depth"],
+      cryptoConcepts: ["CEX vs DEX", "trading pair", "stablecoin como activo de cotización", "order book depth"],
       referenceAssets: ["BTC/USDT", "ETH/USDT"],
-      requiredMissions: ["m2_5"],
+      requiredMissions: ["m3c_0"],
       introDialogues: [
         { id: "m3c1_intro_1", character: "narrator", type: "diary", text: "Ciudad Nexus. Las pantallas nunca se apagan. Los bloques nunca dejan de minarse. El precio nunca deja de moverse." },
         { id: "m3c1_intro_2", character: "el_viejo_marco", type: "diary", text: "Llegaste al único mercado donde puedes perder dinero un domingo a las 3 de la mañana. Eso suena como una broma, pero no lo es. Aquí no hay horarios. No hay feriados. No hay campana de cierre. El mercado no descansa aunque tú lo hagas. Eso cambia todo.", footnote: "— El Viejo Marco, Primera Entrada desde Ciudad Nexus" },
@@ -92,7 +205,7 @@ export const level3Crypto: Level3CryptoConfig = {
         { id: "m3c1_intro_4", character: "el_especulador", type: "enemy_taunt", text: "24 horas, 7 días... Yo una vez operé 36 horas seguidas sin dormir. Me sentía imparable. El mercado eventualmente me demostró que no lo era. No repitas mi error." },
       ],
       outroDialogues: [
-        { id: "m3c1_outro_1", character: "aria", type: "tip", text: "Recuerda: un CEX (Binance, Coinbase, Bybit) es conveniente y rápido, pero tú no controlas tus claves. Un DEX (Uniswap, dYdX) te da control total pero con más complejidad. Para trading activo, los CEX son el punto de partida estándar." },
+        { id: "m3c1_outro_1", character: "aria", type: "tip", text: "Recuerda: en un CEX delegas custodia y asumes riesgo de contraparte. En un DEX operas desde una wallet, pero conservas riesgos de contrato, interfaz, liquidez y error humano. La elección depende del uso y del riesgo que comprendes." },
         { id: "m3c1_outro_2", character: "el_viejo_marco", type: "diary", text: "El par BTC/USDT no significa que compras Bitcoin con dólares. Significa que usas USDT —un dólar digital— como moneda base. Entender eso parece trivial. No lo es.", footnote: "— Entrada #2 desde Nexus" },
       ],
       quiz: [
@@ -103,11 +216,11 @@ export const level3Crypto: Level3CryptoConfig = {
           { id: "d", text: "En un CEX el precio es más alto que en un DEX", isCorrect: false, feedback: "Los precios son similares entre exchanges gracias al arbitraje." },
         ], explanation: "CEX (Exchange Centralizado) = la plataforma guarda tus activos. Si el exchange quiebra (como FTX en 2022), tus fondos están en riesgo. DEX (Exchange Descentralizado) = tus fondos permanecen en tu wallet. El intercambio ocurre por smart contracts." },
         { id: "q_m3c1_02", difficulty: "basico", conceptEvaluated: "Par de trading y stablecoin", question: "En el par BTC/USDT, ¿qué rol cumple el USDT?", options: [
-          { id: "a", text: "USDT es otra criptomoneda con alto potencial de revalorización", isCorrect: false, feedback: "USDT está diseñado para mantener siempre el valor de $1 USD." },
+          { id: "a", text: "USDT es otra criptomoneda con alto potencial de revalorización", isCorrect: false, feedback: "USDT busca seguir el valor de $1 USD, pero puede perder temporalmente esa paridad y conserva riesgo de emisor." },
           { id: "b", text: "USDT es la moneda de cotización — el precio de BTC se expresa en USDT", isCorrect: true, feedback: "Correcto. En BTC/USDT, BTC es el activo que operas y USDT es la moneda con la que pagas/recibes." },
           { id: "c", text: "USDT es emitido por Bitcoin como recompensa a los mineros", isCorrect: false, feedback: "USDT es emitido por Tether, una empresa separada." },
-          { id: "d", text: "USDT vale siempre 0.01 BTC", isCorrect: false, feedback: "USDT vale $1 USD independientemente del precio de Bitcoin." },
-        ], explanation: "En un par de trading X/Y, X es el activo base (lo que compras) e Y es la moneda de cotización (con qué pagas). Las stablecoins como USDT, USDC o BUSD mantienen paridad con el dólar y son el refugio más común en crypto." },
+          { id: "d", text: "USDT vale siempre 0.01 BTC", isCorrect: false, feedback: "USDT intenta seguir al dólar; su valor frente a BTC cambia con el precio de ambos y la paridad puede desviarse." },
+        ], explanation: "En un par X/Y, X es el activo base e Y la moneda de cotización. Stablecoins como USDT o USDC están diseñadas para seguir al dólar, pero la paridad no está garantizada: existen riesgos de reservas, emisor, liquidez y regulación." },
         { id: "q_m3c1_03", difficulty: "intermedio", conceptEvaluated: "Volatilidad 24/7 y gestión de riesgo", question: "Tienes una posición larga en ETH y debes dormir 8 horas. ¿Cuál es la acción más prudente?", options: [
           { id: "a", text: "Cerrar la posición antes de dormir para evitar cualquier riesgo", isCorrect: false, feedback: "Cerrar siempre antes de dormir es excesivamente conservador." },
           { id: "b", text: "Verificar que el Stop Loss esté correctamente colocado y que el tamaño de la posición respete el 2% de riesgo", isCorrect: true, feedback: "Correcto. El Stop Loss trabaja mientras duermes — esa es su función principal en un mercado 24/7." },
@@ -136,18 +249,18 @@ export const level3Crypto: Level3CryptoConfig = {
       },
       rewards: { xp: 140, virtualCapital: 250 },
     },
-    // ── MISIÓN 3C.2 — El Rey Bitcoin ──
+    // ── MISIÓN 3C.2 — El Ritmo de Bitcoin ──
     {
-      id: "m3c_2", order: 2, title: "El Rey Bitcoin", subtitle: "Entiende a BTC y entenderás el mercado crypto entero",
-      description: "Bitcoin no es solo otro activo — es el activo que determina el estado emocional de todo el mercado crypto. Aprenderás qué es la dominancia de BTC, cómo se correlacionan las altcoins con él, y qué es el market cap total.",
+      id: "m3c_2", order: 3, title: "El Ritmo de Bitcoin", subtitle: "Entiende a BTC y entenderás el mercado crypto entero",
+      description: "Bitcoin suele concentrar la mayor parte del valor y la liquidez del mercado cripto, por lo que sus movimientos sirven como contexto, no como una orden automática. Aprenderás qué mide la dominancia de BTC, cómo cambia la correlación con las altcoins y qué representa el market cap total.",
       learningObjectives: ["Comprender qué es la BTC Dominance y por qué importa", "Entender la correlación entre BTC y las altcoins", "Leer el market cap total del mercado crypto", "Identificar cuándo las altcoins se desacoplan de BTC"],
       keyConcepts: ["BTC dominance", "altcoins", "market cap", "correlación", "altcoin season", "BTC como reserva de valor", "total crypto market cap", "desacoplamiento"],
       cryptoConcepts: ["BTC dominance index", "altseason indicator", "total market cap", "BTC.D chart"],
       referenceAssets: ["BTC/USDT", "ETH/USDT", "BTC.D (Dominance)", "TOTAL (Market Cap)"],
       requiredMissions: ["m3c_1"],
       introDialogues: [
-        { id: "m3c2_intro_1", character: "el_viejo_marco", type: "diary", text: "Antes de operar cualquier altcoin, mira a Bitcoin. Si BTC está cayendo, las altcoins no van a salvar tu operación. Si BTC está en acumulación, el resto del mercado está esperando. BTC marca el ritmo. Todo lo demás baila.", footnote: "— Entrada #9 desde Nexus" },
-        { id: "m3c2_intro_2", character: "aria", type: "aria_message", text: "La BTC Dominance (BTC.D) mide el porcentaje del market cap total que pertenece a Bitcoin. Cuando BTC.D sube, el dinero fluye hacia Bitcoin — señal de cautela. Cuando BTC.D baja, el dinero fluye hacia altcoins — potencial altseason." },
+        { id: "m3c2_intro_1", character: "el_viejo_marco", type: "diary", text: "Antes de operar una altcoin, mira a Bitcoin. En episodios de aversión al riesgo, muchas altcoins amplifican sus caídas. BTC marca con frecuencia el contexto, aunque cada activo conserva riesgos propios.", footnote: "— Entrada #9 desde Nexus" },
+        { id: "m3c2_intro_2", character: "aria", type: "aria_message", text: "La BTC Dominance (BTC.D) estima qué porcentaje del market cap cripto corresponde a Bitcoin. Si sube, BTC está ganando participación relativa; puede ocurrir porque sube más o porque las altcoins caen más. Si baja, las altcoins ganan participación, pero eso por sí solo no confirma una altseason." },
         { id: "m3c2_intro_3", character: "la_señorita_fomo", type: "enemy_taunt", text: "¿BTC dominance? ¡Mira ese altcoin que subió 200% en 3 días! ¡Entra ahora antes de que sea tarde!" },
         { id: "m3c2_intro_4", character: "aria", type: "warning", text: "La Señorita FOMO acaba de mostrar cómo se pierden carteras completas en crypto. Un altcoin que subió 200% en 3 días puede caer 80% en los próximos 3 días." },
       ],
@@ -161,7 +274,7 @@ export const level3Crypto: Level3CryptoConfig = {
           { id: "b", text: "El 60% del capital total invertido en crypto está en Bitcoin", isCorrect: true, feedback: "Correcto. BTC.D = market cap de BTC / market cap total × 100." },
           { id: "c", text: "Bitcoin sube un 60% este año", isCorrect: false, feedback: "La dominance no mide rendimiento porcentual." },
           { id: "d", text: "El 60% de los traders operan BTC", isCorrect: false, feedback: "La dominance mide capital, no número de traders." },
-        ], explanation: "La BTC Dominance mide el porcentaje que representa el market cap de Bitcoin sobre el total de crypto. Alta (>60%) = inversores prefieren BTC. Baja (<40%) = posible altseason." },
+        ], explanation: "BTC.D compara el market cap de Bitcoin con el total cripto. No existen umbrales universales: importa la dirección de la dominancia junto con el precio, la liquidez y la estructura del mercado." },
         { id: "q_m3c2_02", difficulty: "intermedio", conceptEvaluated: "Correlación BTC–Altcoins", question: "Bitcoin cae un 15% en 24 horas. ¿Qué suele ocurrir con la mayoría de altcoins?", options: [
           { id: "a", text: "Las altcoins suben porque los inversores rotan de BTC a altcoins", isCorrect: false, feedback: "En caídas bruscas, el pánico afecta a todo el mercado." },
           { id: "b", text: "Las altcoins caen más que BTC en términos porcentuales — alta correlación bajista", isCorrect: true, feedback: "Correcto. Las altcoins tienen beta mayor — amplifican los movimientos de BTC." },
@@ -199,7 +312,7 @@ export const level3Crypto: Level3CryptoConfig = {
     },
     // ── MISIÓN 3C.3 — Los Ciclos de la Luna ──
     {
-      id: "m3c_3", order: 3, title: "Los Ciclos de la Luna", subtitle: "Crypto tiene estaciones. Aprender a reconocerlas lo cambia todo",
+      id: "m3c_3", order: 4, title: "Los Ciclos de la Luna", subtitle: "Crypto tiene estaciones. Aprender a reconocerlas lo cambia todo",
       description: "El mercado crypto opera en ciclos de 4 años vinculados al halving de Bitcoin. Aprenderás las 4 fases del ciclo, qué es el halving, y cómo el Fear & Greed Index captura el estado emocional del mercado.",
       learningObjectives: ["Identificar las 4 fases del ciclo del mercado crypto", "Entender qué es el halving de Bitcoin y su impacto histórico", "Usar el Fear & Greed Index como indicador de sentimiento", "Reconocer señales de techo y suelo de mercado"],
       keyConcepts: ["halving", "ciclo de 4 años", "acumulación", "distribución", "impulso", "capitulación", "Fear & Greed Index", "on-chain", "ATH"],
@@ -222,7 +335,7 @@ export const level3Crypto: Level3CryptoConfig = {
           { id: "b", text: "La recompensa que reciben los mineros por validar bloques se reduce a la mitad", isCorrect: true, feedback: "Correcto. Cada ~4 años, la emisión de nuevos BTC se reduce 50%." },
           { id: "c", text: "La cantidad total de Bitcoin en circulación se reduce a la mitad", isCorrect: false, feedback: "El supply existente no se destruye — solo se reduce la tasa de emisión." },
           { id: "d", text: "El número de transacciones se reduce a la mitad", isCorrect: false, feedback: "La capacidad de transacciones no está vinculada al halving." },
-        ], explanation: "El halving reduce a la mitad la recompensa de minería. En 2024, pasó de 6.25 a 3.125 BTC por bloque. Con menor oferta nueva y misma demanda, hay presión alcista." },
+        ], explanation: "El halving reduce a la mitad el subsidio por bloque. En 2024 pasó de 6.25 a 3.125 BTC. Una emisión nueva menor puede influir en la oferta si la demanda se mantiene, pero no garantiza una subida de precio." },
         { id: "q_m3c3_02", difficulty: "intermedio", conceptEvaluated: "Fases del ciclo", question: "Noticias: 'Bitcoin supera ATH. Celebridades invierten. Tu abuela pregunta cómo comprar crypto.' ¿En qué fase?", options: [
           { id: "a", text: "Acumulación — los smart money compran", isCorrect: false, feedback: "La acumulación ocurre en silencio." },
           { id: "b", text: "Distribución — euforia total, los primeros inversores están vendiendo", isCorrect: true, feedback: "Correcto. La euforia masiva y ATH en titulares son señales clásicas de distribución." },
@@ -262,7 +375,7 @@ export const level3Crypto: Level3CryptoConfig = {
     },
     // ── MISIÓN 3C.4 — El Lenguaje de los Bloques ──
     {
-      id: "m3c_4", order: 4, title: "El Lenguaje de los Bloques", subtitle: "Análisis técnico aplicado a la volatilidad crypto",
+      id: "m3c_4", order: 5, title: "El Lenguaje de los Bloques", subtitle: "Análisis técnico aplicado a la volatilidad crypto",
       description: "Aplicas el AT del Nivel 2 al contexto crypto: timeframes, ATR para medir volatilidad, volumen spot vs derivados, y niveles históricos de BTC.",
       learningObjectives: ["Elegir el timeframe correcto según operación crypto", "Usar ATR para dimensionar Stop Loss", "Distinguir volumen spot y derivados", "Identificar niveles históricos clave de BTC"],
       keyConcepts: ["ATR", "timeframes en crypto", "volumen spot", "volumen derivados", "open interest", "funding rate", "niveles históricos", "HTF vs LTF"],
@@ -315,7 +428,7 @@ export const level3Crypto: Level3CryptoConfig = {
     },
     // ── MISIÓN 3C.5 — El Gran Reto Cripto (Boss Level 3) ──
     {
-      id: "m3c_5", order: 5, title: "El Gran Reto Cripto", subtitle: "Demuestra que puedes leer el mercado más volátil del mundo",
+      id: "m3c_5", order: 6, title: "El Gran Reto Cripto", subtitle: "Demuestra que puedes leer el mercado más volátil del mundo",
       description: "Misión Boss del Nivel 3. Aplicarás todo lo aprendido: ciclos, dominancia, AT multicapa y gestión de riesgo adaptada a crypto.",
       learningObjectives: ["Integrar dominancia BTC, ciclo, AT y gestión de riesgo en un análisis completo", "Tomar una decisión de trading fundamentada en crypto", "Demostrar comprensión de los conceptos exclusivos del nivel 3"],
       keyConcepts: ["síntesis nivel 3 crypto", "análisis multicapa", "BTC dominance", "ciclo de mercado", "gestión de riesgo crypto", "decisión fundamentada"],

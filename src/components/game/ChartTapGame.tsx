@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import TradingChart from "@/components/simulator/TradingChart";
+import { generateEducationalCandles } from "@/lib/game/missionCharts";
+import { shuffleArray } from "@/lib/utils/shuffle";
 
 interface ChartScenario {
   id: string;
@@ -10,36 +13,35 @@ interface ChartScenario {
 
 interface Props {
   charts: ChartScenario[];
+  passingScore?: number;
   onComplete: (score: number) => void;
 }
 
-/** Generates a simple SVG path that looks like a price chart */
-function generateChartPath(type: "bullish" | "bearish" | "sideways", seed: number): string {
-  const points: number[] = [];
-  let y = 50;
-  for (let i = 0; i <= 10; i++) {
-    const noise = ((seed * (i + 1) * 7) % 20) - 10;
-    if (type === "bullish") y = 80 - (i * 5) + noise;
-    else if (type === "bearish") y = 20 + (i * 5) + noise;
-    else y = 50 + noise;
-    points.push(Math.max(10, Math.min(90, y)));
-  }
-  return points.map((p, i) => `${i === 0 ? "M" : "L"} ${i * 28 + 10} ${p}`).join(" ");
-}
+const EXPLANATIONS = {
+  bullish: "La secuencia forma máximos más altos (HH) y mínimos más altos (HL). Los retrocesos existen, pero terminan por encima del mínimo anterior.",
+  bearish: "Los rebotes producen máximos más bajos (LH) y las caídas marcan mínimos más bajos (LL). Los vendedores conservan el control.",
+  sideways: "El precio oscila entre soporte y resistencia sin construir una secuencia direccional. Ningún lado domina todavía.",
+};
 
-export default function ChartTapGame({ charts, onComplete }: Props) {
+export default function ChartTapGame({ charts, passingScore = 70, onComplete }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [shuffledCharts, setShuffledCharts] = useState<ChartScenario[]>([]);
+  const [failedScore, setFailedScore] = useState<number | null>(null);
 
   useEffect(() => {
-    setShuffledCharts([...charts]);
+    setShuffledCharts(shuffleArray(charts));
   }, [charts]);
+
+  const current = shuffledCharts[currentIndex];
+  const candles = useMemo(
+    () => generateEducationalCandles(current?.type ?? "sideways", currentIndex + 42, 42),
+    [current?.type, currentIndex]
+  );
 
   if (shuffledCharts.length === 0) return <div className="text-tp-text-muted text-center py-4">Cargando...</div>;
 
-  const current = shuffledCharts[currentIndex];
   if (!current) return null;
 
   const handleAnswer = (answer: "bullish" | "bearish" | "sideways") => {
@@ -47,19 +49,36 @@ export default function ChartTapGame({ charts, onComplete }: Props) {
     const isCorrect = answer === current.type;
     if (isCorrect) setScore((s) => s + 1);
     setFeedback(isCorrect ? "correct" : "wrong");
-
-    setTimeout(() => {
-      setFeedback(null);
-      if (currentIndex < shuffledCharts.length - 1) {
-        setCurrentIndex((i) => i + 1);
-      } else {
-        const finalScore = Math.round(((score + (isCorrect ? 1 : 0)) / shuffledCharts.length) * 100);
-        onComplete(finalScore);
-      }
-    }, 1200);
   };
 
-  const path = generateChartPath(current.type, currentIndex + 42);
+  const handleNext = () => {
+    if (currentIndex < shuffledCharts.length - 1) {
+      setFeedback(null);
+      setCurrentIndex((i) => i + 1);
+    } else {
+      const percent = Math.round((score / shuffledCharts.length) * 100);
+      if (percent >= passingScore) onComplete(percent);
+      else setFailedScore(percent);
+    }
+  };
+
+  const retry = () => {
+    setCurrentIndex(0);
+    setScore(0);
+    setFeedback(null);
+    setFailedScore(null);
+    setShuffledCharts(shuffleArray(charts));
+  };
+
+  if (failedScore !== null) {
+    return (
+      <div className="space-y-4 py-4 text-center">
+        <p className="font-display text-lg font-bold text-tp-warning">Necesitas reforzar la estructura</p>
+        <p className="text-sm text-tp-text-muted">Obtuviste {failedScore}%. Debes alcanzar {passingScore}% antes de continuar.</p>
+        <button onClick={retry} className="rounded-sm bg-tp-gold px-5 py-2 font-bold text-tp-base">Reintentar con nuevos gráficos</button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -72,20 +91,24 @@ export default function ChartTapGame({ charts, onComplete }: Props) {
         <div className="h-full bg-tp-demand transition-all" style={{ width: `${((currentIndex) / shuffledCharts.length) * 100}%` }} />
       </div>
 
-      {/* Chart SVG */}
+      {/* TradingView Lightweight Chart */}
       <div className={`bg-tp-base border rounded-sm p-4 ${
         feedback === "correct" ? "border-tp-demand" : feedback === "wrong" ? "border-tp-supply" : "border-tp-border"
       }`}>
-        <svg viewBox="0 0 300 100" className="w-full h-40">
-          <path d={path} fill="none" stroke={current.type === "bullish" ? "#22C55E" : current.type === "bearish" ? "#EF4444" : "#8894A8"} strokeWidth="2.5" />
-        </svg>
+        <TradingChart candles={candles} height={260} ariaLabel="Gráfico de clasificación de tendencia" />
         <p className="text-xs text-tp-text-muted text-center mt-2 italic">{current.hint}</p>
       </div>
 
       {/* Feedback */}
       {feedback && (
-        <div className={`text-center text-sm font-medium ${feedback === "correct" ? "text-tp-demand" : "text-tp-supply"}`}>
-          {feedback === "correct" ? "✅ ¡Correcto!" : `❌ Incorrecto — era ${current.type === "bullish" ? "alcista" : current.type === "bearish" ? "bajista" : "lateral"}`}
+        <div className={`rounded-sm border p-3 text-sm ${feedback === "correct" ? "border-tp-demand/40 bg-tp-demand/10" : "border-tp-supply/40 bg-tp-supply/10"}`}>
+          <p className={`font-semibold ${feedback === "correct" ? "text-tp-demand" : "text-tp-supply"}`}>
+            {feedback === "correct" ? "Lectura correcta" : `Era ${current.type === "bullish" ? "alcista" : current.type === "bearish" ? "bajista" : "lateral"}`}
+          </p>
+          <p className="mt-1 text-xs text-tp-text-muted">{EXPLANATIONS[current.type]}</p>
+          <button onClick={handleNext} className="mt-3 rounded-sm bg-tp-gold px-4 py-2 text-xs font-bold text-tp-base">
+            {currentIndex === shuffledCharts.length - 1 ? "Continuar al quiz" : "Siguiente gráfico"}
+          </button>
         </div>
       )}
 

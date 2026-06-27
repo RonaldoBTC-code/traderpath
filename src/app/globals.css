@@ -51,6 +51,28 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+::selection {
+  background: rgba(240, 192, 64, 0.28);
+  color: #fff;
+}
+
+.tp-panel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.035), transparent 58%),
+    rgba(19, 24, 39, 0.84);
+  box-shadow: 0 16px 46px rgba(0, 0, 0, 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* ─── TYPOGRAPHY UTILITY CLASSES ───────────────────────────── */
 
 .font-display {

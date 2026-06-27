@@ -16,6 +16,14 @@ import ZonePainter from "@/components/game/ZonePainter";
 import PatternIdentifier from "@/components/game/PatternIdentifier";
 import OrderSimulator from "@/components/game/OrderSimulator";
 import MarketPreview from "@/components/game/MarketPreview";
+import PairCalculator, { type PairScenario } from "@/components/game/PairCalculator";
+import DominanceGauge, { type DominanceScenario } from "@/components/game/DominanceGauge";
+import CycleMapper, { type CycleEvent } from "@/components/game/CycleMapper";
+import TimeframeSwitcher from "@/components/game/TimeframeSwitcher";
+import CryptoIntegratedAnalysis, { type CryptoScenario } from "@/components/game/CryptoIntegratedAnalysis";
+import BitcoinOriginGame from "@/components/game/BitcoinOriginGame";
+import MissionMarketChart from "@/components/game/MissionMarketChart";
+import { useHasMounted } from "@/hooks/useHasMounted";
 import MissionTutorial, { type TutorialContent } from "@/components/game/MissionTutorial";
 import { useGameStore } from "@/store/gameStore";
 import { formatCurrency } from "@/lib/utils/format";
@@ -181,10 +189,30 @@ function getMissionTutorial(missionId: string): TutorialContent {
       hint: "No hay mercado 'mejor'. Hay mercados que se adaptan mejor a TU tiempo, tolerancia al riesgo y personalidad.",
     },
     // ─── NIVEL 3 CRYPTO TUTORIALS ───
+    m3c_0: {
+      title: "Ciudad Origen: Bitcoin",
+      learningObjective: "Comprender Bitcoin como protocolo antes de estudiar BTC como activo de mercado.",
+      conceptExplanation: "Bitcoin coordina un libro contable público sin una autoridad central. Las firmas autorizan gastos, los nodos verifican reglas y los mineros ordenan transacciones mediante prueba de trabajo. BTC es el símbolo de mercado, no el nombre de una empresa.",
+      practicalExample: "Imagina un libro de cuentas copiado en miles de bibliotecas. Cualquiera puede proponer una nueva página, pero cada biblioteca comprueba las mismas reglas antes de aceptarla. Una página costosa de producir sigue siendo rechazada si contiene datos inválidos.",
+      stepByStepInstructions: [
+        "Recorre las cuatro estaciones en el orden que aparezcan.",
+        "Lee el problema planteado por cada lugar.",
+        "Elige una respuesta; las opciones se presentan al azar.",
+        "Lee la explicación completa aunque hayas acertado.",
+        "Consigue al menos 3 de 4 respuestas correctas.",
+      ],
+      commonMistakes: [
+        "Confundir Bitcoin con una empresa o con su precio.",
+        "Pensar que los mineros pueden cambiar las reglas por sí solos.",
+        "Creer que la wallet almacena monedas como archivos.",
+        "Compartir una frase de recuperación con una plataforma o supuesto soporte.",
+      ],
+      hint: "Pregunta siempre: ¿quién propone, quién verifica y quién controla las claves?",
+    },
     m3c_1: {
       title: "El Mercado Crypto 24/7",
       learningObjective: "Entender las características únicas del mercado crypto: disponibilidad permanente, CEX vs DEX, pares de trading y gestión de riesgo nocturna.",
-      conceptExplanation: "Crypto opera 24 horas, 7 días, 365 días. No hay campana de cierre. Un CEX (Binance, Coinbase) custodia tus activos. Un DEX (Uniswap) te da control total de tus claves. El par BTC/USDT significa que compras BTC pagando con USDT (stablecoin = $1).",
+      conceptExplanation: "Crypto opera 24 horas, 7 días, 365 días. No hay campana de cierre. Un CEX custodia activos por sus usuarios; en un DEX la operación se ejecuta desde una wallet. El par BTC/USDT cotiza BTC en USDT, una stablecoin diseñada para seguir al dólar, aunque la paridad no está garantizada.",
       practicalExample: "Tienes una posición abierta en ETH a las 11PM y vas a dormir. Si no tienes Stop Loss, podrías despertar con una pérdida del 15%. Con SL colocado correctamente, la pérdida máxima es tu 2% planificado.",
       stepByStepInstructions: [
         "Lee el par de trading y el capital disponible.",
@@ -198,9 +226,9 @@ function getMissionTutorial(missionId: string): TutorialContent {
     },
     m3c_2: {
       title: "Bitcoin Dominance y Altcoins",
-      learningObjective: "Usar la BTC Dominance para determinar si el dinero fluye hacia Bitcoin o hacia altcoins, y tomar decisiones informadas.",
-      conceptExplanation: "BTC Dominance (BTC.D) = % del market cap total de crypto que pertenece a BTC. Si BTC.D sube → dinero va a BTC (cautela general). Si BTC.D baja → dinero rota a altcoins (posible altseason). Las altcoins amplifican los movimientos de BTC: si BTC cae 15%, las altcoins pueden caer 30-40%.",
-      practicalExample: "BTC.D en 45% bajando + BTC estable = dinero rotando a altcoins → posible altseason. BTC.D en 72% subiendo + BTC bajista = mercado en contracción → mejor esperar.",
+      learningObjective: "Interpretar la participación relativa de Bitcoin y combinarla con precio, liquidez y estructura antes de evaluar altcoins.",
+      conceptExplanation: "BTC Dominance (BTC.D) estima el porcentaje del market cap cripto que corresponde a BTC. Si sube, Bitcoin gana participación relativa; si baja, las altcoins la ganan. La dominancia no explica por sí sola si el mercado está subiendo o bajando.",
+      practicalExample: "BTC.D bajando + BTC estable o alcista puede acompañar una rotación hacia altcoins. BTC.D subiendo mientras todo cae puede significar que las altcoins pierden valor más rápido, no que esté entrando capital nuevo en Bitcoin.",
       stepByStepInstructions: [
         "Observa el valor de BTC Dominance.",
         "Observa la tendencia de BTC (alcista/bajista/lateral).",
@@ -215,8 +243,8 @@ function getMissionTutorial(missionId: string): TutorialContent {
     m3c_3: {
       title: "Ciclos de 4 Años y Halving",
       learningObjective: "Identificar las 4 fases del ciclo crypto (acumulación, impulso, distribución, capitulación) y entender el impacto del halving.",
-      conceptExplanation: "El halving reduce a la mitad las recompensas de minería de BTC cada ~4 años. Menos oferta nueva + misma demanda = presión alcista. El ciclo: Acumulación (precio bajo, nadie habla de crypto) → Impulso (precio sube) → Distribución (euforia, ATH) → Capitulación (crash, 'crypto murió').",
-      practicalExample: "2022: BTC cayó de $69K a $15K (capitulación). 2023: acumulación silenciosa en $25K-$35K. 2024: halving + impulso. Los titulares de 'crypto murió' siempre coinciden con los mejores momentos de compra históricos.",
+      conceptExplanation: "El halving reduce aproximadamente cada cuatro años el subsidio que reciben los mineros por bloque. Una emisión nueva menor puede afectar la oferta, pero no garantiza el precio. Acumulación, impulso, distribución y capitulación son modelos para estudiar conducta, no un calendario exacto.",
+      practicalExample: "Entre 2022 y 2024 se observaron una caída profunda, una recuperación y un halving. Ese patrón ayuda a estudiar ciclos históricos, pero no permite asegurar que el siguiente ciclo tendrá la misma duración, profundidad o rendimiento.",
       stepByStepInstructions: [
         "Observa el punto marcado en el gráfico histórico.",
         "Analiza: ¿el precio está en máximos, mínimos, o medio?",
@@ -280,6 +308,7 @@ function getLevelLabel(levelId: string): string {
 export default function MissionPage() {
   const params = useParams();
   const router = useRouter();
+  const hasMounted = useHasMounted();
   const missionId = params.id as string;
 
   const { isMissionCompleted, isMissionUnlocked, completeMission } = useGameStore();
@@ -292,12 +321,18 @@ export default function MissionPage() {
   const [dialogueIndex, setDialogueIndex] = useState(0);
   const [outroIndex, setOutroIndex] = useState(0);
   const [blocked, setBlocked] = useState(false);
+  const [earnedRewards, setEarnedRewards] = useState(false);
 
   useEffect(() => {
+    setBlocked(false);
+    setPhase("intro");
+    setDialogueIndex(0);
+    setOutroIndex(0);
+    setEarnedRewards(false);
     if (!mission) { router.push("/dashboard"); return; }
-    // Allow dev bypass with ?dev=true in URL
+    // Development-only bypass for local QA.
     const params = new URLSearchParams(window.location.search);
-    if (params.get("dev") === "true") return;
+    if (process.env.NODE_ENV === "development" && params.get("dev") === "true") return;
     if (!isMissionUnlocked(levelId, missionId)) { setBlocked(true); }
   }, [mission, levelId, missionId, isMissionUnlocked, router]);
 
@@ -315,7 +350,8 @@ export default function MissionPage() {
   }
 
   if (!mission) return null;
-  const alreadyCompleted = isMissionCompleted(levelId, missionId);
+  const alreadyCompleted = hasMounted && isMissionCompleted(levelId, missionId);
+  const totalCapitalReward = mission.rewards.virtualCapital + (mission.minigame?.virtualCapitalReward ?? 0);
 
   const handleIntroNext = () => {
     if (dialogueIndex < mission.introDialogues.length - 1) {
@@ -345,7 +381,10 @@ export default function MissionPage() {
   };
 
   const handleMissionComplete = (score: number) => {
-    if (!alreadyCompleted) completeMission(levelId, missionId, score);
+    if (!isMissionCompleted(levelId, missionId)) {
+      completeMission(levelId, missionId, score);
+      setEarnedRewards(true);
+    }
     setPhase("outro");
     setOutroIndex(0);
   };
@@ -366,10 +405,16 @@ export default function MissionPage() {
         <p className="text-tp-text-muted text-sm mt-0.5 italic">{mission.subtitle}</p>
         <div className="mt-2 flex gap-3 text-xs">
           <span className="font-data text-tp-gold">+{mission.rewards.xp} XP</span>
-          <span className="font-data text-tp-demand">+{formatCurrency(mission.rewards.virtualCapital)}</span>
+          {totalCapitalReward > 0 && (
+            <span className="font-data text-tp-demand">+{formatCurrency(totalCapitalReward)}</span>
+          )}
           {alreadyCompleted && <span className="text-tp-text-muted">(ya completada)</span>}
         </div>
       </div>
+
+      {(phase === "intro" || phase === "tutorial" || phase === "quiz") && (
+        <MissionMarketChart missionId={mission.id} />
+      )}
 
       {/* Phase: Intro */}
       {phase === "intro" && (
@@ -404,6 +449,7 @@ export default function MissionPage() {
             ) : mission.minigame.type === "chart_tap" && mission.minigame.config?.charts ? (
               <ChartTapGame
                 charts={mission.minigame.config.charts as { id: string; type: "bullish" | "bearish" | "sideways"; hint: string }[]}
+                passingScore={mission.minigame.passingScore}
                 onComplete={handleMinigameComplete}
               />
             ) : mission.minigame.type === "price_direction_quiz" && mission.minigame.config?.scenarios ? (
@@ -437,6 +483,45 @@ export default function MissionPage() {
               />
             ) : mission.minigame.type === "market_preview" ? (
               <MarketPreview onComplete={handleMinigameComplete} />
+            ) : mission.minigame.type === "pair_calculator" && mission.minigame.config?.scenarios ? (
+              <PairCalculator
+                capital={mission.minigame.config.capital as number}
+                riskPct={mission.minigame.config.riskPct as number}
+                scenarios={mission.minigame.config.scenarios as PairScenario[]}
+                tolerance={mission.minigame.config.tolerance as number}
+                passingScore={mission.minigame.passingScore}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "dominance_gauge" && mission.minigame.config?.scenarios ? (
+              <DominanceGauge
+                scenarios={mission.minigame.config.scenarios as DominanceScenario[]}
+                requiredCorrect={mission.minigame.config.requiredCorrect as number}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "cycle_mapper" && mission.minigame.config?.events ? (
+              <CycleMapper
+                events={mission.minigame.config.events as CycleEvent[]}
+                requiredCorrect={mission.minigame.config.requiredCorrect as number}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "timeframe_switcher" ? (
+              <TimeframeSwitcher
+                asset={mission.minigame.config.asset as string}
+                timeframes={mission.minigame.config.timeframes as string[]}
+                requiredCorrect={mission.minigame.config.requiredCorrect as number}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "fear_greed_slider" && mission.minigame.config?.scenario ? (
+              <CryptoIntegratedAnalysis
+                scenario={mission.minigame.config.scenario as CryptoScenario}
+                capital={mission.minigame.config.capital as number}
+                minRR={mission.minigame.config.minRR as number}
+                maxRisk={mission.minigame.config.maxRisk as number}
+                passingSteps={mission.minigame.config.passingSteps as number}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "bitcoin_origin" ? (
+              <BitcoinOriginGame onComplete={handleMinigameComplete} />
             ) : (
               <div className="space-y-3">
                 <div className="bg-tp-base border border-tp-border rounded-sm p-4">
@@ -477,11 +562,15 @@ export default function MissionPage() {
         <div className="text-center space-y-4">
           <div className="text-4xl">🎉</div>
           <h3 className="font-display text-xl font-bold text-tp-demand">¡Misión completada!</h3>
-          {!alreadyCompleted && (
+          {earnedRewards && (
             <p className="text-tp-text-muted">
               Has ganado <span className="font-data text-tp-gold font-bold">+{mission.rewards.xp} XP</span>
-              {" y "}
-              <span className="font-data text-tp-demand font-bold">+{formatCurrency(mission.rewards.virtualCapital)}</span>
+              {totalCapitalReward > 0 && (
+                <>
+                  {" y "}
+                  <span className="font-data text-tp-demand font-bold">+{formatCurrency(totalCapitalReward)}</span>
+                </>
+              )}
             </p>
           )}
           {mission.rewards.badge && (

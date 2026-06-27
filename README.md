@@ -1,8 +1,12 @@
 # 🎮 TraderPath
 
+[![CI](https://github.com/RonaldoBTC-code/traderpath/actions/workflows/ci.yml/badge.svg)](https://github.com/RonaldoBTC-code/traderpath/actions/workflows/ci.yml)
+
 **Videojuego educativo de trading financiero**
 
 TraderPath es un videojuego web donde aprendes a operar en mercados financieros desde cero usando mecánicas de RPG (niveles, progresión, misiones, recompensas) combinadas con simulación de trading con capital virtual.
+
+El MVP actual incluye 16 misiones con contexto gráfico de velas, 16 mini-juegos, progreso sincronizado con Supabase y un simulador de replay con velas históricas reales, checklist de riesgo y diario obligatorio. La ruta cripto comienza en **Ciudad Origen: Bitcoin** antes de abrir el mercado 24/7. Consulta la [Visión de Producto](docs/PRODUCT_VISION.md), el [Currículo de Bitcoin](docs/BITCOIN_CURRICULUM.md) y la [Dirección Visual](docs/VISUAL_DIRECTION.md).
 
 ## 🎯 Principio pedagógico
 
@@ -80,11 +84,14 @@ Crypto · Forex · Acciones · Commodities · Índices · Futuros · ETFs
 npm install
 
 # Configurar variables de entorno
-cp .env.local.example .env.local
+cp .env.example .env.local
 # Editar con tus credenciales de Supabase
 
 # Ejecutar en desarrollo
 npm run dev
+
+# Pipeline completo antes de enviar cambios
+npm run check
 ```
 
 ## 📋 Variables de Entorno

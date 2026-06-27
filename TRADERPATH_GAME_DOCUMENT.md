@@ -125,12 +125,12 @@ Después del Nivel 2, el jugador elige 1 de 7 mercados. Los niveles 3-7 se perso
 | Rango | XP Requerido |
 |-------|-------------|
 | Novato | 0 |
-| Iniciado | 500 |
-| Aprendiz | 1,500 |
-| Analista | 3,500 |
-| Trader | 7,000 |
-| Experto | 12,000 |
-| Maestro | 18,000 |
+| Aprendiz | 1,000 |
+| Analista | 2,500 |
+| Estratega | 5,000 |
+| Operador | 8,500 |
+| Trader | 13,000 |
+| Profesional | 18,500 |
 | Leyenda | 25,000 |
 
 ### 4.2 Capital Virtual
@@ -192,11 +192,12 @@ Cada fase es secuencial. El jugador no puede saltar fases.
 - Porcentaje final + resultado aprobado/reprobado
 - Boss missions requieren 75% para aprobar
 
-### 5.4 Simulador de Trading (Planificado)
-- TradingView Lightweight Charts
-- Panel de órdenes con: dirección, entry, SL, TP, capital
-- Pre-Operation Checklist de 7 pasos (obligatorio)
-- El Especulador aparece si intentas operar sin SL
+### 5.4 Simulador de Trading
+- TradingView Lightweight Charts con velas históricas reales
+- Replay que oculta las velas futuras
+- Panel de órdenes con dirección, entry, SL, TP y tamaño
+- Pre-Operation Checklist de 7 pasos obligatorio
+- El Especulador penaliza intentos de operar sin SL
 - Diario de trading obligatorio post-operación
 
 ---
@@ -389,9 +390,9 @@ Security:
 - [ ] Autenticación funcional (email confirmation en Supabase)
 - [ ] Persistencia real de progreso (guardar misiones completadas)
 - [ ] Mini-juegos faltantes: candlestick_builder, chart_tap, zone_painter, pattern_identifier, order_simulator, market_preview
-- [ ] Simulador de trading con TradingView Lightweight Charts
-- [ ] Panel de órdenes con Pre-Operation Checklist
-- [ ] Diario de trading post-operación
+- [x] Simulador de trading con TradingView Lightweight Charts
+- [x] Panel de órdenes con Pre-Operation Checklist
+- [x] Diario de trading post-operación
 - [ ] Sistema de logros con popups
 - [ ] Gran Tour interactivo (mapa de mercados)
 - [ ] Niveles 3-7 (contenido específico por mercado)

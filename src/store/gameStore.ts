@@ -3,19 +3,33 @@ import { persist } from "zustand/middleware";
 import { level1 } from "@/lib/content/level1";
 import { level2 } from "@/lib/content/level2";
 import { level3Crypto } from "@/lib/content/level3-crypto";
+import { RANKS } from "@/lib/game/constants";
 
 // ─── TYPES ──────────────────────────────────────────────────
 
 export type MissionStatus = "locked" | "available" | "completed";
 
-interface CompletedMissionEntry {
+export interface CompletedMissionEntry {
   levelId: string;
   missionId: string;
   score: number;
   completedAt: string;
 }
 
-interface GameState {
+export interface GameProgressSnapshot {
+  xp: number;
+  virtualCapital: number;
+  rank: string;
+  currentLevelId: string;
+  currentMissionId: string;
+  completedMissions: CompletedMissionEntry[];
+  streakDays: number;
+  lastActivity: string | null;
+  marketSpecialization: string | null;
+  marketChangeUsed: boolean;
+}
+
+interface GameState extends GameProgressSnapshot {
   // Player data
   xp: number;
   virtualCapital: number;
@@ -38,24 +52,16 @@ interface GameState {
   calculateRank: (totalXp: number) => string;
   setMarketSpecialization: (market: string) => void;
   useMarketChange: (newMarket: string) => void;
+  applyCapitalChange: (amount: number) => void;
+  hydrateProgress: (progress: GameProgressSnapshot) => void;
   resetProgress: () => void;
 }
 
 // ─── HELPERS ────────────────────────────────────────────────
 
-const RANK_THRESHOLDS = [
-  { name: "Leyenda", minXP: 25000 },
-  { name: "Profesional", minXP: 18500 },
-  { name: "Trader", minXP: 13000 },
-  { name: "Operador", minXP: 8500 },
-  { name: "Estratega", minXP: 5000 },
-  { name: "Analista", minXP: 2500 },
-  { name: "Aprendiz", minXP: 1000 },
-  { name: "Novato", minXP: 0 },
-];
-
 function calculateRankFromXP(xp: number): string {
-  for (const rank of RANK_THRESHOLDS) {
+  for (let index = RANKS.length - 1; index >= 0; index -= 1) {
+    const rank = RANKS[index];
     if (xp >= rank.minXP) return rank.name;
   }
   return "Novato";
@@ -153,7 +159,7 @@ export const useGameStore = create<GameState>()(
 
         // Calculate new values
         const xpReward = mission.rewards.xp;
-        const capitalReward = mission.rewards.virtualCapital;
+        const capitalReward = mission.rewards.virtualCapital + (mission.minigame?.virtualCapitalReward ?? 0);
         const newXP = state.xp + xpReward;
         const newCapital = state.virtualCapital + capitalReward;
         const newRank = calculateRankFromXP(newXP);
@@ -275,6 +281,20 @@ export const useGameStore = create<GameState>()(
           // Reset to first mission of new level 3
           currentLevelId: `level_3_${newMarket}`,
           currentMissionId: `m3${newMarket.charAt(0)}_1`,
+        });
+      },
+
+      applyCapitalChange: (amount: number) => {
+        set((state) => ({
+          virtualCapital: Math.max(0, Math.round((state.virtualCapital + amount) * 100) / 100),
+          lastActivity: new Date().toISOString().split("T")[0],
+        }));
+      },
+
+      hydrateProgress: (progress: GameProgressSnapshot) => {
+        set({
+          ...progress,
+          rank: calculateRankFromXP(progress.xp),
         });
       },
 
