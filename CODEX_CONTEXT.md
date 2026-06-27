@@ -26,13 +26,18 @@ Un videojuego educativo web de trading financiero. El jugador aprende mercados f
 ## 3. ESTADO ACTUAL (100% funcional)
 
 ### Lo que YA funciona:
-- ✅ 15 misiones completas (Nivel 1: 5, Nivel 2: 5, Nivel 3 Crypto: 5)
+- ✅ 16 misiones completas (Nivel 1: 5, Nivel 2: 5, Nivel 3 Crypto: 6)
 - ✅ 10 mini-juegos interactivos implementados
+- ✅ 6 mini-juegos interactivos de Nivel 3 Crypto (16 mini-juegos en total)
 - ✅ QuizEngine con aleatorización de preguntas y opciones
 - ✅ Sistema de tutoriales educativos (MissionTutorial) antes de cada mini-juego
 - ✅ Progresión: XP, capital virtual, rango, desbloqueo secuencial de misiones
 - ✅ Persistencia en localStorage (sobrevive refresh)
 - ✅ Autenticación con Supabase (registro + login)
+- ✅ Sincronización de progreso con Supabase (DB como source of truth + migración inicial desde localStorage)
+- ✅ Simulador de trading con replay de datos históricos reales, Lightweight Charts, checklist y diario obligatorio
+- ✅ Contexto visual con velas Lightweight Charts integrado en las 16 misiones
+- ✅ Ciudad Origen: introducción obligatoria a Bitcoin antes del mercado cripto
 - ✅ Base de datos con schema completo (6 tablas + RLS + triggers + funciones)
 - ✅ Design system VDD v1.0 (tema oscuro gaming)
 - ✅ 5 personajes con diálogos narrativos
@@ -43,38 +48,19 @@ Un videojuego educativo web de trading financiero. El jugador aprende mercados f
 ### Lo que FALTA (por orden de prioridad):
 
 #### PRIORIDAD ALTA:
-1. **Mini-juegos del Nivel 3 Crypto** (5 componentes placeholder):
-   - `pair_calculator` — Calculadora de pares crypto
-   - `dominance_gauge` — Indicador de BTC Dominance
-   - `cycle_mapper` — Mapa del ciclo de 4 años
-   - `timeframe_switcher` — Análisis multi-timeframe
-   - `fear_greed_slider` — Análisis integrado crypto
-
-2. **Sincronización de progreso con Supabase** — Actualmente solo localStorage. Falta:
-   - Guardar completedMissions en `completed_missions` table
-   - Guardar XP/capital en `player_progress` table
-   - Cargar progreso desde DB al login
-   - Mantener localStorage como cache + DB como source of truth
-
-3. **Simulador de trading** con TradingView Lightweight Charts:
-   - Gráfico de velas real
-   - Panel de órdenes (Buy/Sell + SL + TP)
-   - Checklist de 7 pasos pre-operación
-   - Diario de trading obligatorio post-operación
+1. **WorldMap visual** — Mundo explorable con las siete ciudades de mercado y puntos educativos clickeables
+2. **Vertical educativa visual** — Mercado de manzanas con NPC, analogía de oferta/demanda, interacción y evaluación
 
 #### PRIORIDAD MEDIA:
-4. **WorldMap visual** — Mapa del mundo con nodos de misión clickeables
-5. **Escenas educativas visuales** (Apple Market, Bounce Room, etc.)
-6. **Sprites SVG de personajes** con estados/expresiones
-7. **Animaciones de transición** entre zonas (Framer Motion)
-8. **Sistema de logros** con popups animados
-9. **Responsive completo** (mobile-first)
+3. **Sprites de personajes** con cuerpo completo, estados y expresiones
+4. **Animaciones de transición** entre zonas (Framer Motion)
+5. **Sistema de logros** con popups animados
+6. **Responsive completo** (mobile-first)
 
 #### PRIORIDAD BAJA:
-10. **Ciudades de mercado** con identidad visual propia
-11. **Efectos de partículas** y ambient
-12. **Deploy a Vercel**
-13. **Sonido ambient** (lo-fi para cada zona)
+7. **Efectos de partículas** y ambient
+8. **Deploy a Vercel**
+9. **Sonido ambient** (lo-fi para cada zona)
 
 ---
 
@@ -88,6 +74,8 @@ src/
 │   ├── (game)/layout.tsx              — Layout del juego (header HUD)
 │   ├── (game)/dashboard/page.tsx      — Dashboard con mapa de misiones
 │   ├── (game)/mission/[id]/page.tsx   — Motor universal de misiones
+│   ├── (game)/simulator/page.tsx      — Replay de mercado y flujo de operación
+│   ├── api/market/candles/route.ts    — Adaptador de datos históricos
 │   ├── auth/callback/route.ts         — OAuth callback
 │   ├── layout.tsx                     — Root layout
 │   ├── page.tsx                       — Landing
@@ -97,13 +85,24 @@ src/
 │   ├── MissionTutorial.tsx            — Panel educativo reutilizable
 │   ├── MatchTermMinigame.tsx          — Conectar términos ↔ definiciones
 │   ├── CandlestickBuilder.tsx         — Construir velas (con tutorial integrado)
-│   ├── ChartTapGame.tsx               — Clasificar tendencia en gráfico SVG
+│   ├── ChartTapGame.tsx               — Clasificar tendencias sobre velas interactivas
+│   ├── MissionMarketChart.tsx         — Contexto gráfico educativo por misión
 │   ├── RiskCalculator.tsx             — Calcular tamaño de posición
 │   ├── CandleClassifier.tsx           — Boss N1: análisis integrado
 │   ├── ZonePainter.tsx                — Clasificar zonas oferta/demanda
 │   ├── PatternIdentifier.tsx          — Señal de patrones de velas
 │   ├── OrderSimulator.tsx             — Tipo de orden por escenario
-│   └── MarketPreview.tsx              — Gran Tour (7 mercados + selección)
+│   ├── MarketPreview.tsx              — Gran Tour (7 mercados + selección)
+│   ├── PairCalculator.tsx             — Position sizing en pares crypto
+│   ├── DominanceGauge.tsx             — Lectura BTC.D + tendencia
+│   ├── CycleMapper.tsx                — Clasificación del ciclo BTC
+│   ├── TimeframeSwitcher.tsx          — Análisis 1W → 4H → 1H
+│   ├── CryptoIntegratedAnalysis.tsx   — Boss integrado de Nivel 3
+│   └── GameProgressSync.tsx           — Hidratación y guardado remoto
+├── components/simulator/
+│   ├── TradingChart.tsx               — Gráfico de velas Lightweight Charts
+│   ├── OrderPanel.tsx                 — Orden + riesgo + checklist
+│   └── TradingDiaryForm.tsx           — Reflexión post-operación obligatoria
 ├── components/narrative/
 │   └── CharacterDialogue.tsx          — Burbujas de diálogo por personaje
 ├── hooks/
@@ -113,10 +112,11 @@ src/
 │   ├── level2.ts                     — 5 misiones N2 + 7 mercados
 │   └── level3-crypto.ts             — 5 misiones N3 Crypto
 ├── lib/game/constants.ts             — Ranks, XP rewards, achievements
-├── lib/supabase/                     — Clientes Supabase (browser + server)
+├── lib/game/missionCharts.ts         — Escenarios de velas para las 16 misiones
+├── lib/supabase/                     — Clientes Supabase + capa de progreso remoto
 ├── lib/utils/format.ts               — formatCurrency/formatNumber deterministic
 ├── lib/utils/shuffle.ts              — Aleatorización segura (Fisher-Yates)
-├── store/gameStore.ts                — Zustand store (persist + 3 niveles)
+├── store/gameStore.ts                — Zustand store (persist + hidratación remota + 3 niveles)
 ├── types/game.ts                     — Interfaces globales
 └── middleware.ts                     — Auth session refresh
 ```
@@ -221,8 +221,8 @@ RLS: Cada usuario solo ve sus propios datos.
 
 ## 11. PRÓXIMO PASO RECOMENDADO
 
-Implementar los 5 mini-juegos del Nivel 3 Crypto como componentes interactivos (actualmente son placeholders con botón "Completar"). Después, sincronizar el progreso con Supabase para que persista entre dispositivos.
+Transformar el dashboard lineal en un WorldMap explorable y construir la primera vertical educativa visual: el Mercado de Manzanas con NPC, interacción oferta/demanda y evaluación final.
 
 ---
 
-*Documento de contexto para TraderPath. Última actualización: Junio 2026.*
+*Documento de contexto para TraderPath. Última actualización: 26 de junio de 2026.*

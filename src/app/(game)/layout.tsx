@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useGameStore } from "@/store/gameStore";
 import { useHasMounted } from "@/hooks/useHasMounted";
 import { formatCurrency } from "@/lib/utils/format";
+import GameProgressSync from "@/components/game/GameProgressSync";
 
 export default function GameLayout({
   children,
@@ -15,6 +16,7 @@ export default function GameLayout({
 
   return (
     <div className="min-h-screen bg-tp-base">
+      <GameProgressSync />
       {/* Top header bar */}
       <header className="sticky top-0 z-50 border-b border-tp-border bg-tp-surface/95 backdrop-blur">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">

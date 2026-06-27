@@ -6,6 +6,8 @@ import { formatCurrency, formatNumber } from "@/lib/utils/format";
 import { level1 } from "@/lib/content/level1";
 import { level2 } from "@/lib/content/level2";
 import { level3Crypto } from "@/lib/content/level3-crypto";
+import BitcoinCityMap from "@/components/game/BitcoinCityMap";
+import WorldHero from "@/components/game/WorldHero";
 import Link from "next/link";
 
 function getMissionStatusIcon(status: MissionStatus) {
@@ -46,20 +48,28 @@ export default function DashboardPage() {
 
   const currentLevel = currentLevelId === "level_2" ? level2 : currentLevelId === "level_3_crypto" ? level3Crypto : level1;
   const missions = currentLevel.missions;
-  const currentMission = missions.find((m) => m.id === currentMissionId);
+  const bitcoinOnboardingRequired =
+    currentLevelId === "level_3_crypto" &&
+    !completedMissions.some((mission) => mission.levelId === "level_3_crypto" && mission.missionId === "m3c_0");
+  const currentMission = bitcoinOnboardingRequired
+    ? missions.find((mission) => mission.id === "m3c_0")
+    : missions.find((mission) => mission.id === currentMissionId);
   const completedInLevel = completedMissions.filter((m) => m.levelId === currentLevelId).length;
+  const simulatorUnlocked = completedMissions.some((mission) => mission.levelId === "level_1" && mission.missionId === "m1_4");
 
   return (
     <div className="space-y-8">
-      {/* Level Title */}
-      <div>
-        <h1 className="font-display text-3xl font-bold text-tp-gold">
-          {currentLevel.title}
-        </h1>
-        <p className="text-tp-text-muted text-sm mt-1">
-          {currentLevel.tagline}
-        </p>
-      </div>
+      <WorldHero
+        levelTitle={currentLevel.title}
+        tagline={currentLevel.tagline}
+        currentMissionId={currentMission?.id}
+        completed={completedInLevel}
+        total={missions.length}
+      />
+
+      {currentLevelId === "level_3_crypto" && (
+        <BitcoinCityMap status={getMissionStatus("level_3_crypto", "m3c_0")} />
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -103,7 +113,7 @@ export default function DashboardPage() {
               <h3 className="font-display text-lg font-bold mt-1">{currentMission.title}</h3>
               <p className="text-tp-text-muted text-sm mt-0.5">{currentMission.subtitle}</p>
               <p className="font-data text-xs text-tp-text-muted mt-2">
-                +{currentMission.rewards.xp} XP · +{formatCurrency(currentMission.rewards.virtualCapital)}
+                +{currentMission.rewards.xp} XP · +{formatCurrency(currentMission.rewards.virtualCapital + (currentMission.minigame?.virtualCapitalReward ?? 0))}
               </p>
             </div>
             <Link
@@ -172,8 +182,26 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Trading laboratory */}
+      <div className={`rounded-md border p-6 ${simulatorUnlocked ? "border-tp-info/30 bg-tp-info/5 shadow-info" : "border-tp-border bg-tp-surface opacity-70"}`}>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-tp-info">Laboratorio de mercado</p>
+            <h3 className="mt-1 font-display text-lg font-bold">Simulador de Trading</h3>
+            <p className="mt-1 max-w-xl text-sm text-tp-text-muted">
+              {simulatorUnlocked ? "Practica con replay de mercado, checklist disciplinario y diario obligatorio." : "Se desbloquea al demostrar gestión de riesgo en la misión 1.4."}
+            </p>
+          </div>
+          {simulatorUnlocked ? (
+            <Link href="/simulator" className="rounded-sm bg-tp-info px-5 py-2.5 font-display font-bold text-tp-base">Entrar al simulador →</Link>
+          ) : (
+            <span className="rounded-sm border border-tp-border bg-tp-base px-4 py-2 text-xs text-tp-text-muted">🔒 Bloqueado</span>
+          )}
+        </div>
+      </div>
+
       {/* Dev tools */}
-      <div className="pt-4 border-t border-tp-border space-y-3">
+      {process.env.NODE_ENV === "development" && <div className="pt-4 border-t border-tp-border space-y-3">
         <p className="text-[10px] text-tp-text-muted/60 uppercase tracking-widest">Dev Tools</p>
         <div className="flex flex-wrap gap-2">
           <button
@@ -187,7 +215,7 @@ export default function DashboardPage() {
         <div>
           <p className="text-[10px] text-tp-text-muted/40 mb-1">Ir directo a misión (ignora bloqueo):</p>
           <div className="flex flex-wrap gap-1">
-            {["m1_1","m1_2","m1_3","m1_4","m1_5","m2_1","m2_2","m2_3","m2_4","m2_5","m3c_1","m3c_2","m3c_3","m3c_4","m3c_5"].map((id) => (
+            {["m1_1","m1_2","m1_3","m1_4","m1_5","m2_1","m2_2","m2_3","m2_4","m2_5","m3c_0","m3c_1","m3c_2","m3c_3","m3c_4","m3c_5"].map((id) => (
               <Link key={id} href={`/mission/${id}?dev=true`}
                 className="text-[9px] px-1.5 py-0.5 bg-tp-surface-alt border border-tp-border rounded-sm text-tp-text-muted hover:text-tp-gold hover:border-tp-gold/30 transition font-data">
                 {id}
@@ -195,7 +223,7 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
