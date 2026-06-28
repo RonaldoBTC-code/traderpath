@@ -39,7 +39,34 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Refresh session (keeps cookies valid)
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+  const pathname = request.nextUrl.pathname;
+  const isProtectedRoute =
+    pathname.startsWith("/world") ||
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/mission") ||
+    pathname.startsWith("/simulator");
+  const isAuthRoute = pathname === "/login" || pathname === "/register";
+
+  // Local development remains accessible for QA. Production game routes require auth.
+  if (process.env.NODE_ENV !== "development" && isProtectedRoute && !user) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.search = "";
+    loginUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+    const redirect = NextResponse.redirect(loginUrl);
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    return redirect;
+  }
+
+  if (process.env.NODE_ENV !== "development" && isAuthRoute && user) {
+    const worldUrl = request.nextUrl.clone();
+    worldUrl.pathname = "/world";
+    worldUrl.search = "";
+    const redirect = NextResponse.redirect(worldUrl);
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    return redirect;
+  }
 
   return response;
 }

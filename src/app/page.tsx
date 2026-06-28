@@ -28,13 +28,13 @@ export default function Home() {
         {/* CTAs */}
         <div className="flex gap-4 justify-center flex-wrap">
           <Link
-            href="/dashboard"
+            href="/world"
             className="px-7 py-3 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition shadow-gold"
           >
             Comenzar Aventura
           </Link>
           <Link
-            href="/dashboard"
+            href="/world"
             className="px-7 py-3 border border-tp-gold/40 text-tp-gold font-display font-bold rounded-sm hover:bg-tp-gold/10 transition"
           >
             Continuar

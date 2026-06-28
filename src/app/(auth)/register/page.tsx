@@ -30,12 +30,7 @@ export default function RegisterPage() {
     }
     if (!authData.user) { setError("Error al crear la cuenta."); setLoading(false); return; }
 
-    const { error: profileError } = await supabase.from("profiles").insert({ id: authData.user.id, username });
-    if (profileError) { setError("Error al crear perfil: " + profileError.message); setLoading(false); return; }
-
-    await supabase.from("player_progress").insert({ user_id: authData.user.id, level_id: 1, mission_id: "M1", xp: 0, rank: "Novato", virtual_capital: 1000.0, trade_coins: 0, streak_days: 0 });
-
-    router.push("/dashboard");
+    router.push("/world");
   };
 
   return (
