@@ -10,8 +10,16 @@ import {
   BoxSelect,
   Tag,
   Trash2,
+  RotateCcw,
 } from "lucide-react";
-import type { CandlestickData, IChartApi, ISeriesApi, Time } from "lightweight-charts";
+import type {
+  CandlestickData,
+  Coordinate,
+  IChartApi,
+  ISeriesApi,
+  Logical,
+  Time,
+} from "lightweight-charts";
 import type { MarketCandle } from "@/types/simulator";
 
 export interface ChartPriceLevel {
@@ -62,16 +70,15 @@ interface Props {
   visibleRange?: ChartVisibleRange;
 }
 
-type Point = { x: number; y: number };
+type ChartPoint = { logical: number; price: number };
 type DrawingTool = "cursor" | "pencil" | "trendline" | "horizontal" | "zone" | "label";
 type Drawing =
-  | { id: number; type: "pencil"; points: Point[] }
-  | { id: number; type: "trendline"; start: Point; end: Point }
-  | { id: number; type: "horizontal"; start: Point; end: Point }
-  | { id: number; type: "zone"; start: Point; end: Point }
-  | { id: number; type: "label"; start: Point; text: string };
+  | { id: number; type: "pencil"; points: ChartPoint[] }
+  | { id: number; type: "trendline"; start: ChartPoint; end: ChartPoint }
+  | { id: number; type: "horizontal"; start: ChartPoint; end: ChartPoint }
+  | { id: number; type: "zone"; start: ChartPoint; end: ChartPoint }
+  | { id: number; type: "label"; start: ChartPoint; text: string };
 
-const VIEWBOX = 1000;
 const LABEL_OPTIONS = ["Soporte", "Resistencia", "BOS", "CHoCH", "Swing High", "Swing Low"];
 
 export default function TradingChart({
@@ -92,12 +99,15 @@ export default function TradingChart({
   const initialHeightRef = useRef(height);
   const initialPriceLevelsRef = useRef(priceLevels);
   const initialVisibleRangeRef = useRef(visibleRange);
-  const pointerStartRef = useRef<Point | null>(null);
+  const pointerStartRef = useRef<ChartPoint | null>(null);
   const drawingIdRef = useRef(1);
+  const renderFrameRef = useRef<number | null>(null);
   const [tool, setTool] = useState<DrawingTool>("cursor");
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [draft, setDraft] = useState<Drawing | null>(null);
   const [labelText, setLabelText] = useState(LABEL_OPTIONS[0]);
+  const [overlaySize, setOverlaySize] = useState({ width: 1, height });
+  const [, setOverlayRevision] = useState(0);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -153,16 +163,34 @@ export default function TradingChart({
         chart.timeScale().fitContent();
       }
 
+      const refreshOverlay = () => setOverlayRevision((revision) => revision + 1);
+      chart.timeScale().subscribeVisibleLogicalRangeChange(refreshOverlay);
+      chart.timeScale().subscribeSizeChange(refreshOverlay);
+
       observer = new ResizeObserver(([entry]) => {
         chart.applyOptions({ width: entry.contentRect.width });
+        setOverlaySize({ width: entry.contentRect.width, height: initialHeightRef.current });
+        refreshOverlay();
       });
       observer.observe(containerRef.current);
+      setOverlaySize({ width: containerRef.current.clientWidth, height: initialHeightRef.current });
+      refreshOverlay();
+
+      return () => {
+        chart.timeScale().unsubscribeVisibleLogicalRangeChange(refreshOverlay);
+        chart.timeScale().unsubscribeSizeChange(refreshOverlay);
+      };
     };
 
-    void initialize();
+    let unsubscribeChartEvents: (() => void) | undefined;
+    void initialize().then((unsubscribe) => {
+      unsubscribeChartEvents = unsubscribe;
+    });
     return () => {
       disposed = true;
+      unsubscribeChartEvents?.();
       observer?.disconnect();
+      if (renderFrameRef.current !== null) cancelAnimationFrame(renderFrameRef.current);
       chartRef.current?.remove();
       chartRef.current = null;
       seriesRef.current = null;
@@ -174,24 +202,31 @@ export default function TradingChart({
     seriesRef.current.setData(toChartData(candles));
   }, [candles]);
 
-  const logicalRange = visibleRange ?? { from: 0, to: Math.max(1, candles.length - 1) };
-  const visibleCandles = candles.slice(
-    Math.max(0, Math.floor(logicalRange.from)),
-    Math.min(candles.length, Math.ceil(logicalRange.to) + 1)
-  );
-  const priceRange = getPriceRange(visibleCandles.length > 0 ? visibleCandles : candles);
+  function scheduleOverlayRender() {
+    if (renderFrameRef.current !== null) return;
+    renderFrameRef.current = requestAnimationFrame(() => {
+      renderFrameRef.current = null;
+      setOverlayRevision((revision) => revision + 1);
+    });
+  }
 
-  function pointFromEvent(event: React.PointerEvent<SVGSVGElement>): Point {
+  function pointFromEvent(event: React.PointerEvent<SVGSVGElement>): ChartPoint | null {
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    if (!chart || !series) return null;
     const rect = event.currentTarget.getBoundingClientRect();
-    return {
-      x: clamp(((event.clientX - rect.left) / rect.width) * VIEWBOX),
-      y: clamp(((event.clientY - rect.top) / rect.height) * VIEWBOX),
-    };
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    const logical = chart.timeScale().coordinateToLogical(x as Coordinate);
+    const price = series.coordinateToPrice(y as Coordinate);
+    if (logical === null || price === null) return null;
+    return { logical, price };
   }
 
   function beginDrawing(event: React.PointerEvent<SVGSVGElement>) {
     if (tool === "cursor") return;
     const start = pointFromEvent(event);
+    if (!start) return;
     const id = drawingIdRef.current++;
     event.currentTarget.setPointerCapture(event.pointerId);
     pointerStartRef.current = start;
@@ -203,17 +238,18 @@ export default function TradingChart({
     }
     if (tool === "pencil") setDraft({ id, type: "pencil", points: [start] });
     if (tool === "trendline") setDraft({ id, type: "trendline", start, end: start });
-    if (tool === "horizontal") setDraft({ id, type: "horizontal", start, end: { x: VIEWBOX, y: start.y } });
+    if (tool === "horizontal") setDraft({ id, type: "horizontal", start, end: start });
     if (tool === "zone") setDraft({ id, type: "zone", start, end: start });
   }
 
   function continueDrawing(event: React.PointerEvent<SVGSVGElement>) {
     if (!pointerStartRef.current || !draft) return;
     const point = pointFromEvent(event);
+    if (!point) return;
     setDraft((current) => {
       if (!current) return null;
       if (current.type === "pencil") return { ...current, points: [...current.points, point] };
-      if (current.type === "horizontal") return { ...current, end: { x: VIEWBOX, y: current.start.y } };
+      if (current.type === "horizontal") return { ...current, end: { logical: point.logical, price: current.start.price } };
       return { ...current, end: point };
     });
   }
@@ -227,6 +263,31 @@ export default function TradingChart({
   }
 
   const allDrawings = draft ? [...drawings, draft] : drawings;
+  const chartToPixel = (point: ChartPoint) => {
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    if (!chart || !series) return null;
+    const x = chart.timeScale().logicalToCoordinate(point.logical as Logical);
+    const y = series.priceToCoordinate(point.price);
+    if (x === null || y === null) return null;
+    return { x, y };
+  };
+  const priceToPixel = (price: number) => {
+    const coordinate = seriesRef.current?.priceToCoordinate(price);
+    return coordinate === null || coordinate === undefined ? null : coordinate;
+  };
+  const logicalToPixel = (logical: number) => {
+    const coordinate = chartRef.current?.timeScale().logicalToCoordinate(logical as Logical);
+    return coordinate === null || coordinate === undefined ? null : coordinate;
+  };
+
+  const resetView = () => {
+    if (!chartRef.current) return;
+    if (visibleRange) chartRef.current.timeScale().setVisibleLogicalRange(visibleRange);
+    else chartRef.current.timeScale().fitContent();
+    chartRef.current.priceScale("right").applyOptions({ autoScale: true });
+    scheduleOverlayRender();
+  };
 
   return (
     <div className="border-y border-tp-border/70 bg-tp-base">
@@ -249,67 +310,77 @@ export default function TradingChart({
           <span className="mx-1 h-5 w-px bg-tp-border" />
           <ToolButton active={false} disabled={drawings.length === 0} label="Deshacer" onClick={() => setDrawings((current) => current.slice(0, -1))}><Undo2 size={15} /></ToolButton>
           <ToolButton active={false} disabled={drawings.length === 0} label="Limpiar dibujos" onClick={() => setDrawings([])}><Trash2 size={15} /></ToolButton>
+          <ToolButton active={false} label="Restablecer vista" onClick={resetView}><RotateCcw size={15} /></ToolButton>
           <span className="ml-auto hidden text-[9px] text-tp-text-muted sm:block">
             {tool === "cursor" ? "Explora el gráfico" : "Dibuja directamente sobre las velas"}
           </span>
         </div>
       )}
 
-      <div className="relative">
+      <div
+        className="relative overflow-hidden"
+        onPointerMoveCapture={scheduleOverlayRender}
+        onWheelCapture={scheduleOverlayRender}
+      >
         <div ref={containerRef} style={{ height }} className="w-full overflow-hidden" aria-label={ariaLabel} />
 
         {zones.map((zone) => {
-          const top = priceToPercent(zone.to, priceRange);
-          const bottom = priceToPercent(zone.from, priceRange);
+          const top = priceToPixel(zone.to);
+          const bottom = priceToPixel(zone.from);
+          if (top === null || bottom === null) return null;
           return (
             <div
               key={`${zone.label}-${zone.from}`}
-              className={`pointer-events-none absolute left-[7%] right-[9%] z-10 border ${
+              className={`pointer-events-none absolute left-0 z-10 border ${
                 zone.color === "demand"
                   ? "border-tp-demand/70 bg-tp-demand/[0.22] text-tp-demand"
                   : "border-tp-supply/70 bg-tp-supply/[0.22] text-tp-supply"
               }`}
-              style={{ top: `${top}%`, height: `${Math.max(5, bottom - top)}%` }}
+              style={{ top, width: Math.max(0, overlaySize.width - 70), height: Math.max(8, bottom - top) }}
             >
               <span className="absolute left-1 top-1 rounded bg-tp-base/90 px-1.5 py-0.5 font-data text-[8px] uppercase tracking-wider">{zone.label}</span>
             </div>
           );
         })}
 
-        {structureLabels
-          .filter((label) => label.candleIndex >= logicalRange.from - 0.5 && label.candleIndex <= logicalRange.to + 0.5)
-          .map((label) => (
-          <span
-            key={`${label.text}-${label.candleIndex}`}
-            className={`pointer-events-none absolute z-10 rounded border bg-tp-base/85 px-1.5 py-0.5 font-data text-[8px] font-semibold ${
-              label.tone === "demand" ? "border-tp-demand/40 text-tp-demand"
-                : label.tone === "supply" ? "border-tp-supply/40 text-tp-supply"
-                  : label.tone === "gold" ? "border-tp-gold/40 text-tp-gold"
-                    : "border-tp-info/40 text-tp-info"
-            }`}
-            style={{
-              left: `${candleIndexToPercent(label.candleIndex, logicalRange)}%`,
-              top: `${priceToPercent(label.price, priceRange)}%`,
-              transform: `translate(${label.offsetX ?? 0}px, calc(-50% + ${label.offsetY ?? 0}px))`,
-            }}
-          >
-            {label.text}
-          </span>
-        ))}
+        {structureLabels.map((label) => {
+          const left = logicalToPixel(label.candleIndex);
+          const top = priceToPixel(label.price);
+          if (left === null || top === null || left < -120 || left > overlaySize.width + 120) return null;
+          return (
+            <span
+              key={`${label.text}-${label.candleIndex}`}
+              className={`pointer-events-none absolute z-10 whitespace-nowrap rounded border bg-tp-base/90 px-1.5 py-0.5 font-data text-[8px] font-semibold ${
+                label.tone === "demand" ? "border-tp-demand/40 text-tp-demand"
+                  : label.tone === "supply" ? "border-tp-supply/40 text-tp-supply"
+                    : label.tone === "gold" ? "border-tp-gold/40 text-tp-gold"
+                      : "border-tp-info/40 text-tp-info"
+              }`}
+              style={{
+                left,
+                top,
+                transform: `translate(${label.offsetX ?? 0}px, calc(-50% + ${label.offsetY ?? 0}px))`,
+              }}
+            >
+              {label.text}
+            </span>
+          );
+        })}
 
         {guideLines.length > 0 && (
           <svg
-            viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}
+            viewBox={`0 0 ${overlaySize.width} ${overlaySize.height}`}
             preserveAspectRatio="none"
             className="pointer-events-none absolute inset-0 z-10 h-full w-full"
             aria-hidden="true"
           >
             {guideLines.map((line) => {
               const color = toneColor(line.tone);
-              const x1 = candleIndexToPercent(line.startIndex, logicalRange) * 10;
-              const y1 = priceToPercent(line.startPrice, priceRange) * 10;
-              const x2 = candleIndexToPercent(line.endIndex, logicalRange) * 10;
-              const y2 = priceToPercent(line.endPrice, priceRange) * 10;
+              const x1 = logicalToPixel(line.startIndex);
+              const y1 = priceToPixel(line.startPrice);
+              const x2 = logicalToPixel(line.endIndex);
+              const y2 = priceToPixel(line.endPrice);
+              if (x1 === null || y1 === null || x2 === null || y2 === null) return null;
               return (
                 <g key={`${line.label}-${line.startIndex}`}>
                   <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={2} strokeDasharray="7 5" vectorEffect="non-scaling-stroke" />
@@ -323,7 +394,7 @@ export default function TradingChart({
 
         {drawingEnabled && (
           <svg
-            viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}
+            viewBox={`0 0 ${overlaySize.width} ${overlaySize.height}`}
             preserveAspectRatio="none"
             className={`absolute inset-0 z-20 h-full w-full touch-none ${tool === "cursor" ? "pointer-events-none" : "cursor-crosshair"}`}
             onPointerDown={beginDrawing}
@@ -332,7 +403,14 @@ export default function TradingChart({
             onPointerCancel={finishDrawing}
             aria-label="Capa de dibujo técnico"
           >
-            {allDrawings.map((drawing) => <DrawingShape key={drawing.id} drawing={drawing} />)}
+            {allDrawings.map((drawing) => (
+              <DrawingShape
+                key={drawing.id}
+                drawing={drawing}
+                width={overlaySize.width}
+                chartToPixel={chartToPixel}
+              />
+            ))}
           </svg>
         )}
       </div>
@@ -372,26 +450,44 @@ function ToolButton({
   );
 }
 
-function DrawingShape({ drawing }: { drawing: Drawing }) {
-  const common = { stroke: "#F0C040", strokeWidth: 4, vectorEffect: "non-scaling-stroke" as const };
+function DrawingShape({
+  drawing,
+  width,
+  chartToPixel,
+}: {
+  drawing: Drawing;
+  width: number;
+  chartToPixel: (point: ChartPoint) => { x: number; y: number } | null;
+}) {
+  const common = { stroke: "#F0C040", strokeWidth: 2, vectorEffect: "non-scaling-stroke" as const };
   if (drawing.type === "pencil") {
-    return <polyline points={drawing.points.map((point) => `${point.x},${point.y}`).join(" ")} fill="none" strokeLinecap="round" strokeLinejoin="round" {...common} />;
+    const points = drawing.points.map(chartToPixel).filter((point): point is { x: number; y: number } => point !== null);
+    if (points.length < 2) return null;
+    return <polyline points={points.map((point) => `${point.x},${point.y}`).join(" ")} fill="none" strokeLinecap="round" strokeLinejoin="round" {...common} />;
   }
   if (drawing.type === "trendline") {
-    return <line x1={drawing.start.x} y1={drawing.start.y} x2={drawing.end.x} y2={drawing.end.y} strokeLinecap="round" {...common} />;
+    const start = chartToPixel(drawing.start);
+    const end = chartToPixel(drawing.end);
+    if (!start || !end) return null;
+    return <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} strokeLinecap="round" {...common} />;
   }
   if (drawing.type === "horizontal") {
-    return <line x1={0} y1={drawing.start.y} x2={VIEWBOX} y2={drawing.start.y} strokeDasharray="8 6" {...common} />;
+    const start = chartToPixel(drawing.start);
+    if (!start) return null;
+    return <line x1={0} y1={start.y} x2={width} y2={start.y} strokeDasharray="8 6" {...common} />;
   }
   if (drawing.type === "zone") {
-    const x = Math.min(drawing.start.x, drawing.end.x);
-    const y = Math.min(drawing.start.y, drawing.end.y);
+    const start = chartToPixel(drawing.start);
+    const end = chartToPixel(drawing.end);
+    if (!start || !end) return null;
+    const x = Math.min(start.x, end.x);
+    const y = Math.min(start.y, end.y);
     return (
       <rect
         x={x}
         y={y}
-        width={Math.abs(drawing.end.x - drawing.start.x)}
-        height={Math.abs(drawing.end.y - drawing.start.y)}
+        width={Math.abs(end.x - start.x)}
+        height={Math.abs(end.y - start.y)}
         fill="rgba(240,192,64,0.12)"
         stroke="#F0C040"
         strokeWidth={2}
@@ -399,10 +495,13 @@ function DrawingShape({ drawing }: { drawing: Drawing }) {
       />
     );
   }
+  const start = chartToPixel(drawing.start);
+  if (!start) return null;
+  const labelWidth = drawing.text.length * 7 + 22;
   return (
     <g>
-      <rect x={drawing.start.x} y={drawing.start.y - 34} width={drawing.text.length * 15 + 30} height={38} rx={8} fill="#131827" stroke="#F0C040" strokeWidth={2} vectorEffect="non-scaling-stroke" />
-      <text x={drawing.start.x + 14} y={drawing.start.y - 9} fill="#F0C040" fontSize={24} fontFamily="JetBrains Mono, monospace" fontWeight={600}>{drawing.text}</text>
+      <rect x={start.x} y={start.y - 24} width={labelWidth} height={26} rx={6} fill="#131827" stroke="#F0C040" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+      <text x={start.x + 10} y={start.y - 7} fill="#F0C040" fontSize={11} fontFamily="JetBrains Mono, monospace" fontWeight={600}>{drawing.text}</text>
     </g>
   );
 }
@@ -417,33 +516,9 @@ function toChartData(candles: MarketCandle[]): CandlestickData<Time>[] {
   }));
 }
 
-function getPriceRange(candles: MarketCandle[]) {
-  if (candles.length === 0) return { min: 0, max: 1 };
-  let min = candles[0].low;
-  let max = candles[0].high;
-  for (const candle of candles) {
-    if (candle.low < min) min = candle.low;
-    if (candle.high > max) max = candle.high;
-  }
-  return { min, max };
-}
-
-function priceToPercent(price: number, range: { min: number; max: number }) {
-  const value = ((range.max - price) / Math.max(0.0001, range.max - range.min)) * 76 + 12;
-  return Math.max(12, Math.min(88, value));
-}
-
-function candleIndexToPercent(index: number, range: ChartVisibleRange) {
-  return 2 + ((index - range.from) / Math.max(1, range.to - range.from)) * 86;
-}
-
 function toneColor(tone: ChartGuideLine["tone"]) {
   if (tone === "demand") return "#22C55E";
   if (tone === "supply") return "#EF4444";
   if (tone === "gold") return "#F0C040";
   return "#60A5FA";
-}
-
-function clamp(value: number) {
-  return Math.max(0, Math.min(VIEWBOX, value));
 }

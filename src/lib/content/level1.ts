@@ -351,8 +351,8 @@ export const level1: LevelConfig = {
         id: "mg_m1_2",
         type: "candlestick_builder",
         title: "Construye la Vela",
-        description: "Dados 4 precios, arrastra los elementos para armar la vela japonesa correcta.",
-        instructions: "Se te darán los precios O, H, L, C. Arrastra el cuerpo al lugar correcto y ajusta las mechas. La vela debe reflejar exactamente esos 4 datos. Tienes 3 intentos.",
+        description: "Usa los cuatro precios OHLC para calcular la dirección, el cuerpo y las dos mechas de cada vela.",
+        instructions: "Recibirás O, H, L y C. Calcula: cuerpo = |C−O|, mecha superior = H−mayor(O,C), mecha inferior = menor(O,C)−L. Tienes 3 intentos por vela y necesitas 70% para aprobar.",
         config: {
           scenarios: [
             { open: 100, high: 120, low: 90, close: 115, expectedColor: "green" },

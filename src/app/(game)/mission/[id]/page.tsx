@@ -51,21 +51,21 @@ function getMissionTutorial(missionId: string): TutorialContent {
     },
     m1_2: {
       title: "Construir Velas Japonesas",
-      learningObjective: "Entender cómo se forma una vela japonesa usando los datos Open, High, Low y Close.",
-      conceptExplanation: "Una vela japonesa representa el movimiento del precio durante un período de tiempo. Tiene cuatro datos: Open (apertura), High (máximo alcanzado), Low (mínimo alcanzado), Close (cierre). Si Close > Open → vela alcista (verde). Si Close < Open → vela bajista (roja).",
-      practicalExample: "Si BTC abre en $100, sube hasta $120 (High), baja hasta $90 (Low) y cierra en $115 (Close), la vela es ALCISTA porque cerró ($115) por encima de donde abrió ($100).",
+      learningObjective: "Leer O, H, L y C para calcular la dirección, el cuerpo y las mechas de una vela.",
+      conceptExplanation: "La dirección sale de comparar C con O. El cuerpo mide |C−O|. La mecha superior mide H−mayor(O,C) y la inferior mide menor(O,C)−L.",
+      practicalExample: "Con O=100, H=120, L=90 y C=115: C>O, por eso es alcista. Cuerpo=15, mecha superior=5 y mecha inferior=10.",
       stepByStepInstructions: [
-        "Observa el High y Low que te dan — son los límites de la vela.",
-        "Lee si la vela debe ser alcista o bajista.",
-        "Si es alcista: coloca Open DEBAJO del Close.",
-        "Si es bajista: coloca Open ENCIMA del Close.",
-        "Ambos valores deben estar entre Low y High.",
+        "Lee los cuatro datos entregados: apertura, máximo, mínimo y cierre.",
+        "Compara C con O para elegir alcista o bajista.",
+        "Calcula el cuerpo con |C−O|.",
+        "Calcula la mecha superior con H−mayor(O,C).",
+        "Calcula la mecha inferior con menor(O,C)−L.",
       ],
       commonMistakes: [
-        "Poner Open mayor que High — imposible, High es el máximo.",
-        "Confundir alcista con bajista — alcista = Close > Open.",
+        "Sumar C y O en vez de calcular su diferencia absoluta.",
+        "Medir una mecha desde el precio equivocado: siempre parte del extremo del cuerpo.",
       ],
-      hint: "Primero decide la dirección. Si es verde (alcista), Close debe ser mayor que Open. Siempre entre Low y High.",
+      hint: "Primero compara C con O. Después usa mayor(O,C) para la mecha superior y menor(O,C) para la inferior.",
     },
     m1_3: {
       title: "Identificar Tendencias",
@@ -322,6 +322,8 @@ export default function MissionPage() {
   const [outroIndex, setOutroIndex] = useState(0);
   const [blocked, setBlocked] = useState(false);
   const [earnedRewards, setEarnedRewards] = useState(false);
+  const [minigameAttempt, setMinigameAttempt] = useState(0);
+  const [assessmentFailure, setAssessmentFailure] = useState<string | null>(null);
 
   useEffect(() => {
     setBlocked(false);
@@ -329,6 +331,8 @@ export default function MissionPage() {
     setDialogueIndex(0);
     setOutroIndex(0);
     setEarnedRewards(false);
+    setMinigameAttempt(0);
+    setAssessmentFailure(null);
     if (!mission) { router.push("/dashboard"); return; }
     // Development-only bypass for local QA.
     const params = new URLSearchParams(window.location.search);
@@ -352,6 +356,7 @@ export default function MissionPage() {
   if (!mission) return null;
   const alreadyCompleted = hasMounted && isMissionCompleted(levelId, missionId);
   const totalCapitalReward = mission.rewards.virtualCapital + (mission.minigame?.virtualCapitalReward ?? 0);
+  const passingScore = mission.minigame?.passingScore ?? 70;
 
   const handleIntroNext = () => {
     if (dialogueIndex < mission.introDialogues.length - 1) {
@@ -365,18 +370,24 @@ export default function MissionPage() {
   };
 
   const handleTutorialComplete = () => {
+    setAssessmentFailure(null);
     setPhase("minigame");
   };
 
   const handleMinigameComplete = (minigameScore?: number) => {
+    const score = minigameScore ?? 100;
+    if (score < passingScore) {
+      setAssessmentFailure(`Obtuviste ${score}%. Necesitas ${passingScore}% para aprobar esta práctica.`);
+      return;
+    }
+    setAssessmentFailure(null);
     if (mission.quiz.length > 0) setPhase("quiz");
-    else handleMissionComplete(minigameScore ?? 100);
+    else handleMissionComplete(score);
   };
 
   const handleQuizComplete = (score: number, total: number) => {
     const percent = Math.round((score / total) * 100);
-    const isBoss = mission.id === "m1_5" || mission.id === "m2_5" || mission.id === "m3c_5";
-    if (isBoss && percent < 75) return; // Failed boss
+    if (percent < passingScore) return;
     handleMissionComplete(percent);
   };
 
@@ -440,6 +451,23 @@ export default function MissionPage() {
           <div className="bg-tp-surface border border-tp-border rounded-md p-6">
             <h3 className="font-display font-bold text-lg mb-2">🎮 {mission.minigame.title}</h3>
             <p className="text-tp-text-muted text-sm mb-4">{mission.minigame.description}</p>
+            {assessmentFailure && (
+              <div role="alert" className="mb-4 rounded-xl border border-tp-supply/40 bg-tp-supply/10 p-4">
+                <p className="font-display text-sm font-bold text-tp-supply">Práctica no superada</p>
+                <p className="mt-1 text-xs leading-relaxed text-tp-text-muted">{assessmentFailure}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAssessmentFailure(null);
+                    setMinigameAttempt((attempt) => attempt + 1);
+                  }}
+                  className="mt-3 rounded-lg bg-tp-gold px-4 py-2 font-display text-xs font-bold text-tp-base"
+                >
+                  Repetir práctica
+                </button>
+              </div>
+            )}
+            <div key={minigameAttempt} className={assessmentFailure ? "pointer-events-none opacity-45" : ""}>
             {/* match_term */}
             {mission.minigame.type === "match_term" && mission.minigame.config?.pairs ? (
               <MatchTermMinigame
@@ -532,6 +560,7 @@ export default function MissionPage() {
                 </button>
               </div>
             )}
+            </div>
           </div>
         </div>
       )}
@@ -542,7 +571,7 @@ export default function MissionPage() {
           <QuizEngine
             questions={mission.quiz}
             onComplete={handleQuizComplete}
-            minPassPercent={mission.id === "m1_5" || mission.id === "m2_5" || mission.id === "m3c_5" ? 75 : undefined}
+            minPassPercent={passingScore}
           />
         </div>
       )}

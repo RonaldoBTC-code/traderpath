@@ -55,9 +55,25 @@ export default function QuizEngine({ questions, onComplete, minPassPercent }: Qu
       setShowHint(false);
     } else {
       setFinished(true);
-      const finalScore = correctCount + (isCorrect ? 1 : 0);
+      // The selected answer was already counted in handleSelect.
+      // Adding isCorrect here counted the last correct answer twice.
+      const finalScore = correctCount;
       onComplete(finalScore, randomizedQuestions.length);
     }
+  };
+
+  const retry = () => {
+    const shuffled = shuffleArray(questions).map((question) => ({
+      ...question,
+      options: shuffleArray(question.options),
+    }));
+    setRandomizedQuestions(shuffled);
+    setCurrentIndex(0);
+    setSelectedAnswer(null);
+    setShowFeedback(false);
+    setCorrectCount(0);
+    setFinished(false);
+    setShowHint(false);
   };
 
   if (finished) {
@@ -76,9 +92,21 @@ export default function QuizEngine({ questions, onComplete, minPassPercent }: Qu
         {passed ? (
           <p className="text-tp-demand font-medium">¡Aprobado! 🎉</p>
         ) : (
-          <p className="text-tp-supply font-medium">
-            Necesitas {minPassPercent}% para aprobar. Revisa el concepto e intenta de nuevo.
-          </p>
+          <>
+            <p className="text-tp-supply font-medium">
+              Aún no apruebas. Necesitas {minPassPercent}%.
+            </p>
+            <p className="text-xs leading-relaxed text-tp-text-muted">
+              La misión no se marcará como completada ni entregará recompensas hasta superar la evaluación.
+            </p>
+            <button
+              type="button"
+              onClick={retry}
+              className="rounded-xl bg-tp-gold px-5 py-2.5 font-display text-sm font-bold text-tp-base transition hover:brightness-110"
+            >
+              Repasar e intentar de nuevo
+            </button>
+          </>
         )}
       </div>
     );
