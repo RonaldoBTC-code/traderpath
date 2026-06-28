@@ -46,7 +46,7 @@ export default class AcademyAgoraScene extends Phaser.Scene {
       this.game.events.off(ACADEMY_GAME_EVENTS.focusTarget, this.focusTarget, this);
     });
 
-    this.onWorldEvent({ type: "ready" });
+    this.onWorldEvent({ type: "ready", room: "academy-agora" });
     this.onWorldEvent({ type: "prompt", message: "Haz clic en el suelo para caminar" });
   }
 

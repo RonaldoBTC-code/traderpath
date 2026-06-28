@@ -4,22 +4,34 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
+  Backpack,
   BookOpenCheck,
   Check,
+  Coins,
   Compass,
+  Gamepad2,
   LockKeyhole,
   Map,
   MapPin,
   MessageCircle,
   Palette,
+  RotateCcw,
+  Smartphone,
   Sparkles,
+  Trophy,
+  UserRound,
   X,
 } from "lucide-react";
+import { level1 } from "@/lib/content/level1";
+import { level2 } from "@/lib/content/level2";
+import { level3Crypto } from "@/lib/content/level3-crypto";
+import { formatCurrency } from "@/lib/utils/format";
 import { useGameStore, type MissionStatus } from "@/store/gameStore";
 import {
   ACADEMY_GAME_EVENTS,
   type AcademyTarget,
   type AcademyWorldEvent,
+  type WorldRoom,
 } from "@/game/phaser/worldEvents";
 
 interface GameHandle {
@@ -27,12 +39,22 @@ interface GameHandle {
   events: { emit: (event: string, ...args: unknown[]) => boolean };
 }
 
+type MissionId = "m1_1" | "m1_2" | "m1_3";
+type IntroStage = "meet-aria" | "find-token" | "enter-academy";
 type OpenPanel =
   | { type: "aria" }
-  | { type: "mission"; missionId: "m1_1" | "m1_2" | "m1_3" }
+  | { type: "mission"; missionId: MissionId }
   | { type: "portal" }
+  | { type: "intro-welcome" }
+  | { type: "intro-reward" }
+  | { type: "intro-gate" }
+  | { type: "intro-locked" }
   | null;
+type IntroPanelState = Extract<Exclude<OpenPanel, null>, { type: `intro-${string}` }>;
+type AcademyPanelState = Exclude<OpenPanel, null | IntroPanelState>;
 
+const INTRO_STORAGE_KEY = "traderpath-world-intro-v1";
+const INTRO_REWARD_KEY = "traderpath-world-intro-reward-v1";
 const AVATAR_COLORS = ["#F0C040", "#38BDF8", "#22C55E", "#F97316", "#D946EF"];
 
 const MISSION_META = {
@@ -53,23 +75,57 @@ const MISSION_META = {
   },
 };
 
+function isIntroPanel(panel: Exclude<OpenPanel, null>): panel is IntroPanelState {
+  return panel.type === "intro-welcome"
+    || panel.type === "intro-reward"
+    || panel.type === "intro-gate"
+    || panel.type === "intro-locked";
+}
+
 export default function AcademyWorld() {
   const router = useRouter();
   const mountRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<GameHandle | null>(null);
+  const [startResolved, setStartResolved] = useState(false);
+  const [room, setRoom] = useState<WorldRoom>("welcome-harbor");
   const [ready, setReady] = useState(false);
   const [moving, setMoving] = useState(false);
-  const [prompt, setPrompt] = useState("Preparando Academia Ágora…");
+  const [prompt, setPrompt] = useState("Preparando Mercado Vivo…");
+  const [introStage, setIntroStage] = useState<IntroStage>("meet-aria");
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
   const [mapOpen, setMapOpen] = useState(false);
+  const [passportOpen, setPassportOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
-  const { getMissionStatus, completedMissions } = useGameStore();
+
+  const {
+    xp,
+    virtualCapital,
+    rank,
+    currentLevelId,
+    currentMissionId,
+    completedMissions,
+    getMissionStatus,
+    applyCapitalChange,
+  } = useGameStore();
 
   const statusM11 = getMissionStatus("level_1", "m1_1");
   const statusM12 = getMissionStatus("level_1", "m1_2");
   const statusM13 = getMissionStatus("level_1", "m1_3");
-  const completedFoundation = completedMissions.filter((mission) => mission.levelId === "level_1").length;
+  const currentLevel = currentLevelId === "level_2"
+    ? level2
+    : currentLevelId === "level_3_crypto"
+      ? level3Crypto
+      : level1;
+  const completedInLevel = completedMissions.filter(
+    (mission) => mission.levelId === currentLevelId
+  ).length;
+
+  useEffect(() => {
+    const introCompleted = window.localStorage.getItem(INTRO_STORAGE_KEY) === "completed";
+    setRoom(introCompleted ? "academy-agora" : "welcome-harbor");
+    setStartResolved(true);
+  }, []);
 
   const handleWorldEvent = useCallback((event: AcademyWorldEvent) => {
     if (event.type === "ready") {
@@ -84,20 +140,41 @@ export default function AcademyWorld() {
       setMoving(event.moving);
       return;
     }
+    if (event.type === "introComplete") {
+      window.localStorage.setItem(INTRO_STORAGE_KEY, "completed");
+      setOpenPanel(null);
+      setMapOpen(false);
+      setReady(false);
+      setRoom("academy-agora");
+      return;
+    }
+
+    if (event.target === "intro-aria") setOpenPanel({ type: "intro-welcome" });
+    if (event.target === "intro-token") {
+      if (window.localStorage.getItem(INTRO_REWARD_KEY) !== "claimed") {
+        applyCapitalChange(50);
+        window.localStorage.setItem(INTRO_REWARD_KEY, "claimed");
+      }
+      setIntroStage("enter-academy");
+      gameRef.current?.events.emit(ACADEMY_GAME_EVENTS.enableIntroGate);
+      setOpenPanel({ type: "intro-reward" });
+    }
+    if (event.target === "intro-gate") setOpenPanel({ type: "intro-gate" });
+    if (event.target === "intro-gate-locked") setOpenPanel({ type: "intro-locked" });
     if (event.target === "aria") setOpenPanel({ type: "aria" });
     if (event.target === "market-plaza") setOpenPanel({ type: "mission", missionId: "m1_1" });
     if (event.target === "candle-workshop") setOpenPanel({ type: "mission", missionId: "m1_2" });
     if (event.target === "trend-observatory") setOpenPanel({ type: "mission", missionId: "m1_3" });
     if (event.target === "bitcoin-portal") setOpenPanel({ type: "portal" });
-  }, []);
+  }, [applyCapitalChange]);
 
   useEffect(() => {
-    if (!mountRef.current) return;
+    if (!startResolved || !mountRef.current) return;
     let disposed = false;
 
     void import("@/game/phaser/createAcademyGame").then(({ createAcademyGame }) => {
       if (disposed || !mountRef.current) return;
-      gameRef.current = createAcademyGame(mountRef.current, handleWorldEvent) as GameHandle;
+      gameRef.current = createAcademyGame(mountRef.current, handleWorldEvent, room) as GameHandle;
     });
 
     return () => {
@@ -105,7 +182,12 @@ export default function AcademyWorld() {
       gameRef.current?.destroy(true);
       gameRef.current = null;
     };
-  }, [handleWorldEvent]);
+  }, [handleWorldEvent, room, startResolved]);
+
+  useEffect(() => {
+    if (!ready) return;
+    gameRef.current?.events.emit(ACADEMY_GAME_EVENTS.avatarColor, avatarColor);
+  }, [avatarColor, ready]);
 
   const focusTarget = (target: AcademyTarget) => {
     setMapOpen(false);
@@ -117,134 +199,227 @@ export default function AcademyWorld() {
     gameRef.current?.events.emit(ACADEMY_GAME_EVENTS.avatarColor, color);
   };
 
-  const openMission = (missionId: "m1_1" | "m1_2" | "m1_3") => {
-    const status = getMissionStatus("level_1", missionId);
+  const startTokenSearch = () => {
+    setIntroStage("find-token");
+    setOpenPanel(null);
+    gameRef.current?.events.emit(ACADEMY_GAME_EVENTS.enableIntroToken);
+  };
+
+  const enterAcademy = () => {
+    setOpenPanel(null);
+    gameRef.current?.events.emit(ACADEMY_GAME_EVENTS.enterAcademy);
+  };
+
+  const replayWelcome = () => {
+    window.localStorage.removeItem(INTRO_STORAGE_KEY);
+    setPassportOpen(false);
+    setOpenPanel(null);
+    setIntroStage("meet-aria");
+    setReady(false);
+    setRoom("welcome-harbor");
+  };
+
+  const openMission = (missionId: string) => {
+    const status = getMissionStatus(currentLevelId, missionId);
     if (status === "locked") return;
     router.push(`/mission/${missionId}`);
   };
 
+  const objective = room === "welcome-harbor"
+    ? introStage === "meet-aria"
+      ? "Habla con ARIA"
+      : introStage === "find-token"
+        ? "Encuentra la Ficha de Mercado"
+        : "Cruza la puerta de Academia Ágora"
+    : "Visita el siguiente edificio educativo";
+
   return (
-    <section className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-tp-info">Primer mundo jugable · vertical slice</p>
-          <h1 className="mt-1 font-display text-2xl font-bold sm:text-3xl">Academia Ágora</h1>
-          <p className="mt-1 max-w-2xl text-sm text-tp-text-muted">Camina, habla con ARIA y entra en los edificios para aprender. Haz clic sobre el suelo o un punto de interés.</p>
+    <section className="relative h-dvh min-h-[520px] w-full overflow-hidden bg-[#09131c] text-white">
+      <div
+        ref={mountRef}
+        className="absolute inset-0 overflow-hidden [&_canvas]:!block"
+        aria-label={room === "welcome-harbor" ? "Puerto de Bienvenida jugable" : "Academia Ágora jugable"}
+      />
+
+      {(!ready || !startResolved) && (
+        <div className="absolute inset-0 z-50 grid place-items-center overflow-hidden bg-[#07121b]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_75%,rgba(37,142,165,.28),transparent_38%),linear-gradient(180deg,#0b2835,#07121b)]" />
+          <div className="relative text-center">
+            <div className="mx-auto grid h-20 w-20 place-items-center rounded-[28px] border border-tp-gold/30 bg-tp-gold/10 shadow-[0_0_70px_rgba(240,192,64,.18)]">
+              <span className="font-display text-xl font-black text-tp-gold">TP</span>
+            </div>
+            <p className="mt-5 font-display text-xl font-bold">Mercado Vivo</p>
+            <p className="mt-1 text-xs text-white/50">Preparando tu próxima aventura…</p>
+            <div className="mx-auto mt-5 h-1.5 w-44 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full w-2/3 animate-pulse rounded-full bg-gradient-to-r from-tp-gold to-[#fff0aa]" />
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2 rounded-full border border-tp-gold/20 bg-tp-gold/[0.07] px-3 py-2">
-          <Sparkles size={14} className="text-tp-gold" />
-          <span className="font-data text-xs text-tp-gold">{completedFoundation}/5 fundamentos</span>
+      )}
+
+      <div className="absolute inset-0 z-[45] flex items-center justify-center bg-[radial-gradient(circle_at_50%_30%,#164252,#07121b_68%)] p-8 text-center sm:hidden">
+        <div>
+          <div className="mx-auto grid h-28 w-20 rotate-90 place-items-center rounded-[22px] border-2 border-tp-gold/60 bg-white/[0.04] shadow-[0_0_70px_rgba(240,192,64,.16)]">
+            <Smartphone size={34} className="-rotate-90 text-tp-gold" />
+          </div>
+          <p className="mt-8 text-[9px] font-semibold uppercase tracking-[0.2em] text-tp-info">Modo de exploración</p>
+          <h2 className="mt-2 font-display text-2xl font-bold">Gira tu dispositivo</h2>
+          <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-white/50">Mercado Vivo está diseñado como un mundo panorámico. Usa la pantalla horizontal para caminar y descubrir cada edificio.</p>
         </div>
       </div>
 
-      <div className="relative h-[400px] overflow-hidden rounded-[28px] border border-white/10 bg-[#101b24] shadow-[0_30px_100px_rgba(0,0,0,.45)] sm:aspect-video sm:h-auto sm:min-h-[520px] sm:max-h-[720px]">
-        <div ref={mountRef} className="absolute inset-0 overflow-hidden [&_canvas]:!block" aria-label="Mundo jugable Academia Ágora" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-3 sm:p-5">
+        <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-white/15 bg-[rgba(7,16,29,.82)] px-3 py-2 shadow-xl backdrop-blur-md">
+          <span className="grid h-8 w-8 place-items-center rounded-xl bg-tp-gold text-[10px] font-black text-[#14222a]">TP</span>
+          <span>
+            <span className="block font-display text-xs font-bold leading-none">Mercado Vivo</span>
+            <span className="mt-1 block text-[8px] uppercase tracking-[0.16em] text-white/45">
+              {room === "welcome-harbor" ? "Puerto de Bienvenida" : "Academia Ágora"}
+            </span>
+          </span>
+        </div>
 
-        {!ready && (
-          <div className="absolute inset-0 z-20 grid place-items-center bg-[#0a1018]">
-            <div className="text-center">
-              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-tp-gold/20 border-t-tp-gold" />
-              <p className="mt-3 text-xs text-tp-text-muted">Construyendo la ciudad…</p>
-            </div>
+        <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-2">
+          <div className="hidden items-center gap-2 rounded-2xl border border-white/15 bg-[rgba(7,16,29,.82)] px-3 py-2 shadow-xl backdrop-blur-md sm:flex">
+            <Coins size={13} className="text-tp-demand" />
+            <span className="font-data text-[10px] text-tp-demand">{formatCurrency(virtualCapital)}</span>
           </div>
-        )}
-
-        <div className="pointer-events-none absolute left-4 top-4 z-10 max-w-[280px] rounded-2xl border border-white/15 bg-[#07101d]/75 p-3 shadow-xl backdrop-blur-md">
-          <p className="flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-tp-gold">
-            <BookOpenCheck size={12} /> Objetivo actual
-          </p>
-          <p className="mt-1 text-xs font-semibold text-white">Habla con ARIA y visita el Taller de Velas</p>
-        </div>
-
-        <div className="pointer-events-none absolute right-4 top-4 z-10 hidden rounded-2xl border border-white/15 bg-[#07101d]/70 px-3 py-2 text-right backdrop-blur-md sm:block">
-          <p className="flex items-center gap-2 text-[9px] uppercase tracking-[0.15em] text-white/55"><MapPin size={11} /> Distrito central</p>
-          <p className="mt-0.5 font-data text-[10px] text-tp-info">{moving ? "Caminando…" : "Explorando"}</p>
-        </div>
-
-        <div className="absolute inset-x-0 bottom-3 z-10 flex items-end justify-between gap-2 px-3 sm:px-4">
+          <div className="flex items-center gap-2 rounded-2xl border border-tp-gold/25 bg-[rgba(7,16,29,.82)] px-3 py-2 shadow-xl backdrop-blur-md">
+            <Sparkles size={13} className="text-tp-gold" />
+            <span className="font-data text-[10px] text-tp-gold">{xp} XP</span>
+          </div>
           <button
             type="button"
-            onClick={() => setMapOpen((current) => !current)}
-            className="grid h-11 w-11 place-items-center rounded-2xl border border-white/15 bg-[#07101d]/80 text-white shadow-lg backdrop-blur transition hover:-translate-y-0.5 hover:border-tp-gold/50 hover:text-tp-gold"
-            aria-label="Abrir mapa de Academia Ágora"
+            onClick={() => setPassportOpen(true)}
+            className="grid h-10 w-10 place-items-center rounded-2xl border border-white/15 bg-[rgba(7,16,29,.82)] text-white shadow-xl backdrop-blur-md transition hover:border-tp-info/45 hover:text-tp-info"
+            aria-label="Abrir Pasaporte del Explorador"
           >
-            <Map size={18} />
+            <Backpack size={17} />
           </button>
+        </div>
+      </div>
 
-          <div className="pointer-events-none max-w-[540px] flex-1 rounded-full border border-white/15 bg-[rgba(7,16,29,0.78)] px-4 py-2 text-center text-[10px] text-white/75 shadow-lg backdrop-blur">
-            {prompt}
-          </div>
+      <div className="pointer-events-none absolute left-1/2 top-[82px] z-20 w-[min(430px,calc(100%-32px))] -translate-x-1/2 rounded-full border border-white/15 bg-[rgba(7,16,29,.78)] px-4 py-2 text-center shadow-xl backdrop-blur-md sm:top-5">
+        <p className="text-[8px] font-semibold uppercase tracking-[0.16em] text-tp-gold">Objetivo</p>
+        <p className="mt-0.5 truncate text-[10px] font-semibold sm:text-xs">{objective}</p>
+      </div>
 
+      <div className="absolute inset-x-0 bottom-3 z-20 flex items-end justify-between gap-2 px-3 sm:bottom-5 sm:px-5">
+        <div className="flex gap-2">
+          {room === "academy-agora" && (
+            <button
+              type="button"
+              onClick={() => setMapOpen((current) => !current)}
+              className="grid h-11 w-11 place-items-center rounded-2xl border border-white/15 bg-[rgba(7,16,29,.86)] text-white shadow-xl backdrop-blur-md transition hover:-translate-y-0.5 hover:border-tp-gold/50 hover:text-tp-gold"
+              aria-label="Abrir mapa de Academia Ágora"
+            >
+              <Map size={18} />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setPaletteOpen((current) => !current)}
-            className="grid h-11 w-11 place-items-center rounded-2xl border border-white/15 bg-[#07101d]/80 text-white shadow-lg backdrop-blur transition hover:-translate-y-0.5 hover:border-tp-info/50 hover:text-tp-info"
+            className="grid h-11 w-11 place-items-center rounded-2xl border border-white/15 bg-[rgba(7,16,29,.86)] text-white shadow-xl backdrop-blur-md transition hover:-translate-y-0.5 hover:border-tp-info/50 hover:text-tp-info"
             aria-label="Personalizar avatar"
           >
             <Palette size={18} />
           </button>
         </div>
 
-        {mapOpen && (
-          <div className="absolute bottom-16 left-3 z-30 w-[min(360px,calc(100%-24px))] rounded-2xl border border-white/15 bg-[rgba(7,16,29,0.95)] p-4 shadow-2xl backdrop-blur-xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[9px] uppercase tracking-[0.18em] text-tp-info">Mapa de la academia</p>
-                <p className="font-display text-sm font-bold">Distritos de aprendizaje</p>
-              </div>
-              <button type="button" onClick={() => setMapOpen(false)} className="rounded-lg p-1.5 text-tp-text-muted hover:bg-white/5 hover:text-white" aria-label="Cerrar mapa"><X size={15} /></button>
-            </div>
-            <div className="mt-3 space-y-2">
-              <MapDestination meta={MISSION_META.m1_1} status={statusM11} onClick={() => focusTarget("market-plaza")} />
-              <MapDestination meta={MISSION_META.m1_2} status={statusM12} onClick={() => focusTarget("candle-workshop")} />
-              <MapDestination meta={MISSION_META.m1_3} status={statusM13} onClick={() => focusTarget("trend-observatory")} />
-              <button type="button" onClick={() => focusTarget("bitcoin-portal")} className="flex w-full items-center gap-3 rounded-xl border border-orange-300/15 bg-orange-400/5 p-3 text-left hover:border-orange-300/30">
-                <span className="grid h-9 w-9 place-items-center rounded-lg bg-orange-400/10 font-data font-bold text-orange-300">₿</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-xs font-semibold">Portal Bitcoin</span>
-                  <span className="block truncate text-[9px] text-tp-text-muted">Ciudad especializada · bloqueada</span>
-                </span>
-                <LockKeyhole size={13} className="text-tp-text-muted" />
-              </button>
-            </div>
-          </div>
-        )}
+        <div className="pointer-events-none max-w-[540px] flex-1 rounded-full border border-white/15 bg-[rgba(7,16,29,.82)] px-4 py-2 text-center text-[9px] text-white/70 shadow-xl backdrop-blur-md sm:text-[10px]">
+          {moving ? "Caminando…" : prompt}
+        </div>
 
-        {paletteOpen && (
-          <div className="absolute bottom-16 right-3 z-30 rounded-2xl border border-white/15 bg-[rgba(7,16,29,0.95)] p-3 shadow-2xl backdrop-blur-xl">
-            <div className="mb-2 flex items-center justify-between gap-5">
-              <p className="text-[9px] uppercase tracking-[0.16em] text-tp-info">Color del explorador</p>
-              <button type="button" onClick={() => setPaletteOpen(false)} className="text-tp-text-muted hover:text-white" aria-label="Cerrar personalización"><X size={14} /></button>
-            </div>
-            <div className="flex gap-2">
-              {AVATAR_COLORS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => chooseAvatarColor(color)}
-                  aria-label={`Usar color ${color}`}
-                  aria-pressed={avatarColor === color}
-                  className={`h-9 w-9 rounded-xl border-2 transition hover:scale-105 ${avatarColor === color ? "border-white" : "border-transparent"}`}
-                  style={{ backgroundColor: color }}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {openPanel && (
-          <WorldPanel
-            panel={openPanel}
-            getMissionStatus={getMissionStatus}
-            onClose={() => setOpenPanel(null)}
-            onMission={openMission}
-          />
-        )}
+        <button
+          type="button"
+          onClick={() => setPassportOpen(true)}
+          className="grid h-11 w-11 place-items-center rounded-2xl border border-white/15 bg-[rgba(7,16,29,.86)] text-white shadow-xl backdrop-blur-md transition hover:-translate-y-0.5 hover:border-tp-gold/50 hover:text-tp-gold"
+          aria-label="Abrir misiones"
+        >
+          <BookOpenCheck size={18} />
+        </button>
       </div>
 
-      <p className="text-center text-[10px] text-tp-text-muted">
-        Prototipo original inspirado en la navegación social por salas. No utiliza personajes ni recursos de Club Penguin.
-      </p>
+      {mapOpen && room === "academy-agora" && (
+        <div className="absolute bottom-20 left-3 z-30 w-[min(370px,calc(100%-24px))] rounded-3xl border border-white/15 bg-[rgba(7,16,29,.96)] p-4 shadow-2xl backdrop-blur-xl sm:left-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[9px] uppercase tracking-[0.18em] text-tp-info">Mapa ilustrado</p>
+              <p className="font-display text-sm font-bold">Distritos de aprendizaje</p>
+            </div>
+            <IconButton label="Cerrar mapa" onClick={() => setMapOpen(false)} />
+          </div>
+          <div className="mt-3 space-y-2">
+            <MapDestination meta={MISSION_META.m1_1} status={statusM11} onClick={() => focusTarget("market-plaza")} />
+            <MapDestination meta={MISSION_META.m1_2} status={statusM12} onClick={() => focusTarget("candle-workshop")} />
+            <MapDestination meta={MISSION_META.m1_3} status={statusM13} onClick={() => focusTarget("trend-observatory")} />
+            <button type="button" onClick={() => focusTarget("bitcoin-portal")} className="flex w-full items-center gap-3 rounded-2xl border border-orange-300/15 bg-orange-400/5 p-3 text-left transition hover:border-orange-300/30 hover:bg-orange-400/10">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-orange-400/10 font-data font-bold text-orange-300">₿</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs font-semibold">Portal Bitcoin</span>
+                <span className="block truncate text-[9px] text-white/45">Ciudad especializada · bloqueada</span>
+              </span>
+              <LockKeyhole size={13} className="text-white/35" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {paletteOpen && (
+        <div className="absolute bottom-20 left-3 z-30 rounded-3xl border border-white/15 bg-[rgba(7,16,29,.96)] p-3 shadow-2xl backdrop-blur-xl sm:left-5">
+          <div className="mb-2 flex items-center justify-between gap-5">
+            <p className="text-[9px] uppercase tracking-[0.16em] text-tp-info">Tu explorador</p>
+            <IconButton label="Cerrar personalización" onClick={() => setPaletteOpen(false)} />
+          </div>
+          <div className="flex gap-2">
+            {AVATAR_COLORS.map((color) => (
+              <button
+                key={color}
+                type="button"
+                onClick={() => chooseAvatarColor(color)}
+                aria-label={`Usar color ${color}`}
+                aria-pressed={avatarColor === color}
+                className={`h-10 w-10 rounded-2xl border-2 transition hover:scale-105 ${avatarColor === color ? "border-white" : "border-transparent"}`}
+                style={{ backgroundColor: color }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {passportOpen && (
+        <PassportDrawer
+          level={currentLevel}
+          currentLevelId={currentLevelId}
+          currentMissionId={currentMissionId}
+          completed={completedInLevel}
+          rank={rank}
+          getMissionStatus={getMissionStatus}
+          onClose={() => setPassportOpen(false)}
+          onMission={openMission}
+          onReplayWelcome={replayWelcome}
+        />
+      )}
+
+      {openPanel && (
+        isIntroPanel(openPanel)
+          ? (
+            <IntroPanel
+              panel={openPanel}
+              onClose={() => setOpenPanel(null)}
+              onStartTokenSearch={startTokenSearch}
+              onEnterAcademy={enterAcademy}
+            />
+          )
+          : (
+            <AcademyPanel
+              panel={openPanel}
+              getMissionStatus={getMissionStatus}
+              onClose={() => setOpenPanel(null)}
+              onMission={openMission}
+            />
+          )
+      )}
     </section>
   );
 }
@@ -259,56 +434,216 @@ function MapDestination({
   onClick: () => void;
 }) {
   return (
-    <button type="button" onClick={onClick} className="flex w-full items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.025] p-3 text-left transition hover:border-tp-gold/25 hover:bg-white/[0.045]">
-      <span className={`grid h-9 w-9 place-items-center rounded-lg ${status === "completed" ? "bg-tp-demand/10 text-tp-demand" : status === "available" ? "bg-tp-gold/10 text-tp-gold" : "bg-white/5 text-tp-text-muted"}`}>
+    <button type="button" onClick={onClick} className="flex w-full items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-3 text-left transition hover:border-tp-gold/25 hover:bg-white/[0.05]">
+      <span className={`grid h-10 w-10 place-items-center rounded-xl ${status === "completed" ? "bg-tp-demand/10 text-tp-demand" : status === "available" ? "bg-tp-gold/10 text-tp-gold" : "bg-white/5 text-white/35"}`}>
         {status === "completed" ? <Check size={15} /> : status === "available" ? <Compass size={15} /> : <LockKeyhole size={13} />}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-xs font-semibold">{meta.title}</span>
-        <span className="block truncate text-[9px] text-tp-text-muted">{meta.subtitle}</span>
+        <span className="block truncate text-[9px] text-white/45">{meta.subtitle}</span>
       </span>
     </button>
   );
 }
 
-function WorldPanel({
+function PassportDrawer({
+  level,
+  currentLevelId,
+  currentMissionId,
+  completed,
+  rank,
+  getMissionStatus,
+  onClose,
+  onMission,
+  onReplayWelcome,
+}: {
+  level: typeof level1 | typeof level2 | typeof level3Crypto;
+  currentLevelId: string;
+  currentMissionId: string;
+  completed: number;
+  rank: string;
+  getMissionStatus: (levelId: string, missionId: string) => MissionStatus;
+  onClose: () => void;
+  onMission: (missionId: string) => void;
+  onReplayWelcome: () => void;
+}) {
+  const progress = level.missions.length > 0 ? Math.round((completed / level.missions.length) * 100) : 0;
+  return (
+    <div className="absolute inset-0 z-40 flex justify-end bg-black/35 backdrop-blur-[2px]">
+      <aside className="h-full w-full max-w-[440px] overflow-y-auto border-l border-white/10 bg-[linear-gradient(180deg,#102230,#07101d)] p-5 shadow-2xl sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-tp-gold">Documento del jugador</p>
+            <h2 className="mt-1 font-display text-2xl font-bold">Pasaporte del Explorador</h2>
+          </div>
+          <IconButton label="Cerrar pasaporte" onClick={onClose} />
+        </div>
+
+        <div className="mt-5 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04]">
+          <div className="bg-[radial-gradient(circle_at_85%_10%,rgba(240,192,64,.22),transparent_40%)] p-5">
+            <div className="flex items-center gap-4">
+              <span className="grid h-14 w-14 place-items-center rounded-2xl border border-tp-gold/30 bg-tp-gold/10 text-tp-gold"><UserRound size={24} /></span>
+              <div>
+                <p className="font-display text-lg font-bold">Explorador de Mercados</p>
+                <p className="mt-1 font-data text-xs text-tp-info">{rank}</p>
+              </div>
+            </div>
+            <div className="mt-5 flex items-center justify-between text-[9px] uppercase tracking-widest text-white/45">
+              <span>Progreso del distrito</span>
+              <span className="font-data text-tp-gold">{progress}%</span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/30">
+              <div className="h-full rounded-full bg-gradient-to-r from-tp-gold to-[#ffe889]" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-7 flex items-end justify-between">
+          <div>
+            <p className="text-[9px] uppercase tracking-[0.18em] text-tp-info">Distrito actual</p>
+            <h3 className="mt-1 font-display text-lg font-bold">{level.title}</h3>
+          </div>
+          <span className="font-data text-[10px] text-white/45">{completed}/{level.missions.length}</span>
+        </div>
+
+        <div className="mt-3 space-y-2">
+          {level.missions.map((mission, index) => {
+            const status = getMissionStatus(currentLevelId, mission.id);
+            const active = mission.id === currentMissionId;
+            return (
+              <button
+                key={mission.id}
+                type="button"
+                disabled={status === "locked"}
+                onClick={() => onMission(mission.id)}
+                className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition ${
+                  active
+                    ? "border-tp-gold/40 bg-tp-gold/[0.08]"
+                    : "border-white/[0.07] bg-white/[0.025] hover:border-white/15"
+                } disabled:cursor-not-allowed disabled:opacity-45`}
+              >
+                <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl font-data text-xs ${
+                  status === "completed"
+                    ? "bg-tp-demand/10 text-tp-demand"
+                    : status === "available"
+                      ? "bg-tp-gold/10 text-tp-gold"
+                      : "bg-white/5 text-white/35"
+                }`}>
+                  {status === "completed" ? <Check size={16} /> : status === "locked" ? <LockKeyhole size={14} /> : index + 1}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-semibold">{mission.title}</span>
+                  <span className="mt-0.5 block truncate text-[9px] text-white/40">{mission.subtitle}</span>
+                </span>
+                {active && <MapPin size={14} className="text-tp-gold" />}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-7 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
+          <p className="flex items-center gap-2 text-[9px] uppercase tracking-[0.16em] text-white/45"><Gamepad2 size={13} /> Recuerdos de viaje</p>
+          <button type="button" onClick={onReplayWelcome} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-xs text-white/65 transition hover:border-tp-info/30 hover:text-tp-info">
+            <RotateCcw size={14} /> Repetir la bienvenida
+          </button>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function IntroPanel({
+  panel,
+  onClose,
+  onStartTokenSearch,
+  onEnterAcademy,
+}: {
+  panel: IntroPanelState;
+  onClose: () => void;
+  onStartTokenSearch: () => void;
+  onEnterAcademy: () => void;
+}) {
+  const content = {
+    "intro-welcome": {
+      eyebrow: "ARIA · guía de Mercado Vivo",
+      title: "Aquí aprenderás explorando.",
+      body: "Cada edificio representa una idea del mercado. Caminarás, hablarás con personajes y resolverás desafíos para abrir nuevas ciudades.",
+      action: "Buscar mi primera ficha",
+      onAction: onStartTokenSearch,
+      icon: <MessageCircle size={14} />,
+    },
+    "intro-reward": {
+      eyebrow: "Primer descubrimiento",
+      title: "¡Conseguiste una Ficha de Mercado!",
+      body: "Las fichas reconocen acciones importantes dentro del mundo. También recibiste $50 de capital virtual para comenzar tu recorrido.",
+      action: "Ir hacia la academia",
+      onAction: onClose,
+      icon: <Trophy size={14} />,
+    },
+    "intro-gate": {
+      eyebrow: "Destino desbloqueado",
+      title: "Academia Ágora te espera.",
+      body: "Al otro lado encontrarás Mercado Plaza, el Taller de Velas y el Observatorio de Tendencias.",
+      action: "Entrar a Academia Ágora",
+      onAction: onEnterAcademy,
+      icon: <Sparkles size={14} />,
+    },
+    "intro-locked": {
+      eyebrow: "Puerta de la academia",
+      title: "Necesitas demostrar curiosidad.",
+      body: "Habla con ARIA y encuentra la ficha dorada escondida en el puerto. Después la puerta reconocerá a tu explorador.",
+      action: "Buscar a ARIA",
+      onAction: onClose,
+      icon: <LockKeyhole size={14} />,
+    },
+  }[panel.type];
+
+  return (
+    <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-2xl rounded-3xl border border-tp-gold/30 bg-[rgba(7,16,29,.97)] p-5 shadow-[0_25px_80px_rgba(0,0,0,.5)] backdrop-blur-xl sm:p-6">
+      <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
+      <p className="flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-tp-gold">{content.icon}{content.eyebrow}</p>
+      <h2 className="mt-2 pr-8 font-display text-xl font-bold sm:text-2xl">{content.title}</h2>
+      <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/58">{content.body}</p>
+      <button type="button" onClick={content.onAction} className="mt-5 flex items-center gap-2 rounded-2xl bg-tp-gold px-5 py-3 font-display text-sm font-bold text-[#14222a] shadow-[0_12px_34px_rgba(240,192,64,.22)] transition hover:-translate-y-0.5 hover:brightness-110">
+        {content.action} <ArrowRight size={15} />
+      </button>
+    </div>
+  );
+}
+
+function AcademyPanel({
   panel,
   getMissionStatus,
   onClose,
   onMission,
 }: {
-  panel: Exclude<OpenPanel, null>;
+  panel: AcademyPanelState;
   getMissionStatus: (levelId: string, missionId: string) => MissionStatus;
   onClose: () => void;
-  onMission: (missionId: "m1_1" | "m1_2" | "m1_3") => void;
+  onMission: (missionId: string) => void;
 }) {
   if (panel.type === "aria") {
     return (
-      <div className="absolute inset-x-3 bottom-16 z-40 mx-auto max-w-2xl rounded-2xl border border-tp-info/30 bg-[rgba(7,16,29,0.96)] p-5 shadow-2xl backdrop-blur-xl">
-        <PanelClose onClose={onClose} />
+      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-2xl rounded-3xl border border-tp-info/30 bg-[rgba(7,16,29,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
+        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
         <p className="flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-tp-info"><MessageCircle size={13} /> ARIA · guía de la academia</p>
-        <p className="mt-2 font-display text-lg font-bold">Bienvenido a Ágora, explorador.</p>
-        <p className="mt-2 text-sm leading-relaxed text-tp-text-muted">
-          Aquí no avanzas leyendo una lista. Caminas hasta el lugar que representa el concepto, practicas y demuestras lo aprendido. Empieza por Mercado Plaza; después te abriré el Taller de Velas.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" onClick={() => onMission("m1_1")} className="flex items-center gap-2 rounded-xl bg-tp-gold px-4 py-2 font-display text-xs font-bold text-tp-base">
-            Ir a la primera misión <ArrowRight size={14} />
-          </button>
-          <button type="button" onClick={onClose} className="rounded-xl border border-tp-border px-4 py-2 text-xs text-tp-text-muted">Seguir explorando</button>
-        </div>
+        <h2 className="mt-2 font-display text-xl font-bold">Elige un edificio y aprende haciendo.</h2>
+        <p className="mt-2 text-sm leading-relaxed text-white/58">Mercado Plaza explica quién participa. El Taller de Velas convierte precios en una vela. El Observatorio enseña a reconocer estructura y tendencia.</p>
+        <button type="button" onClick={() => onMission("m1_1")} className="mt-5 flex items-center gap-2 rounded-2xl bg-tp-gold px-5 py-3 font-display text-sm font-bold text-[#14222a]">
+          Entrar a Mercado Plaza <ArrowRight size={15} />
+        </button>
       </div>
     );
   }
 
   if (panel.type === "portal") {
     return (
-      <div className="absolute inset-x-3 bottom-16 z-40 mx-auto max-w-xl rounded-2xl border border-orange-300/25 bg-[rgba(19,13,8,0.96)] p-5 shadow-2xl backdrop-blur-xl">
-        <PanelClose onClose={onClose} />
+      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-xl rounded-3xl border border-orange-300/25 bg-[rgba(19,13,8,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
+        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
         <p className="font-data text-xs font-bold text-orange-300">₿ PORTAL DE ESPECIALIZACIÓN</p>
         <h2 className="mt-2 font-display text-xl font-bold">Ciudad Bitcoin permanece cerrada</h2>
-        <p className="mt-2 text-sm leading-relaxed text-white/60">Primero completa los fundamentos universales y el Gran Tour. El portal se activará cuando hayas elegido la ruta cripto.</p>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+        <p className="mt-2 text-sm leading-relaxed text-white/55">Completa los fundamentos y el Gran Tour. El portal se activará cuando elijas la ruta cripto.</p>
+        <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
           <div className="h-full w-1/5 rounded-full bg-gradient-to-r from-orange-500 to-yellow-300" />
         </div>
       </div>
@@ -318,25 +653,16 @@ function WorldPanel({
   const meta = MISSION_META[panel.missionId];
   const status = getMissionStatus("level_1", panel.missionId);
   return (
-    <div className="absolute inset-x-3 bottom-16 z-40 mx-auto max-w-xl rounded-2xl border border-tp-gold/25 bg-[rgba(7,16,29,0.96)] p-5 shadow-2xl backdrop-blur-xl">
-      <PanelClose onClose={onClose} />
+    <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-xl rounded-3xl border border-tp-gold/25 bg-[rgba(7,16,29,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
+      <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
       <p className="text-[9px] uppercase tracking-[0.18em] text-tp-gold">Edificio educativo · {panel.missionId.toUpperCase()}</p>
       <h2 className="mt-2 font-display text-xl font-bold">{meta.title}</h2>
-      <p className="mt-1 text-sm text-tp-text-muted">{meta.subtitle}</p>
-      <div className={`mt-4 rounded-xl border p-3 ${status === "locked" ? "border-white/10 bg-white/[0.025]" : status === "completed" ? "border-tp-demand/25 bg-tp-demand/5" : "border-tp-gold/25 bg-tp-gold/5"}`}>
-        <p className="text-xs font-semibold">
-          {status === "locked" ? "Edificio bloqueado" : status === "completed" ? "Misión completada · puedes repetirla" : "Misión disponible"}
-        </p>
-        <p className="mt-1 text-[10px] text-tp-text-muted">
-          {status === "locked" ? "Completa el edificio anterior para recibir acceso." : "La práctica se abrirá sin abandonar tu progreso actual."}
-        </p>
+      <p className="mt-1 text-sm text-white/50">{meta.subtitle}</p>
+      <div className={`mt-4 rounded-2xl border p-3 ${status === "locked" ? "border-white/10 bg-white/[0.025]" : status === "completed" ? "border-tp-demand/25 bg-tp-demand/5" : "border-tp-gold/25 bg-tp-gold/5"}`}>
+        <p className="text-xs font-semibold">{status === "locked" ? "Edificio bloqueado" : status === "completed" ? "Misión completada · puedes repetirla" : "Misión disponible"}</p>
+        <p className="mt-1 text-[10px] text-white/42">{status === "locked" ? "Completa el edificio anterior para recibir acceso." : "Tu progreso quedará guardado en el Pasaporte del Explorador."}</p>
       </div>
-      <button
-        type="button"
-        disabled={status === "locked"}
-        onClick={() => onMission(panel.missionId)}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-tp-gold px-4 py-3 font-display text-sm font-bold text-tp-base disabled:cursor-not-allowed disabled:opacity-35"
-      >
+      <button type="button" disabled={status === "locked"} onClick={() => onMission(panel.missionId)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-tp-gold px-4 py-3 font-display text-sm font-bold text-[#14222a] disabled:cursor-not-allowed disabled:opacity-35">
         {status === "locked" ? <LockKeyhole size={15} /> : <BookOpenCheck size={15} />}
         {status === "completed" ? "Repetir misión" : "Entrar a la misión"}
       </button>
@@ -344,9 +670,17 @@ function WorldPanel({
   );
 }
 
-function PanelClose({ onClose }: { onClose: () => void }) {
+function IconButton({
+  label,
+  onClick,
+  className = "",
+}: {
+  label: string;
+  onClick: () => void;
+  className?: string;
+}) {
   return (
-    <button type="button" onClick={onClose} aria-label="Cerrar diálogo" className="absolute right-3 top-3 rounded-lg p-1.5 text-tp-text-muted transition hover:bg-white/5 hover:text-white">
+    <button type="button" onClick={onClick} aria-label={label} className={`rounded-xl p-2 text-white/45 transition hover:bg-white/5 hover:text-white ${className}`}>
       <X size={16} />
     </button>
   );

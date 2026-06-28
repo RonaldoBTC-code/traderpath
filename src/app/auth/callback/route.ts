@@ -4,10 +4,10 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const requestedNext = searchParams.get("next") ?? "/dashboard";
+  const requestedNext = searchParams.get("next") ?? "/world";
   const next = requestedNext.startsWith("/") && !requestedNext.startsWith("//")
     ? requestedNext
-    : "/dashboard";
+    : "/world";
 
   if (code) {
     const supabase = createServerSupabaseClient();

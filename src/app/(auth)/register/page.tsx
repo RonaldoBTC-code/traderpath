@@ -30,7 +30,7 @@ export default function RegisterPage() {
     }
     if (!authData.user) { setError("Error al crear la cuenta."); setLoading(false); return; }
 
-    router.push("/dashboard");
+    router.push("/world");
   };
 
   return (

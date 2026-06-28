@@ -1,8 +1,13 @@
 import Phaser from "phaser";
 import AcademyAgoraScene from "@/game/phaser/AcademyAgoraScene";
-import type { AcademyWorldEventHandler } from "@/game/phaser/worldEvents";
+import WelcomeHarborScene from "@/game/phaser/WelcomeHarborScene";
+import type { AcademyWorldEventHandler, WorldRoom } from "@/game/phaser/worldEvents";
 
-export function createAcademyGame(parent: HTMLElement, onWorldEvent: AcademyWorldEventHandler) {
+export function createAcademyGame(
+  parent: HTMLElement,
+  onWorldEvent: AcademyWorldEventHandler,
+  room: WorldRoom
+) {
   return new Phaser.Game({
     type: Phaser.AUTO,
     parent,
@@ -20,6 +25,10 @@ export function createAcademyGame(parent: HTMLElement, onWorldEvent: AcademyWorl
       width: 1280,
       height: 720,
     },
-    scene: [new AcademyAgoraScene(onWorldEvent)],
+    scene: [
+      room === "welcome-harbor"
+        ? new WelcomeHarborScene(onWorldEvent)
+        : new AcademyAgoraScene(onWorldEvent),
+    ],
   });
 }

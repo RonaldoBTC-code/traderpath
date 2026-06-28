@@ -333,7 +333,7 @@ export default function MissionPage() {
     setEarnedRewards(false);
     setMinigameAttempt(0);
     setAssessmentFailure(null);
-    if (!mission) { router.push("/dashboard"); return; }
+    if (!mission) { router.push("/world"); return; }
     // Development-only bypass for local QA.
     const params = new URLSearchParams(window.location.search);
     if (process.env.NODE_ENV === "development" && params.get("dev") === "true") return;
@@ -346,7 +346,7 @@ export default function MissionPage() {
         <div className="text-4xl">🔒</div>
         <h2 className="font-display text-xl font-bold text-tp-supply">Misión bloqueada</h2>
         <p className="text-tp-text-muted">Debes completar las misiones anteriores para desbloquear esta.</p>
-        <button onClick={() => router.push("/dashboard")} className="px-6 py-2 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition">
+        <button onClick={() => router.push("/world")} className="px-6 py-2 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition">
           Volver al Dashboard
         </button>
       </div>
@@ -615,7 +615,7 @@ export default function MissionPage() {
               ))}
             </ul>
           </div>
-          <button onClick={() => router.push("/dashboard")} className="px-6 py-3 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition">
+          <button onClick={() => router.push("/world")} className="px-6 py-3 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition">
             Volver al Dashboard
           </button>
         </div>

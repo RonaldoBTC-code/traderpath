@@ -42,6 +42,7 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const pathname = request.nextUrl.pathname;
   const isProtectedRoute =
+    pathname.startsWith("/world") ||
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/mission") ||
     pathname.startsWith("/simulator");
@@ -59,10 +60,10 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (process.env.NODE_ENV !== "development" && isAuthRoute && user) {
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = "/dashboard";
-    dashboardUrl.search = "";
-    const redirect = NextResponse.redirect(dashboardUrl);
+    const worldUrl = request.nextUrl.clone();
+    worldUrl.pathname = "/world";
+    worldUrl.search = "";
+    const redirect = NextResponse.redirect(worldUrl);
     response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
     return redirect;
   }

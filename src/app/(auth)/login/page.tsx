@@ -28,7 +28,7 @@ export default function LoginPage() {
     const requestedNext = new URLSearchParams(window.location.search).get("next");
     const next = requestedNext?.startsWith("/") && !requestedNext.startsWith("//")
       ? requestedNext
-      : "/dashboard";
+      : "/world";
     router.push(next);
   };
 

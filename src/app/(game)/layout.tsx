@@ -2,21 +2,32 @@
 
 import Link from "next/link";
 import { Coins, Map, Sparkles, UserRound } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useGameStore } from "@/store/gameStore";
 import { useHasMounted } from "@/hooks/useHasMounted";
 import { formatCurrency } from "@/lib/utils/format";
 import GameProgressSync from "@/components/game/GameProgressSync";
 
 export default function GameLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const hasMounted = useHasMounted();
   const { xp, virtualCapital, rank } = useGameStore();
+
+  if (pathname === "/world") {
+    return (
+      <div className="h-dvh overflow-hidden bg-[#07121b]">
+        <GameProgressSync />
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-tp-base bg-[radial-gradient(circle_at_50%_-20%,rgba(96,165,250,0.10),transparent_38%)]">
       <GameProgressSync />
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0e1a]/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <Link href="/dashboard" className="group flex items-center gap-3">
+          <Link href="/world" className="group flex items-center gap-3">
             <span className="grid h-9 w-9 place-items-center rounded-xl border border-tp-gold/30 bg-tp-gold/10 text-tp-gold transition group-hover:rotate-3 group-hover:bg-tp-gold/15">
               <Map size={18} strokeWidth={2.2} />
             </span>

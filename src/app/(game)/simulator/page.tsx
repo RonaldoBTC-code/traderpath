@@ -87,7 +87,7 @@ function SimulatorContent() {
         <div className="text-4xl">🔒</div>
         <h1 className="mt-3 font-display text-2xl font-bold">Simulador bloqueado</h1>
         <p className="mt-2 text-sm text-tp-text-muted">Primero completa “Tu Capital, Tu Responsabilidad”. No puedes operar hasta comprender Stop Loss, R:R y tamaño de posición.</p>
-        <Link href="/dashboard" className="mt-5 inline-block rounded-sm bg-tp-gold px-5 py-2 font-bold text-tp-base">Volver al mapa</Link>
+        <Link href="/world" className="mt-5 inline-block rounded-sm bg-tp-gold px-5 py-2 font-bold text-tp-base">Volver al mundo</Link>
       </div>
     );
   }

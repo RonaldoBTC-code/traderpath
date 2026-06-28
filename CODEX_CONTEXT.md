@@ -221,10 +221,47 @@ RLS: Cada usuario solo ve sus propios datos.
 
 ---
 
-## 11. PRÓXIMO PASO RECOMENDADO
+## 11. EXPERIENCIA WORLD-FIRST (ACTUALIZADA)
 
-Transformar el dashboard lineal en un WorldMap explorable y construir la primera vertical educativa visual: el Mercado de Manzanas con NPC, interacción oferta/demanda y evaluación final.
+TraderPath ya no usa el dashboard como entrada principal. El jugador entra directamente a `/world`.
+
+- `/dashboard` redirige a `/world`.
+- Login, registro, callback de autenticación y landing continúan hacia el mundo.
+- El `GameLayout` elimina header, márgenes y apariencia de aplicación en `/world`.
+- `WelcomeHarborScene` implementa el Puerto de Bienvenida: movimiento por clic, ARIA, ficha coleccionable, recompensa única y puerta a Academia Ágora.
+- `AcademyAgoraScene` conserva Mercado Plaza, Taller de Velas, Observatorio y Portal Bitcoin como destinos físicos.
+- `AcademyWorld` contiene HUD ligero, personalización, mapa contextual y Pasaporte del Explorador.
+- El Pasaporte reemplaza el dashboard visible y muestra rango, progreso, estado de misiones y repetición del tutorial.
+- En móvil vertical se solicita girar el dispositivo; el juego se ejecuta en horizontal para preservar las salas panorámicas.
+
+El onboarding se guarda localmente con claves versionadas. La recompensa de introducción solo puede cobrarse una vez.
+
+Flujo principal:
+
+```text
+LOGIN / REGISTRO
+  → PUERTO DE BIENVENIDA
+    → ARIA
+      → FICHA DE MERCADO
+        → ACADEMIA ÁGORA
+          → EDIFICIO EDUCATIVO
+            → MISIÓN
+              → RECOMPENSA
+                → REGRESO AL MUNDO
+```
+
+## 12. PRÓXIMO PASO RECOMENDADO
+
+Construir el interior jugable de Mercado Plaza para M1.1: puestos de compradores y vendedores, interacción oferta/demanda, NPC con acciones visibles, transición de sala y evaluación integrada sin apariencia de página web.
+
+Después:
+
+1. Interior del Taller de Velas para M1.2.
+2. Interior del Observatorio para M1.3.
+3. Pipeline de fondos ilustrados y sprites finales.
+4. Sonido ambiental, efectos de recompensa y transiciones.
+5. Presencia social multijugador por salas, después de validar el bucle individual.
 
 ---
 
-*Documento de contexto para TraderPath. Última actualización: 26 de junio de 2026.*
+*Documento de contexto para TraderPath. Última actualización: 28 de junio de 2026.*
