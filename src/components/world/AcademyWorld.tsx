@@ -49,12 +49,21 @@ type OpenPanel =
   | { type: "intro-reward" }
   | { type: "intro-gate" }
   | { type: "intro-locked" }
+  | { type: "market-seller" }
+  | { type: "market-buyer" }
+  | { type: "market-board" }
+  | { type: "market-practice" }
+  | { type: "market-practice-locked" }
   | null;
 type IntroPanelState = Extract<Exclude<OpenPanel, null>, { type: `intro-${string}` }>;
-type AcademyPanelState = Exclude<OpenPanel, null | IntroPanelState>;
+type MarketPanelState = Extract<Exclude<OpenPanel, null>, { type: `market-${string}` }>;
+type AcademyPanelState = Exclude<OpenPanel, null | IntroPanelState | MarketPanelState>;
 
 const INTRO_STORAGE_KEY = "traderpath-world-intro-v1";
 const INTRO_REWARD_KEY = "traderpath-world-intro-reward-v1";
+const MARKET_SELLER_KEY = "traderpath-market-seller-v1";
+const MARKET_BUYER_KEY = "traderpath-market-buyer-v1";
+const RETURN_ROOM_KEY = "traderpath-world-return-room-v1";
 const AVATAR_COLORS = ["#F0C040", "#38BDF8", "#22C55E", "#F97316", "#D946EF"];
 
 const MISSION_META = {
@@ -82,6 +91,14 @@ function isIntroPanel(panel: Exclude<OpenPanel, null>): panel is IntroPanelState
     || panel.type === "intro-locked";
 }
 
+function isMarketPanel(panel: Exclude<OpenPanel, null>): panel is MarketPanelState {
+  return panel.type === "market-seller"
+    || panel.type === "market-buyer"
+    || panel.type === "market-board"
+    || panel.type === "market-practice"
+    || panel.type === "market-practice-locked";
+}
+
 export default function AcademyWorld() {
   const router = useRouter();
   const mountRef = useRef<HTMLDivElement>(null);
@@ -97,6 +114,8 @@ export default function AcademyWorld() {
   const [passportOpen, setPassportOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
+  const [sellerVisited, setSellerVisited] = useState(false);
+  const [buyerVisited, setBuyerVisited] = useState(false);
 
   const {
     xp,
@@ -123,7 +142,17 @@ export default function AcademyWorld() {
 
   useEffect(() => {
     const introCompleted = window.localStorage.getItem(INTRO_STORAGE_KEY) === "completed";
-    setRoom(introCompleted ? "academy-agora" : "welcome-harbor");
+    const returnRoom = window.localStorage.getItem(RETURN_ROOM_KEY);
+    window.localStorage.removeItem(RETURN_ROOM_KEY);
+    setSellerVisited(window.localStorage.getItem(MARKET_SELLER_KEY) === "seen");
+    setBuyerVisited(window.localStorage.getItem(MARKET_BUYER_KEY) === "seen");
+    setRoom(
+      introCompleted
+        ? returnRoom === "market-plaza"
+          ? "market-plaza"
+          : "academy-agora"
+        : "welcome-harbor"
+    );
     setStartResolved(true);
   }, []);
 
@@ -166,6 +195,24 @@ export default function AcademyWorld() {
     if (event.target === "candle-workshop") setOpenPanel({ type: "mission", missionId: "m1_2" });
     if (event.target === "trend-observatory") setOpenPanel({ type: "mission", missionId: "m1_3" });
     if (event.target === "bitcoin-portal") setOpenPanel({ type: "portal" });
+    if (event.target === "market-seller") {
+      window.localStorage.setItem(MARKET_SELLER_KEY, "seen");
+      setSellerVisited(true);
+      setOpenPanel({ type: "market-seller" });
+    }
+    if (event.target === "market-buyer") {
+      window.localStorage.setItem(MARKET_BUYER_KEY, "seen");
+      setBuyerVisited(true);
+      setOpenPanel({ type: "market-buyer" });
+    }
+    if (event.target === "market-board") setOpenPanel({ type: "market-board" });
+    if (event.target === "market-practice") setOpenPanel({ type: "market-practice" });
+    if (event.target === "market-practice-locked") setOpenPanel({ type: "market-practice-locked" });
+    if (event.target === "market-exit") {
+      setOpenPanel(null);
+      setReady(false);
+      setRoom("academy-agora");
+    }
   }, [applyCapitalChange]);
 
   useEffect(() => {
@@ -188,6 +235,14 @@ export default function AcademyWorld() {
     if (!ready) return;
     gameRef.current?.events.emit(ACADEMY_GAME_EVENTS.avatarColor, avatarColor);
   }, [avatarColor, ready]);
+
+  useEffect(() => {
+    if (!ready || room !== "market-plaza") return;
+    gameRef.current?.events.emit(ACADEMY_GAME_EVENTS.marketProgress, {
+      sellerVisited,
+      buyerVisited,
+    });
+  }, [buyerVisited, ready, room, sellerVisited]);
 
   const focusTarget = (target: AcademyTarget) => {
     setMapOpen(false);
@@ -219,10 +274,24 @@ export default function AcademyWorld() {
     setRoom("welcome-harbor");
   };
 
+  const enterMarketPlaza = () => {
+    setOpenPanel(null);
+    setMapOpen(false);
+    setPassportOpen(false);
+    setReady(false);
+    setRoom("market-plaza");
+  };
+
   const openMission = (missionId: string) => {
-    const status = getMissionStatus(currentLevelId, missionId);
+    const missionLevelId = missionId.startsWith("m1_") ? "level_1" : currentLevelId;
+    const status = getMissionStatus(missionLevelId, missionId);
     if (status === "locked") return;
     router.push(`/mission/${missionId}`);
+  };
+
+  const openMarketPractice = () => {
+    window.localStorage.setItem(RETURN_ROOM_KEY, "market-plaza");
+    openMission("m1_1");
   };
 
   const objective = room === "welcome-harbor"
@@ -231,14 +300,32 @@ export default function AcademyWorld() {
       : introStage === "find-token"
         ? "Encuentra la Ficha de Mercado"
         : "Cruza la puerta de Academia Ágora"
-    : "Visita el siguiente edificio educativo";
+    : room === "market-plaza"
+      ? !sellerVisited
+        ? "Habla con Elena para conocer la oferta"
+        : !buyerVisited
+          ? "Habla con Leo para conocer la demanda"
+          : "Entra al aula y demuestra lo aprendido"
+      : "Visita el siguiente edificio educativo";
+
+  const roomLabel = room === "welcome-harbor"
+    ? "Puerto de Bienvenida"
+    : room === "market-plaza"
+      ? "Mercado Plaza"
+      : "Academia Ágora";
 
   return (
     <section className="relative h-dvh min-h-[520px] w-full overflow-hidden bg-[#09131c] text-white">
       <div
         ref={mountRef}
         className="absolute inset-0 overflow-hidden [&_canvas]:!block"
-        aria-label={room === "welcome-harbor" ? "Puerto de Bienvenida jugable" : "Academia Ágora jugable"}
+        aria-label={
+          room === "welcome-harbor"
+            ? "Puerto de Bienvenida jugable"
+            : room === "market-plaza"
+              ? "Mercado Plaza jugable"
+              : "Academia Ágora jugable"
+        }
       />
 
       {(!ready || !startResolved) && (
@@ -274,7 +361,7 @@ export default function AcademyWorld() {
           <span>
             <span className="block font-display text-xs font-bold leading-none">Mercado Vivo</span>
             <span className="mt-1 block text-[8px] uppercase tracking-[0.16em] text-white/45">
-              {room === "welcome-harbor" ? "Puerto de Bienvenida" : "Academia Ágora"}
+              {roomLabel}
             </span>
           </span>
         </div>
@@ -411,12 +498,23 @@ export default function AcademyWorld() {
               onEnterAcademy={enterAcademy}
             />
           )
-          : (
+          : isMarketPanel(openPanel)
+            ? (
+              <MarketLessonPanel
+                panel={openPanel}
+                sellerVisited={sellerVisited}
+                buyerVisited={buyerVisited}
+                onClose={() => setOpenPanel(null)}
+                onPractice={openMarketPractice}
+              />
+            )
+            : (
             <AcademyPanel
               panel={openPanel}
               getMissionStatus={getMissionStatus}
               onClose={() => setOpenPanel(null)}
               onMission={openMission}
+              onEnterMarket={enterMarketPlaza}
             />
           )
       )}
@@ -611,16 +709,99 @@ function IntroPanel({
   );
 }
 
+function MarketLessonPanel({
+  panel,
+  sellerVisited,
+  buyerVisited,
+  onClose,
+  onPractice,
+}: {
+  panel: MarketPanelState;
+  sellerVisited: boolean;
+  buyerVisited: boolean;
+  onClose: () => void;
+  onPractice: () => void;
+}) {
+  if (panel.type === "market-seller") {
+    return (
+      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-2xl rounded-3xl border border-tp-gold/30 bg-[rgba(7,16,29,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
+        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
+        <p className="flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-tp-gold"><Coins size={13} /> Elena · vendedora de manzanas</p>
+        <h2 className="mt-2 font-display text-xl font-bold">“Hoy puedo ofrecer 12 cestas.”</h2>
+        <p className="mt-2 text-sm leading-relaxed text-white/58">La <strong className="text-white">oferta</strong> es la cantidad que los vendedores quieren y pueden vender a distintos precios. Si llegan más cosechas y la demanda no cambia, competirán por vender y el precio tenderá a bajar.</p>
+        <div className="mt-4 rounded-2xl border border-tp-gold/20 bg-tp-gold/[0.06] p-3 text-xs text-tp-gold">Oferta = intención y capacidad de vender.</div>
+        <button type="button" onClick={onClose} className="mt-5 flex items-center gap-2 rounded-2xl bg-tp-gold px-5 py-3 font-display text-sm font-bold text-[#14222a]">Entendido, buscar al comprador <ArrowRight size={15} /></button>
+      </div>
+    );
+  }
+
+  if (panel.type === "market-buyer") {
+    return (
+      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-2xl rounded-3xl border border-tp-info/30 bg-[rgba(7,16,29,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
+        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
+        <p className="flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-tp-info"><UserRound size={13} /> Leo · comprador del barrio</p>
+        <h2 className="mt-2 font-display text-xl font-bold">“Necesito 8 cestas para mi restaurante.”</h2>
+        <p className="mt-2 text-sm leading-relaxed text-white/58">La <strong className="text-white">demanda</strong> es la cantidad que los compradores quieren y pueden adquirir a distintos precios. Si aparecen más compradores y la oferta no aumenta, competirán por las cestas y el precio tenderá a subir.</p>
+        <div className="mt-4 rounded-2xl border border-tp-info/20 bg-tp-info/[0.06] p-3 text-xs text-tp-info">Demanda = intención y capacidad de comprar.</div>
+        <button type="button" onClick={onClose} className="mt-5 flex items-center gap-2 rounded-2xl bg-tp-info px-5 py-3 font-display text-sm font-bold text-[#10202a]">Entendido, revisar el precio <ArrowRight size={15} /></button>
+      </div>
+    );
+  }
+
+  if (panel.type === "market-board") {
+    const complete = sellerVisited && buyerVisited;
+    return (
+      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-xl rounded-3xl border border-white/15 bg-[rgba(7,16,29,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
+        <IconButton label="Cerrar explicación" onClick={onClose} className="absolute right-3 top-3" />
+        <p className="text-[9px] uppercase tracking-[0.18em] text-tp-gold">Pizarra del mercado</p>
+        <h2 className="mt-2 font-display text-xl font-bold">$2.00 es un precio de encuentro</h2>
+        <p className="mt-2 text-sm leading-relaxed text-white/58">
+          {complete
+            ? "No lo decidió una sola persona: apareció donde la cantidad ofrecida por vendedores pudo encontrarse con la cantidad demandada por compradores."
+            : "Para comprender por qué existe este precio, todavía necesitas escuchar a Elena y a Leo."}
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs">
+          <div className={`rounded-2xl border p-3 ${sellerVisited ? "border-tp-demand/25 bg-tp-demand/5 text-tp-demand" : "border-white/10 text-white/35"}`}>{sellerVisited ? "✓ Oferta comprendida" : "Oferta pendiente"}</div>
+          <div className={`rounded-2xl border p-3 ${buyerVisited ? "border-tp-info/25 bg-tp-info/5 text-tp-info" : "border-white/10 text-white/35"}`}>{buyerVisited ? "✓ Demanda comprendida" : "Demanda pendiente"}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (panel.type === "market-practice-locked") {
+    return (
+      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-lg rounded-3xl border border-white/15 bg-[rgba(7,16,29,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
+        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
+        <p className="flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-white/45"><LockKeyhole size={13} /> Aula cerrada</p>
+        <h2 className="mt-2 font-display text-xl font-bold">Observa antes de responder.</h2>
+        <p className="mt-2 text-sm leading-relaxed text-white/58">Habla con Elena y Leo. Cuando hayas comprendido oferta y demanda, la puerta reconocerá tu progreso.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-xl rounded-3xl border border-tp-demand/30 bg-[rgba(7,16,29,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
+      <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
+      <p className="flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-tp-demand"><Check size={13} /> Aula desbloqueada</p>
+      <h2 className="mt-2 font-display text-xl font-bold">Ya viste las dos fuerzas del mercado.</h2>
+      <p className="mt-2 text-sm leading-relaxed text-white/58">Ahora demuestra que puedes distinguir quién ofrece, quién demanda y por qué cambia un precio.</p>
+      <button type="button" onClick={onPractice} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-tp-gold px-5 py-3 font-display text-sm font-bold text-[#14222a]">Comenzar práctica M1.1 <ArrowRight size={15} /></button>
+    </div>
+  );
+}
+
 function AcademyPanel({
   panel,
   getMissionStatus,
   onClose,
   onMission,
+  onEnterMarket,
 }: {
   panel: AcademyPanelState;
   getMissionStatus: (levelId: string, missionId: string) => MissionStatus;
   onClose: () => void;
   onMission: (missionId: string) => void;
+  onEnterMarket: () => void;
 }) {
   if (panel.type === "aria") {
     return (
@@ -629,7 +810,7 @@ function AcademyPanel({
         <p className="flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-tp-info"><MessageCircle size={13} /> ARIA · guía de la academia</p>
         <h2 className="mt-2 font-display text-xl font-bold">Elige un edificio y aprende haciendo.</h2>
         <p className="mt-2 text-sm leading-relaxed text-white/58">Mercado Plaza explica quién participa. El Taller de Velas convierte precios en una vela. El Observatorio enseña a reconocer estructura y tendencia.</p>
-        <button type="button" onClick={() => onMission("m1_1")} className="mt-5 flex items-center gap-2 rounded-2xl bg-tp-gold px-5 py-3 font-display text-sm font-bold text-[#14222a]">
+        <button type="button" onClick={onEnterMarket} className="mt-5 flex items-center gap-2 rounded-2xl bg-tp-gold px-5 py-3 font-display text-sm font-bold text-[#14222a]">
           Entrar a Mercado Plaza <ArrowRight size={15} />
         </button>
       </div>
@@ -662,9 +843,9 @@ function AcademyPanel({
         <p className="text-xs font-semibold">{status === "locked" ? "Edificio bloqueado" : status === "completed" ? "Misión completada · puedes repetirla" : "Misión disponible"}</p>
         <p className="mt-1 text-[10px] text-white/42">{status === "locked" ? "Completa el edificio anterior para recibir acceso." : "Tu progreso quedará guardado en el Pasaporte del Explorador."}</p>
       </div>
-      <button type="button" disabled={status === "locked"} onClick={() => onMission(panel.missionId)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-tp-gold px-4 py-3 font-display text-sm font-bold text-[#14222a] disabled:cursor-not-allowed disabled:opacity-35">
+      <button type="button" disabled={status === "locked"} onClick={panel.missionId === "m1_1" ? onEnterMarket : () => onMission(panel.missionId)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-tp-gold px-4 py-3 font-display text-sm font-bold text-[#14222a] disabled:cursor-not-allowed disabled:opacity-35">
         {status === "locked" ? <LockKeyhole size={15} /> : <BookOpenCheck size={15} />}
-        {status === "completed" ? "Repetir misión" : "Entrar a la misión"}
+        {panel.missionId === "m1_1" ? "Entrar a Mercado Plaza" : status === "completed" ? "Repetir misión" : "Entrar a la misión"}
       </button>
     </div>
   );

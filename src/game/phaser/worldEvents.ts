@@ -11,8 +11,16 @@ export type WelcomeTarget =
   | "intro-gate"
   | "intro-gate-locked";
 
-export type WorldTarget = AcademyTarget | WelcomeTarget;
-export type WorldRoom = "welcome-harbor" | "academy-agora";
+export type MarketTarget =
+  | "market-seller"
+  | "market-buyer"
+  | "market-board"
+  | "market-practice"
+  | "market-practice-locked"
+  | "market-exit";
+
+export type WorldTarget = AcademyTarget | WelcomeTarget | MarketTarget;
+export type WorldRoom = "welcome-harbor" | "academy-agora" | "market-plaza";
 
 export type AcademyWorldEvent =
   | { type: "ready"; room: WorldRoom }
@@ -29,4 +37,5 @@ export const ACADEMY_GAME_EVENTS = {
   enableIntroToken: "world:intro-token",
   enableIntroGate: "world:intro-gate",
   enterAcademy: "world:enter-academy",
+  marketProgress: "world:market-progress",
 } as const;

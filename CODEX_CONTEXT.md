@@ -231,6 +231,7 @@ TraderPath ya no usa el dashboard como entrada principal. El jugador entra direc
 - `WelcomeHarborScene` implementa el Puerto de Bienvenida: movimiento por clic, ARIA, ficha coleccionable, recompensa única y puerta a Academia Ágora.
 - `AcademyAgoraScene` conserva Mercado Plaza, Taller de Velas, Observatorio y Portal Bitcoin como destinos físicos.
 - `AcademyWorld` contiene HUD ligero, personalización, mapa contextual y Pasaporte del Explorador.
+- `MarketPlazaScene` convierte M1.1 en el primer interior explorable: Elena explica oferta, Leo explica demanda, la pizarra conecta ambas fuerzas y el aula se desbloquea después de visitar a los dos NPC.
 - El Pasaporte reemplaza el dashboard visible y muestra rango, progreso, estado de misiones y repetición del tutorial.
 - En móvil vertical se solicita girar el dispositivo; el juego se ejecuta en horizontal para preservar las salas panorámicas.
 
@@ -252,15 +253,14 @@ LOGIN / REGISTRO
 
 ## 12. PRÓXIMO PASO RECOMENDADO
 
-Construir el interior jugable de Mercado Plaza para M1.1: puestos de compradores y vendedores, interacción oferta/demanda, NPC con acciones visibles, transición de sala y evaluación integrada sin apariencia de página web.
+Construir el interior del Taller de Velas para M1.2: mesa OHLC, cuatro estaciones visuales para Open/High/Low/Close, construcción guiada de cuerpo y mechas, y acceso a la evaluación solo después de completar la vela física.
 
 Después:
 
-1. Interior del Taller de Velas para M1.2.
-2. Interior del Observatorio para M1.3.
-3. Pipeline de fondos ilustrados y sprites finales.
-4. Sonido ambiental, efectos de recompensa y transiciones.
-5. Presencia social multijugador por salas, después de validar el bucle individual.
+1. Interior del Observatorio para M1.3.
+2. Pipeline de fondos ilustrados y sprites finales.
+3. Sonido ambiental, efectos de recompensa y transiciones.
+4. Presencia social multijugador por salas, después de validar el bucle individual.
 
 ---
 

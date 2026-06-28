@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import AcademyAgoraScene from "@/game/phaser/AcademyAgoraScene";
 import WelcomeHarborScene from "@/game/phaser/WelcomeHarborScene";
+import MarketPlazaScene from "@/game/phaser/MarketPlazaScene";
 import type { AcademyWorldEventHandler, WorldRoom } from "@/game/phaser/worldEvents";
 
 export function createAcademyGame(
@@ -28,7 +29,9 @@ export function createAcademyGame(
     scene: [
       room === "welcome-harbor"
         ? new WelcomeHarborScene(onWorldEvent)
-        : new AcademyAgoraScene(onWorldEvent),
+        : room === "market-plaza"
+          ? new MarketPlazaScene(onWorldEvent)
+          : new AcademyAgoraScene(onWorldEvent),
     ],
   });
 }
