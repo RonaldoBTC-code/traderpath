@@ -6,6 +6,7 @@ import TradingChart, {
   type ChartGuideLine,
   type ChartPriceLevel,
   type ChartStructureLabel,
+  type ChartVisibleRange,
   type ChartZone,
 } from "@/components/simulator/TradingChart";
 import {
@@ -20,13 +21,21 @@ interface ChartIdentification {
   zones: ChartZone[];
   labels: ChartStructureLabel[];
   guideLines: ChartGuideLine[];
+  visibleRange?: ChartVisibleRange;
   evidence: string;
 }
 
 export default function MissionMarketChart({ missionId }: { missionId: string }) {
   const config = MISSION_CHARTS[missionId];
   const candles = useMemo(
-    () => config ? generateEducationalCandles(config.pattern, missionId.length + missionId.charCodeAt(missionId.length - 1)) : [],
+    () => config
+      ? generateMissionCandles(
+          config.analysis,
+          config.pattern,
+          missionId.length + missionId.charCodeAt(missionId.length - 1),
+          config.symbol
+        )
+      : [],
     [config, missionId]
   );
   const identification = useMemo(
@@ -63,6 +72,7 @@ export default function MissionMarketChart({ missionId }: { missionId: string })
         zones={identification.zones}
         structureLabels={identification.labels}
         guideLines={identification.guideLines}
+        visibleRange={identification.visibleRange}
       />
 
       <div className="space-y-2 border-t border-tp-border px-4 py-3">
@@ -100,19 +110,24 @@ function createChartIdentification(candles: MarketCandle[], preset: ChartAnalysi
   ];
 
   if (preset === "ohlc") {
-    const index = largestBodyIndex(candles);
-    const selected = candles[index];
+    const bullish = candles[0];
+    const bearish = candles[1];
     return {
-      levels: [
-        { price: selected.high, title: "Máximo (H)", color: "#60A5FA" },
-        { price: selected.open, title: "Apertura (O)", color: "#F0C040" },
-        { price: selected.close, title: "Cierre (C)", color: "#22C55E" },
-        { price: selected.low, title: "Mínimo (L)", color: "#60A5FA" },
-      ],
+      levels: [],
       zones: [],
-      labels: [{ candleIndex: index, price: selected.high, text: "Vela seleccionada", tone: "gold" }],
+      labels: [
+        { candleIndex: 0, price: bullish.high, text: "Máximo (H)", tone: "info", offsetX: -78 },
+        { candleIndex: 0, price: bullish.close, text: "Cierre (C)", tone: "demand", offsetX: -72 },
+        { candleIndex: 0, price: bullish.open, text: "Apertura (O)", tone: "gold", offsetX: -82 },
+        { candleIndex: 0, price: bullish.low, text: "Mínimo (L)", tone: "info", offsetX: -72 },
+        { candleIndex: 1, price: bearish.high, text: "Máximo (H)", tone: "info", offsetX: 16 },
+        { candleIndex: 1, price: bearish.open, text: "Apertura (O)", tone: "gold", offsetX: 16 },
+        { candleIndex: 1, price: bearish.close, text: "Cierre (C)", tone: "supply", offsetX: 16 },
+        { candleIndex: 1, price: bearish.low, text: "Mínimo (L)", tone: "info", offsetX: 16 },
+      ],
       guideLines: [],
-      evidence: "Los cuatro precios pertenecen a la misma vela. Las mechas alcanzan H y L; el cuerpo une O con C.",
+      visibleRange: { from: -0.65, to: 1.65 },
+      evidence: "La vela alcista cierra por encima de su apertura; la bajista cierra por debajo. En ambas, las mechas conectan el cuerpo con máximo y mínimo.",
     };
   }
 
@@ -122,7 +137,10 @@ function createChartIdentification(candles: MarketCandle[], preset: ChartAnalysi
     const resistanceTop = Math.max(...resistanceTouches.map((item) => item.high)) + range * 0.01;
     const currentSupport = zone(candle(16).low + range * 0.018, 0.035);
     return {
-      levels: extremes(),
+      levels: [
+        { price: (resistanceBase + resistanceTop) / 2, title: "Resistencia", color: "#EF4444" },
+        { price: (currentSupport.from + currentSupport.to) / 2, title: "Soporte (HL)", color: "#22C55E" },
+      ],
       zones: [
         { from: resistanceBase, to: resistanceTop, label: "Resistencia: 3 rechazos", color: "supply" },
         { ...currentSupport, label: "Soporte estructural (HL)", color: "demand" },
@@ -154,7 +172,8 @@ function createChartIdentification(candles: MarketCandle[], preset: ChartAnalysi
     return {
       levels: [
         { price: equilibrium, title: "Equilibrio 50%", color: "#F0C040" },
-        ...extremes(),
+        { price: resistance, title: "Resistencia", color: "#EF4444" },
+        { price: support, title: "Soporte", color: "#22C55E" },
       ],
       zones: [
         { ...zone(support, 0.045), label: preset === "orders" ? "Buy Limit / soporte" : "Soporte: varios rebotes", color: "demand" },
@@ -163,7 +182,7 @@ function createChartIdentification(candles: MarketCandle[], preset: ChartAnalysi
       labels: [
         { candleIndex: anchor(5), price: candle(5).high, text: "Rechazo", tone: "supply" },
         { candleIndex: anchor(10), price: candle(10).low, text: "Rebote", tone: "demand" },
-        { candleIndex: anchor(16), price: candle(16).close, text: preset === "orders" ? "Precio actual" : "Sin ventaja", tone: "gold" },
+        { candleIndex: anchor(16), price: equilibrium, text: preset === "orders" ? "Precio medio" : "Zona media", tone: "gold" },
       ],
       guideLines: [],
       evidence: preset === "orders"
@@ -180,7 +199,6 @@ function createChartIdentification(candles: MarketCandle[], preset: ChartAnalysi
       levels: [
         { price: brokenResistance, title: "Nivel roto", color: "#F0C040" },
         ...(preset === "integrated" ? [{ price: invalidation, title: "Invalidación", color: "#EF4444" }] : []),
-        ...extremes(),
       ],
       zones: [{ ...retest, label: "Resistencia → soporte", color: "demand" }],
       labels: [
@@ -220,7 +238,7 @@ function createChartIdentification(candles: MarketCandle[], preset: ChartAnalysi
     const demand = zone(candle(11).low + range * 0.025, 0.045);
     const supply = zone(candle(2).high - range * 0.02, 0.04);
     return {
-      levels: extremes(),
+      levels: [],
       zones: [
         { ...demand, label: preset === "candle-context" ? "Soporte previo" : "Origen del impulso", color: "demand" },
         { ...supply, label: "Oferta pendiente", color: "supply" },
@@ -230,6 +248,9 @@ function createChartIdentification(candles: MarketCandle[], preset: ChartAnalysi
         { candleIndex: anchor(14), price: candle(14).high, text: "Salida impulsiva", tone: "info" },
       ],
       guideLines: [],
+      visibleRange: preset === "candle-context"
+        ? { from: Math.max(0, anchor(8) - 1), to: Math.min(candles.length - 1, anchor(15) + 1) }
+        : undefined,
       evidence: preset === "candle-context"
         ? "La vela de rechazo importa porque su mecha atraviesa soporte y el cierre recupera la zona; aislada no sería una señal suficiente."
         : "La zona se dibuja sobre la base previa al desplazamiento. El movimiento impulsivo posterior aporta la evidencia del desequilibrio.",
@@ -240,7 +261,7 @@ function createChartIdentification(candles: MarketCandle[], preset: ChartAnalysi
     const lower = zone(percentile(candles.map((item) => item.low), 0.2), 0.05);
     const upper = zone(percentile(candles.map((item) => item.high), 0.83), 0.05);
     return {
-      levels: extremes(),
+      levels: [],
       zones: [
         { ...lower, label: "Demanda: compradores", color: "demand" },
         { ...upper, label: "Oferta: vendedores", color: "supply" },
@@ -256,7 +277,7 @@ function createChartIdentification(candles: MarketCandle[], preset: ChartAnalysi
 
   if (preset === "market-cycle") {
     return {
-      levels: extremes(),
+      levels: [],
       zones: [
         { ...zone(candle(3).close, 0.055), label: "Acumulación", color: "demand" },
         { ...zone(candle(13).close, 0.055), label: "Distribución", color: "supply" },
@@ -275,7 +296,7 @@ function createChartIdentification(candles: MarketCandle[], preset: ChartAnalysi
   if (preset === "dominance") {
     const resistance = zone(percentile(candles.map((item) => item.high), 0.88), 0.04);
     return {
-      levels: extremes(),
+      levels: [],
       zones: [{ ...resistance, label: "Techo de dominancia", color: "supply" }],
       labels: [
         { candleIndex: anchor(6), price: candle(6).low, text: "BTC gana cuota", tone: "demand" },
@@ -322,19 +343,62 @@ function percentile(values: number[], value: number) {
   return sorted[Math.round((sorted.length - 1) * value)];
 }
 
-function largestBodyIndex(candles: MarketCandle[]) {
-  let result = 0;
-  let largest = 0;
-  for (let index = 0; index < candles.length; index += 1) {
-    const size = Math.abs(candles[index].close - candles[index].open);
-    if (size > largest) {
-      result = index;
-      largest = size;
-    }
-  }
-  return result;
-}
-
 function emptyIdentification(): ChartIdentification {
   return { levels: [], zones: [], labels: [], guideLines: [], evidence: "" };
+}
+
+function generateMissionCandles(
+  preset: ChartAnalysisPreset,
+  pattern: Parameters<typeof generateEducationalCandles>[0],
+  seed: number,
+  symbol: string
+) {
+  if (preset === "candle-context") {
+    const result = generateEducationalCandles(pattern, seed);
+    const pivotIndex = Math.round((11 / 17) * (result.length - 1));
+    const previousLow = Math.min(...result.slice(0, pivotIndex).map((candle) => candle.low));
+    const low = previousLow - 3.5;
+    result[pivotIndex] = {
+      ...result[pivotIndex],
+      open: roundPrice(low + 7.2),
+      high: roundPrice(low + 9.4),
+      low: roundPrice(low),
+      close: roundPrice(low + 8.5),
+      volume: 340,
+    };
+    if (result[pivotIndex + 1]) {
+      result[pivotIndex + 1] = { ...result[pivotIndex + 1], open: result[pivotIndex].close };
+    }
+    return scaleCandles(result, symbol);
+  }
+
+  if (preset !== "ohlc") return scaleCandles(generateEducationalCandles(pattern, seed), symbol);
+
+  const time = 1_700_000_000 + seed * 100_000;
+  return scaleCandles([
+    { time, open: 92, high: 128, low: 84, close: 118, volume: 240 },
+    { time: time + 3_600, open: 120, high: 130, low: 82, close: 94, volume: 260 },
+  ], symbol);
+}
+
+function roundPrice(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function scaleCandles(candles: MarketCandle[], symbol: string) {
+  const factor = symbol === "BTC/USDT" ? 720
+    : symbol === "ETH/USDT" ? 28
+      : symbol === "SOL/USDT" ? 1.35
+        : symbol === "BTC.D" ? 0.48
+          : symbol === "MANZANAS/USD" ? 0.018
+            : 1;
+
+  if (factor === 1) return candles;
+  return candles.map((candle) => ({
+    ...candle,
+    open: roundPrice(candle.open * factor),
+    high: roundPrice(candle.high * factor),
+    low: roundPrice(candle.low * factor),
+    close: roundPrice(candle.close * factor),
+  }));
 }

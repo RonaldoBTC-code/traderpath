@@ -32,6 +32,8 @@ export interface ChartStructureLabel {
   price: number;
   text: string;
   tone?: "demand" | "supply" | "info" | "gold";
+  offsetX?: number;
+  offsetY?: number;
 }
 
 export interface ChartGuideLine {
@@ -43,6 +45,11 @@ export interface ChartGuideLine {
   tone?: "demand" | "supply" | "info" | "gold";
 }
 
+export interface ChartVisibleRange {
+  from: number;
+  to: number;
+}
+
 interface Props {
   candles: MarketCandle[];
   height?: number;
@@ -52,6 +59,7 @@ interface Props {
   zones?: ChartZone[];
   structureLabels?: ChartStructureLabel[];
   guideLines?: ChartGuideLine[];
+  visibleRange?: ChartVisibleRange;
 }
 
 type Point = { x: number; y: number };
@@ -75,6 +83,7 @@ export default function TradingChart({
   zones = [],
   structureLabels = [],
   guideLines = [],
+  visibleRange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -82,6 +91,7 @@ export default function TradingChart({
   const initialCandlesRef = useRef(candles);
   const initialHeightRef = useRef(height);
   const initialPriceLevelsRef = useRef(priceLevels);
+  const initialVisibleRangeRef = useRef(visibleRange);
   const pointerStartRef = useRef<Point | null>(null);
   const drawingIdRef = useRef(1);
   const [tool, setTool] = useState<DrawingTool>("cursor");
@@ -137,7 +147,11 @@ export default function TradingChart({
           title: level.title,
         });
       });
-      chart.timeScale().fitContent();
+      if (initialVisibleRangeRef.current) {
+        chart.timeScale().setVisibleLogicalRange(initialVisibleRangeRef.current);
+      } else {
+        chart.timeScale().fitContent();
+      }
 
       observer = new ResizeObserver(([entry]) => {
         chart.applyOptions({ width: entry.contentRect.width });
@@ -160,7 +174,12 @@ export default function TradingChart({
     seriesRef.current.setData(toChartData(candles));
   }, [candles]);
 
-  const priceRange = getPriceRange(candles);
+  const logicalRange = visibleRange ?? { from: 0, to: Math.max(1, candles.length - 1) };
+  const visibleCandles = candles.slice(
+    Math.max(0, Math.floor(logicalRange.from)),
+    Math.min(candles.length, Math.ceil(logicalRange.to) + 1)
+  );
+  const priceRange = getPriceRange(visibleCandles.length > 0 ? visibleCandles : candles);
 
   function pointFromEvent(event: React.PointerEvent<SVGSVGElement>): Point {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -245,19 +264,21 @@ export default function TradingChart({
           return (
             <div
               key={`${zone.label}-${zone.from}`}
-              className={`pointer-events-none absolute left-[7%] right-[9%] border ${
+              className={`pointer-events-none absolute left-[7%] right-[9%] z-10 border ${
                 zone.color === "demand"
-                  ? "border-tp-demand/45 bg-tp-demand/10 text-tp-demand"
-                  : "border-tp-supply/45 bg-tp-supply/10 text-tp-supply"
+                  ? "border-tp-demand/70 bg-tp-demand/[0.22] text-tp-demand"
+                  : "border-tp-supply/70 bg-tp-supply/[0.22] text-tp-supply"
               }`}
-              style={{ top: `${top}%`, height: `${Math.max(4, bottom - top)}%` }}
+              style={{ top: `${top}%`, height: `${Math.max(5, bottom - top)}%` }}
             >
-              <span className="absolute right-1 top-1 rounded bg-tp-base/80 px-1.5 py-0.5 font-data text-[8px] uppercase tracking-wider">{zone.label}</span>
+              <span className="absolute left-1 top-1 rounded bg-tp-base/90 px-1.5 py-0.5 font-data text-[8px] uppercase tracking-wider">{zone.label}</span>
             </div>
           );
         })}
 
-        {structureLabels.map((label) => (
+        {structureLabels
+          .filter((label) => label.candleIndex >= logicalRange.from - 0.5 && label.candleIndex <= logicalRange.to + 0.5)
+          .map((label) => (
           <span
             key={`${label.text}-${label.candleIndex}`}
             className={`pointer-events-none absolute z-10 rounded border bg-tp-base/85 px-1.5 py-0.5 font-data text-[8px] font-semibold ${
@@ -267,8 +288,9 @@ export default function TradingChart({
                     : "border-tp-info/40 text-tp-info"
             }`}
             style={{
-              left: `${candleIndexToPercent(label.candleIndex, candles.length)}%`,
+              left: `${candleIndexToPercent(label.candleIndex, logicalRange)}%`,
               top: `${priceToPercent(label.price, priceRange)}%`,
+              transform: `translate(${label.offsetX ?? 0}px, calc(-50% + ${label.offsetY ?? 0}px))`,
             }}
           >
             {label.text}
@@ -284,9 +306,9 @@ export default function TradingChart({
           >
             {guideLines.map((line) => {
               const color = toneColor(line.tone);
-              const x1 = candleIndexToPercent(line.startIndex, candles.length) * 10;
+              const x1 = candleIndexToPercent(line.startIndex, logicalRange) * 10;
               const y1 = priceToPercent(line.startPrice, priceRange) * 10;
-              const x2 = candleIndexToPercent(line.endIndex, candles.length) * 10;
+              const x2 = candleIndexToPercent(line.endIndex, logicalRange) * 10;
               const y2 = priceToPercent(line.endPrice, priceRange) * 10;
               return (
                 <g key={`${line.label}-${line.startIndex}`}>
@@ -411,8 +433,8 @@ function priceToPercent(price: number, range: { min: number; max: number }) {
   return Math.max(12, Math.min(88, value));
 }
 
-function candleIndexToPercent(index: number, count: number) {
-  return 2 + (Math.max(0, Math.min(count - 1, index)) / Math.max(1, count - 1)) * 86;
+function candleIndexToPercent(index: number, range: ChartVisibleRange) {
+  return 2 + ((index - range.from) / Math.max(1, range.to - range.from)) * 86;
 }
 
 function toneColor(tone: ChartGuideLine["tone"]) {
