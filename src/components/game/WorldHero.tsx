@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Compass, Flag, MapPin } from "lucide-react";
+import { ArrowRight, Compass, Flag, Gamepad2, MapPin } from "lucide-react";
 
 interface Props {
   levelTitle: string;
@@ -36,7 +36,7 @@ export default function WorldHero({ levelTitle, tagline, currentMissionId, compl
           <p className="mt-3 max-w-md text-sm leading-relaxed text-white/70 sm:text-base">{tagline}</p>
         </div>
 
-        <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-end">
+        <div className="mt-8 flex flex-col items-stretch gap-3 lg:flex-row lg:items-end">
           <div className="min-w-[220px] flex-1 rounded-2xl border border-white/12 bg-[#07101d]/55 p-4 backdrop-blur-md">
             <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-white/60">
               <span className="flex items-center gap-2"><Flag size={12} /> Ruta completada</span>
@@ -47,12 +47,18 @@ export default function WorldHero({ levelTitle, tagline, currentMissionId, compl
             </div>
             <p className="mt-2 text-xs text-white/60">{completed} de {total} misiones superadas</p>
           </div>
+          <Link
+            href="/world"
+            className="flex items-center justify-center gap-2 rounded-2xl bg-tp-gold px-5 py-4 font-display text-sm font-bold text-tp-base shadow-[0_12px_34px_rgba(240,192,64,0.28)] transition hover:-translate-y-0.5 hover:brightness-110"
+          >
+            <Gamepad2 size={17} /> Entrar a Academia Ágora
+          </Link>
           {currentMissionId && (
             <Link
               href={`/mission/${currentMissionId}`}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-tp-gold px-5 py-4 font-display text-sm font-bold text-tp-base shadow-[0_12px_34px_rgba(240,192,64,0.28)] transition hover:-translate-y-0.5 hover:brightness-110"
+              className="flex items-center justify-center gap-2 rounded-2xl border border-white/15 bg-[#07101d]/65 px-5 py-4 font-display text-sm font-bold text-white backdrop-blur transition hover:-translate-y-0.5 hover:border-tp-gold/40"
             >
-              Continuar aventura <ArrowRight size={17} />
+              Abrir misión directa <ArrowRight size={17} />
             </Link>
           )}
         </div>
