@@ -48,10 +48,13 @@ src/
 │   ├── (game)/layout.tsx                Header HUD (client component, SIN guard de auth)
 │   ├── (game)/dashboard/page.tsx        Lista misiones del nivel actual
 │   ├── (game)/mission/[id]/page.tsx     ⚠️ Motor universal de misiones (507 líneas)
+│   ├── (game)/world/page.tsx            Mundo explorable (dashboard redirige aquí)
 │   ├── auth/callback/route.ts           OAuth callback
-│   └── globals.css                      Design tokens VDD v1.0
+│   └── globals.css                      Design tokens VDD v2.0
 ├── components/game/                     10 mini-juegos + QuizEngine + MissionTutorial
-├── components/narrative/                CharacterDialogue + 6 personajes
+├── components/narrative/                CharacterDialogue + 6 retratos SVG cartoon
+├── components/world/AcademyWorld.tsx    Shell React del mundo (HUD, paneles, salas)
+├── game/phaser/                         4 escenas Phaser + characterArt.ts compartido
 ├── lib/content/level1.ts                Tipos raíz + 5 misiones N1
 ├── lib/content/level2.ts                5 misiones N2 + los 7 mercados
 ├── lib/content/level3-crypto.ts         5 misiones N3 Crypto
@@ -106,25 +109,36 @@ Detalles que importan:
 
 ---
 
-## 5. Design system (VDD v1.0)
+## 5. Design system (VDD v2.0 — "Día de Mercado", cartoon claro)
+
+Dirección visual estilo Club Penguin: mundo diurno, colorido y amable. Los nombres
+de token se conservaron de v1.0; solo cambiaron los valores (jul 2026).
 
 | Token | Hex | Uso |
 |---|---|---|
-| `tp-base` | #0A0E1A | Fondo |
-| `tp-surface` | #131827 | Cards, paneles |
-| `tp-surface-alt` | #1C2233 | Hover |
-| `tp-border` | #1E2D45 | Bordes |
-| `tp-text` | #E8EAF0 | Texto |
-| `tp-text-muted` | #8894A8 | Secundario |
-| `tp-gold` | #F0C040 | XP, logros, marca, CTAs |
-| `tp-demand` | #22C55E | Alcista, ganancias |
-| `tp-supply` | #EF4444 | Bajista, pérdidas |
-| `tp-info` | #60A5FA | ARIA |
-| `tp-warning` | #F59E0B | Precaución |
+| `tp-base` | #EAF4FE | Fondo (celeste claro) |
+| `tp-surface` | #FFFFFF | Cards, paneles, burbujas |
+| `tp-surface-alt` | #F1F8FF | Hover |
+| `tp-border` | #C9DCEF | Bordes (usar `border-2`, look chunky) |
+| `tp-text` | #1E2A44 | Texto (navy) — también tinta sobre botones dorados |
+| `tp-text-muted` | #5D6E8C | Secundario |
+| `tp-gold` | #E5960A | XP, logros, marca, CTAs (ámbar) |
+| `tp-demand` | #16A34A | Alcista, ganancias |
+| `tp-supply` | #DC2626 | Bajista, pérdidas |
+| `tp-info` | #2563EB | ARIA |
+| `tp-warning` | #D97706 | Precaución |
 
-Fuentes: `font-display` (Space Grotesk), `font-body` (DM Sans), `font-data` (JetBrains Mono — todo dato numérico, precios, XP).
+Fuentes: `font-display` (Baloo 2 — redonda cartoon, títulos y CTAs), `font-body`
+(DM Sans), `font-data` (JetBrains Mono — todo dato numérico, precios, XP).
 
-Solo estos tokens. Nada de `bg-gray-900`, `text-white`, ni hex sueltos.
+Solo estos tokens. Nada de `bg-gray-*`, ni hex sueltos. Los valores viven
+duplicados en `globals.css` y `tailwind.config.ts` — si cambias uno, cambia el
+otro (no migrar a `var()` sin resolver los modificadores `/10` de Tailwind).
+
+Idioma de botones: texto navy (`text-tp-text`) sobre fondos de acento (dorado,
+crypto); blanco solo sobre `tp-info`/`tp-supply`. El arte de personajes del
+mundo Phaser vive en `src/game/phaser/characterArt.ts` — una sola
+implementación para Explorador, ARIA y NPCs en todas las escenas.
 
 ---
 
@@ -167,7 +181,7 @@ Rangos por XP: Novato 0 · Aprendiz 1 000 · Analista 2 500 · Estratega 5 000 �
 2. **No inventes hydration errors.** Todo lo que lea de localStorage o aleatorice pasa por `useHasMounted` o `useEffect`. El dashboard y el layout ya tienen el patrón — cópialo.
 3. **Progresión secuencial.** Nunca permitas saltar una misión. Nunca des recompensa doble (`completeMission` ya deduplica; no lo rompas).
 4. **Feedback educativo siempre.** Nunca "incorrecto" a secas. Cada opción de quiz lleva su `feedback` explicando *por qué*. Es la regla pedagógica central.
-5. **Dark mode.** Ningún fondo claro, nunca.
+5. **Tema claro cartoon (VDD v2.0).** Fondo celeste, superficies blancas, texto navy. Los charts van sobre blanco con los acentos v2. Excepción permitida: escenas ilustradas autocontenidas (postales de ciudad) pueden tener su propia iluminación.
 6. **Mobile-first**, desde 375px.
 7. **Trabaja sobre lo existente.** No reescribas componentes que funcionan para "mejorarlos".
 8. **Reglas pedagógicas del dominio, inviolables:** el Stop Loss se define *antes* de que el simulador se desbloquee; toda señal de patrón exige confirmación antes de operar; el checklist de 7 pasos se completa antes de cualquier operación.

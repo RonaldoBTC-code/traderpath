@@ -11,37 +11,30 @@ export default function ElEspeculador({ size = 48 }: { size?: number }) {
       className="shrink-0"
     >
       {/* Background circle */}
-      <circle cx="50" cy="50" r="48" fill="#1A2B3C" stroke="#FF4757" strokeWidth="2" />
-      {/* Face - angular, sharp */}
-      <path
-        d="M32 50 Q32 30, 50 28 Q68 30, 68 50 Q68 72, 50 75 Q32 72, 32 50Z"
-        fill="#2A3F55"
-      />
-      {/* Slicked back hair */}
-      <path
-        d="M32 40 Q35 22, 50 20 Q65 22, 68 40 L65 38 Q62 25, 50 24 Q38 25, 35 38Z"
-        fill="#0D1B2A"
-        stroke="#FF4757"
-        strokeWidth="0.5"
-        opacity="0.8"
-      />
-      {/* Eyes - sharp, confident */}
-      <path d="M38 49 L46 49 L44 53 L38 53Z" fill="#0D1B2A" />
-      <path d="M54 49 L62 49 L62 53 L56 53Z" fill="#0D1B2A" />
-      {/* Red eye glow */}
-      <circle cx="42" cy="51" r="2" fill="#FF4757" opacity="0.9" />
-      <circle cx="58" cy="51" r="2" fill="#FF4757" opacity="0.9" />
-      {/* Eyebrows - arrogant, raised */}
-      <path d="M37 45 L47 43" stroke="#FF4757" strokeWidth="1.5" opacity="0.7" />
-      <path d="M53 43 L63 45" stroke="#FF4757" strokeWidth="1.5" opacity="0.7" />
+      <circle cx="50" cy="50" r="48" fill="#FEE2E2" stroke="#DC2626" strokeWidth="3" />
+      {/* Face */}
+      <circle cx="50" cy="52" r="25" fill="#FBD7B0" stroke="#1E2A44" strokeWidth="2.5" />
+      {/* Slicked-back hair */}
+      <path d="M27 48 Q27 24 50 23 Q73 24 73 48 Q68 32 50 31 Q32 32 27 48Z" fill="#3B2F2F" stroke="#1E2A44" strokeWidth="2.5" />
+      {/* Cool sunglasses, gold tint */}
+      <rect x="32" y="45" width="15" height="11" rx="5" fill="#F5B301" stroke="#1E2A44" strokeWidth="2.5" />
+      <rect x="53" y="45" width="15" height="11" rx="5" fill="#F5B301" stroke="#1E2A44" strokeWidth="2.5" />
+      <path d="M47 49 L53 49" stroke="#1E2A44" strokeWidth="2.5" />
+      <circle cx="37" cy="48.5" r="2" fill="#FFFFFF" opacity="0.85" />
+      <circle cx="58" cy="48.5" r="2" fill="#FFFFFF" opacity="0.85" />
+      {/* Confident raised eyebrow */}
+      <path d="M54 40 Q60 37 66 40" stroke="#3B2F2F" strokeWidth="3" strokeLinecap="round" />
+      <path d="M34 41 Q40 39 45 41" stroke="#3B2F2F" strokeWidth="3" strokeLinecap="round" />
       {/* Smirk */}
-      <path d="M42 63 Q50 60, 60 65" stroke="#FF4757" strokeWidth="1.5" fill="none" opacity="0.8" />
-      {/* Dollar signs floating */}
-      <text x="22" y="35" fontSize="8" fill="#FF4757" opacity="0.4">$</text>
-      <text x="72" y="40" fontSize="6" fill="#FF4757" opacity="0.3">$</text>
-      <text x="18" y="65" fontSize="7" fill="#FF4757" opacity="0.3">$</text>
-      {/* Tie / collar hint */}
-      <path d="M47 75 L50 82 L53 75" fill="#FF4757" opacity="0.6" />
+      <path d="M42 64 Q50 68 60 62" stroke="#1E2A44" strokeWidth="2.8" strokeLinecap="round" fill="none" />
+      {/* Suit collar + red tie */}
+      <path d="M38 74 L50 80 L62 74" stroke="#1E2A44" strokeWidth="2.5" fill="none" />
+      <path d="M47 77 L50 84 L53 77 L50 74 Z" fill="#DC2626" stroke="#1E2A44" strokeWidth="1.8" />
+      {/* Floating coins */}
+      <circle cx="23" cy="34" r="6" fill="#F5B301" stroke="#1E2A44" strokeWidth="1.8" />
+      <text x="23" y="37.5" textAnchor="middle" fontSize="8" fontWeight="800" fill="#1E2A44">$</text>
+      <circle cx="78" cy="30" r="4.5" fill="#F5B301" stroke="#1E2A44" strokeWidth="1.5" />
+      <text x="78" y="33" textAnchor="middle" fontSize="6.5" fontWeight="800" fill="#1E2A44">$</text>
     </svg>
   );
 }

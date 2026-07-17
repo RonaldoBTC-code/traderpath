@@ -159,7 +159,7 @@ export default function OrderPanel({
       <button
         onClick={execute}
         disabled={!canExecute}
-        className="w-full rounded-sm bg-tp-gold px-4 py-3 font-display font-bold text-tp-base disabled:cursor-not-allowed disabled:opacity-35"
+        className="w-full rounded-sm bg-tp-gold px-4 py-3 font-display font-bold text-tp-text disabled:cursor-not-allowed disabled:opacity-35"
       >
         {checklistComplete ? "Ejecutar operación virtual" : "Completa el checklist"}
       </button>

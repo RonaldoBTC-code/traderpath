@@ -77,7 +77,7 @@ export default function DominanceGauge({ scenarios, requiredCorrect, onComplete 
       <div className="space-y-4 text-center">
         <p className="font-display font-bold text-tp-warning">Resultado: {finishedScore}%</p>
         <p className="text-sm text-tp-text-muted">Necesitas {requiredCorrect} respuestas correctas. Relaciona dominancia y tendencia; ninguna funciona por separado.</p>
-        <button onClick={reset} className="rounded-sm bg-tp-gold px-5 py-2 font-display font-bold text-tp-base">Reintentar</button>
+        <button onClick={reset} className="rounded-sm bg-tp-gold px-5 py-2 font-display font-bold text-tp-text">Reintentar</button>
       </div>
     );
   }
@@ -134,7 +134,7 @@ export default function DominanceGauge({ scenarios, requiredCorrect, onComplete 
             {isCorrect ? "Lectura correcta" : `Mejor decisión: ${DECISIONS.find((item) => item.id === current.answer)?.label}`}
           </p>
           <p className="mt-1 text-xs text-tp-text-muted">{EXPLANATIONS[current.answer]}</p>
-          <button onClick={next} className="mt-3 rounded-sm bg-tp-gold px-4 py-2 text-xs font-bold text-tp-base">
+          <button onClick={next} className="mt-3 rounded-sm bg-tp-gold px-4 py-2 text-xs font-bold text-tp-text">
             {currentIndex === scenarios.length - 1 ? "Ver resultado" : "Siguiente lectura"}
           </button>
         </div>

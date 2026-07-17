@@ -133,7 +133,7 @@ export default function CandlestickBuilder({ scenarios, onComplete }: Props) {
           <button
             type="button"
             onClick={() => tutorialStep < tutorialSteps.length - 1 ? setTutorialStep((stepIndex) => stepIndex + 1) : setPhase("game")}
-            className="flex-1 rounded-xl bg-tp-gold px-5 py-2.5 font-display text-sm font-bold text-tp-base transition hover:brightness-110"
+            className="flex-1 rounded-xl bg-tp-gold px-5 py-2.5 font-display text-sm font-bold text-tp-text transition hover:brightness-110"
           >
             {tutorialStep < tutorialSteps.length - 1 ? "Siguiente paso →" : "Practicar con la fórmula →"}
           </button>
@@ -251,7 +251,7 @@ export default function CandlestickBuilder({ scenarios, onComplete }: Props) {
           type="button"
           onClick={checkAnswer}
           disabled={!allFieldsReady}
-          className="w-full rounded-xl bg-tp-gold px-4 py-3 font-display font-bold text-tp-base transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-xl bg-tp-gold px-4 py-3 font-display font-bold text-tp-text transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Comprobar mis cálculos
         </button>
@@ -267,7 +267,7 @@ export default function CandlestickBuilder({ scenarios, onComplete }: Props) {
               if (feedback.correct || attempts >= 3) advance();
               else setFeedback(null);
             }}
-            className="mt-3 rounded-lg bg-tp-gold px-4 py-2 font-display text-xs font-bold text-tp-base"
+            className="mt-3 rounded-lg bg-tp-gold px-4 py-2 font-display text-xs font-bold text-tp-text"
           >
             {feedback.correct
               ? currentIndex < scenarios.length - 1 ? "Siguiente vela →" : "Ver resultado →"

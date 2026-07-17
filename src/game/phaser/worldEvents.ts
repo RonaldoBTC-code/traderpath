@@ -19,8 +19,25 @@ export type MarketTarget =
   | "market-practice-locked"
   | "market-exit";
 
-export type WorldTarget = AcademyTarget | WelcomeTarget | MarketTarget;
-export type WorldRoom = "welcome-harbor" | "academy-agora" | "market-plaza";
+export type CandleTarget =
+  | "candle-open"
+  | "candle-high"
+  | "candle-low"
+  | "candle-close"
+  | "candle-direction"
+  | "candle-direction-locked"
+  | "candle-body"
+  | "candle-body-locked"
+  | "candle-upper-wick"
+  | "candle-upper-wick-locked"
+  | "candle-lower-wick"
+  | "candle-lower-wick-locked"
+  | "candle-practice"
+  | "candle-practice-locked"
+  | "candle-exit";
+
+export type WorldTarget = AcademyTarget | WelcomeTarget | MarketTarget | CandleTarget;
+export type WorldRoom = "welcome-harbor" | "academy-agora" | "market-plaza" | "candle-workshop";
 
 export type AcademyWorldEvent =
   | { type: "ready"; room: WorldRoom }
@@ -38,4 +55,5 @@ export const ACADEMY_GAME_EVENTS = {
   enableIntroGate: "world:intro-gate",
   enterAcademy: "world:enter-academy",
   marketProgress: "world:market-progress",
+  candleProgress: "world:candle-progress",
 } as const;

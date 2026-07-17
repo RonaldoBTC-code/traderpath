@@ -75,7 +75,7 @@ export default function ChartTapGame({ charts, passingScore = 70, onComplete }: 
       <div className="space-y-4 py-4 text-center">
         <p className="font-display text-lg font-bold text-tp-warning">Necesitas reforzar la estructura</p>
         <p className="text-sm text-tp-text-muted">Obtuviste {failedScore}%. Debes alcanzar {passingScore}% antes de continuar.</p>
-        <button onClick={retry} className="rounded-sm bg-tp-gold px-5 py-2 font-bold text-tp-base">Reintentar con nuevos gráficos</button>
+        <button onClick={retry} className="rounded-sm bg-tp-gold px-5 py-2 font-bold text-tp-text">Reintentar con nuevos gráficos</button>
       </div>
     );
   }
@@ -106,7 +106,7 @@ export default function ChartTapGame({ charts, passingScore = 70, onComplete }: 
             {feedback === "correct" ? "Lectura correcta" : `Era ${current.type === "bullish" ? "alcista" : current.type === "bearish" ? "bajista" : "lateral"}`}
           </p>
           <p className="mt-1 text-xs text-tp-text-muted">{EXPLANATIONS[current.type]}</p>
-          <button onClick={handleNext} className="mt-3 rounded-sm bg-tp-gold px-4 py-2 text-xs font-bold text-tp-base">
+          <button onClick={handleNext} className="mt-3 rounded-sm bg-tp-gold px-4 py-2 text-xs font-bold text-tp-text">
             {currentIndex === shuffledCharts.length - 1 ? "Continuar al quiz" : "Siguiente gráfico"}
           </button>
         </div>

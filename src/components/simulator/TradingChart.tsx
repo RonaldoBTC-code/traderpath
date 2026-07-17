@@ -122,26 +122,26 @@ export default function TradingChart({
         width: containerRef.current.clientWidth,
         height: initialHeightRef.current,
         layout: {
-          background: { type: ColorType.Solid, color: "#0A0E1A" },
-          textColor: "#8894A8",
+          background: { type: ColorType.Solid, color: "#FFFFFF" },
+          textColor: "#5D6E8C",
           fontFamily: "JetBrains Mono, monospace",
         },
         grid: {
-          vertLines: { color: "#131827" },
-          horzLines: { color: "#1E2D45" },
+          vertLines: { color: "#EDF4FC" },
+          horzLines: { color: "#E2ECF7" },
         },
         crosshair: { mode: CrosshairMode.Normal },
-        rightPriceScale: { borderColor: "#1E2D45", scaleMargins: { top: 0.12, bottom: 0.12 } },
-        timeScale: { borderColor: "#1E2D45", timeVisible: true, secondsVisible: false },
+        rightPriceScale: { borderColor: "#C9DCEF", scaleMargins: { top: 0.12, bottom: 0.12 } },
+        timeScale: { borderColor: "#C9DCEF", timeVisible: true, secondsVisible: false },
       });
 
       const series = chart.addCandlestickSeries({
-        upColor: "#22C55E",
-        downColor: "#EF4444",
-        borderUpColor: "#22C55E",
-        borderDownColor: "#EF4444",
-        wickUpColor: "#22C55E",
-        wickDownColor: "#EF4444",
+        upColor: "#16A34A",
+        downColor: "#DC2626",
+        borderUpColor: "#16A34A",
+        borderDownColor: "#DC2626",
+        wickUpColor: "#16A34A",
+        wickDownColor: "#DC2626",
       });
 
       chartRef.current = chart;
@@ -292,7 +292,7 @@ export default function TradingChart({
   return (
     <div className="border-y border-tp-border/70 bg-tp-base">
       {drawingEnabled && (
-        <div className="flex flex-wrap items-center gap-1 border-b border-tp-border bg-[#0d1220] px-2 py-2" aria-label="Herramientas de dibujo">
+        <div className="flex flex-wrap items-center gap-1 border-b border-tp-border bg-tp-surface-alt px-2 py-2" aria-label="Herramientas de dibujo">
           <ToolButton active={tool === "cursor"} label="Navegar" onClick={() => setTool("cursor")}><MousePointer2 size={15} /></ToolButton>
           <ToolButton active={tool === "pencil"} label="Dibujo libre" onClick={() => setTool("pencil")}><Pencil size={15} /></ToolButton>
           <ToolButton active={tool === "trendline"} label="Línea de tendencia" onClick={() => setTool("trendline")}><TrendingUp size={15} /></ToolButton>
@@ -459,7 +459,7 @@ function DrawingShape({
   width: number;
   chartToPixel: (point: ChartPoint) => { x: number; y: number } | null;
 }) {
-  const common = { stroke: "#F0C040", strokeWidth: 2, vectorEffect: "non-scaling-stroke" as const };
+  const common = { stroke: "#E5960A", strokeWidth: 2, vectorEffect: "non-scaling-stroke" as const };
   if (drawing.type === "pencil") {
     const points = drawing.points.map(chartToPixel).filter((point): point is { x: number; y: number } => point !== null);
     if (points.length < 2) return null;
@@ -488,8 +488,8 @@ function DrawingShape({
         y={y}
         width={Math.abs(end.x - start.x)}
         height={Math.abs(end.y - start.y)}
-        fill="rgba(240,192,64,0.12)"
-        stroke="#F0C040"
+        fill="rgba(229,150,10,0.14)"
+        stroke="#E5960A"
         strokeWidth={2}
         vectorEffect="non-scaling-stroke"
       />
@@ -500,8 +500,8 @@ function DrawingShape({
   const labelWidth = drawing.text.length * 7 + 22;
   return (
     <g>
-      <rect x={start.x} y={start.y - 24} width={labelWidth} height={26} rx={6} fill="#131827" stroke="#F0C040" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
-      <text x={start.x + 10} y={start.y - 7} fill="#F0C040" fontSize={11} fontFamily="JetBrains Mono, monospace" fontWeight={600}>{drawing.text}</text>
+      <rect x={start.x} y={start.y - 24} width={labelWidth} height={26} rx={6} fill="#FFFFFF" stroke="#E5960A" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+      <text x={start.x + 10} y={start.y - 7} fill="#A66B00" fontSize={11} fontFamily="JetBrains Mono, monospace" fontWeight={600}>{drawing.text}</text>
     </g>
   );
 }
@@ -517,8 +517,8 @@ function toChartData(candles: MarketCandle[]): CandlestickData<Time>[] {
 }
 
 function toneColor(tone: ChartGuideLine["tone"]) {
-  if (tone === "demand") return "#22C55E";
-  if (tone === "supply") return "#EF4444";
-  if (tone === "gold") return "#F0C040";
-  return "#60A5FA";
+  if (tone === "demand") return "#16A34A";
+  if (tone === "supply") return "#DC2626";
+  if (tone === "gold") return "#E5960A";
+  return "#2563EB";
 }

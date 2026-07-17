@@ -74,7 +74,7 @@ export default function CycleMapper({ events, requiredCorrect, onComplete }: Pro
       <div className="space-y-4 text-center">
         <p className="font-display font-bold text-tp-warning">El ciclo todavía no está claro</p>
         <p className="text-sm text-tp-text-muted">Acertaste {score} de {events.length}; necesitas {requiredCorrect}. Usa precio, fecha y posición dentro del ciclo, no solo si el precio parece alto o bajo.</p>
-        <button onClick={reset} className="rounded-sm bg-tp-gold px-5 py-2 font-bold text-tp-base">Reintentar mapa</button>
+        <button onClick={reset} className="rounded-sm bg-tp-gold px-5 py-2 font-bold text-tp-text">Reintentar mapa</button>
       </div>
     );
   }
@@ -150,7 +150,7 @@ export default function CycleMapper({ events, requiredCorrect, onComplete }: Pro
             {isCorrect ? "Fase correcta" : `Era ${PHASES.find((phase) => phase.id === answer)?.label}`}
           </p>
           <p className="mt-1 text-xs text-tp-text-muted">{PHASE_EXPLANATIONS[answer]}</p>
-          <button onClick={next} className="mt-3 rounded-sm bg-tp-gold px-4 py-2 text-xs font-bold text-tp-base">
+          <button onClick={next} className="mt-3 rounded-sm bg-tp-gold px-4 py-2 text-xs font-bold text-tp-text">
             {currentIndex === events.length - 1 ? "Ver resultado" : "Siguiente evento"}
           </button>
         </div>

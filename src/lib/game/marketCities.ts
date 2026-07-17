@@ -21,7 +21,7 @@ export const MARKET_CITIES: MarketCityIdentity[] = [
     landmark: "Plaza del Bloque",
     accent: "#F7931A",
     accentSoft: "#FFD08A",
-    sky: ["#271408", "#0A1724"],
+    sky: ["#FFE3B3", "#F9A94D"],
     lesson: "Red abierta, bloques, custodia y un mercado 24/7.",
   },
   {
@@ -32,7 +32,7 @@ export const MARKET_CITIES: MarketCityIdentity[] = [
     landmark: "Torre de Liquidez",
     accent: "#38BDF8",
     accentSoft: "#A5F3FC",
-    sky: ["#071B38", "#101827"],
+    sky: ["#BEE7FB", "#7CC8F2"],
     lesson: "Sesiones globales, pares de divisas y política monetaria.",
   },
   {
@@ -43,7 +43,7 @@ export const MARKET_CITIES: MarketCityIdentity[] = [
     landmark: "Bolsa de Empresas",
     accent: "#22C55E",
     accentSoft: "#BBF7D0",
-    sky: ["#08251C", "#101827"],
+    sky: ["#C9F3D8", "#7EDCA2"],
     lesson: "Propiedad empresarial, resultados y valoración.",
   },
   {
@@ -54,7 +54,7 @@ export const MARKET_CITIES: MarketCityIdentity[] = [
     landmark: "Terminal del Mundo Real",
     accent: "#EAB308",
     accentSoft: "#FEF08A",
-    sky: ["#2A2106", "#172033"],
+    sky: ["#FDEBB0", "#F3C64F"],
     lesson: "Oro, energía, agricultura y oferta física.",
   },
   {
@@ -65,7 +65,7 @@ export const MARKET_CITIES: MarketCityIdentity[] = [
     landmark: "Cúpula de Economías",
     accent: "#818CF8",
     accentSoft: "#C7D2FE",
-    sky: ["#171743", "#111827"],
+    sky: ["#DCDCFD", "#A8AEF5"],
     lesson: "Canastas de empresas y el pulso de economías completas.",
   },
   {
@@ -76,7 +76,7 @@ export const MARKET_CITIES: MarketCityIdentity[] = [
     landmark: "Reloj de Vencimientos",
     accent: "#F97316",
     accentSoft: "#FED7AA",
-    sky: ["#321308", "#172033"],
+    sky: ["#FFD9BC", "#F8A468"],
     lesson: "Margen, vencimientos y cobertura de precios futuros.",
   },
   {
@@ -87,7 +87,7 @@ export const MARKET_CITIES: MarketCityIdentity[] = [
     landmark: "Puente de Diversificación",
     accent: "#D946EF",
     accentSoft: "#F5D0FE",
-    sky: ["#28103A", "#0E2030"],
+    sky: ["#F5D6FB", "#D89BEE"],
     lesson: "Fondos cotizados, diversificación y costos.",
   },
 ];

@@ -4,6 +4,7 @@ import {
   type AcademyWorldEventHandler,
   type WelcomeTarget,
 } from "@/game/phaser/worldEvents";
+import { drawAriaBody, drawExplorerBody } from "@/game/phaser/characterArt";
 
 interface WelcomeHotspot {
   id: WelcomeTarget;
@@ -224,25 +225,15 @@ export default class WelcomeHarborScene extends Phaser.Scene {
 
   private createGuide() {
     const aria = this.add.container(470, 480);
-    const shadow = this.add.ellipse(0, 43, 78, 24, 0x10202a, 0.28);
+    const shadow = this.add.ellipse(0, 43, 78, 24, 0x1e2a44, 0.2);
     const body = this.add.graphics();
-    body.fillStyle(0x335f9c, 1);
-    body.fillRoundedRect(-31, -10, 62, 64, 22);
-    body.fillStyle(0x8bc8ff, 1);
-    body.fillCircle(0, -28, 37);
-    body.fillStyle(0x13243b, 1);
-    body.fillRoundedRect(-24, -39, 48, 22, 11);
-    body.fillStyle(0x65e7ff, 1);
-    body.fillCircle(-11, -28, 4);
-    body.fillCircle(11, -28, 4);
-    body.lineStyle(3, 0x65e7ff, 1);
-    body.strokeCircle(0, -28, 42);
+    drawAriaBody(body);
     const label = this.add.text(0, 65, "ARIA", {
       color: "#ffffff",
-      fontFamily: "Space Grotesk, sans-serif",
+      fontFamily: "Baloo 2, DM Sans, sans-serif",
       fontSize: "12px",
       fontStyle: "bold",
-      stroke: "#17313c",
+      stroke: "#2563eb",
       strokeThickness: 4,
     }).setOrigin(0.5);
     const bubble = this.add.text(0, -94, "¡HOLA!", {
@@ -308,22 +299,7 @@ export default class WelcomeHarborScene extends Phaser.Scene {
 
   private drawPlayerBody(color: number) {
     if (!this.playerBody) return;
-    this.playerBody.clear();
-    this.playerBody.fillStyle(0x27333a, 1);
-    this.playerBody.fillRoundedRect(-24, 28, 18, 25, 8);
-    this.playerBody.fillRoundedRect(6, 28, 18, 25, 8);
-    this.playerBody.fillStyle(color, 1);
-    this.playerBody.fillRoundedRect(-34, -16, 68, 63, 25);
-    this.playerBody.fillStyle(0xffd4ad, 1);
-    this.playerBody.fillCircle(0, -32, 34);
-    this.playerBody.fillStyle(0x26313b, 1);
-    this.playerBody.fillRoundedRect(-30, -55, 60, 22, 11);
-    this.playerBody.fillCircle(-11, -33, 3);
-    this.playerBody.fillCircle(11, -33, 3);
-    this.playerBody.lineStyle(3, 0xffffff, 0.36);
-    this.playerBody.strokeRoundedRect(-34, -16, 68, 63, 25);
-    this.playerBody.fillStyle(0x37566a, 1);
-    this.playerBody.fillRoundedRect(20, -2, 20, 40, 8);
+    drawExplorerBody(this.playerBody, color);
   }
 
   private createDestinationMarker() {

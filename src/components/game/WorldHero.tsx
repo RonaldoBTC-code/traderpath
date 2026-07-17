@@ -49,7 +49,7 @@ export default function WorldHero({ levelTitle, tagline, currentMissionId, compl
           </div>
           <Link
             href="/world"
-            className="flex items-center justify-center gap-2 rounded-2xl bg-tp-gold px-5 py-4 font-display text-sm font-bold text-tp-base shadow-[0_12px_34px_rgba(240,192,64,0.28)] transition hover:-translate-y-0.5 hover:brightness-110"
+            className="flex items-center justify-center gap-2 rounded-2xl bg-tp-gold px-5 py-4 font-display text-sm font-bold text-tp-text shadow-[0_12px_34px_rgba(240,192,64,0.28)] transition hover:-translate-y-0.5 hover:brightness-110"
           >
             <Gamepad2 size={17} /> Entrar a Academia Ágora
           </Link>

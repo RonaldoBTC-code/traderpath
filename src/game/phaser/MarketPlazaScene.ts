@@ -4,6 +4,7 @@ import {
   type AcademyWorldEventHandler,
   type MarketTarget,
 } from "@/game/phaser/worldEvents";
+import { drawExplorerBody, drawVillagerBody } from "@/game/phaser/characterArt";
 
 interface MarketHotspot {
   id: MarketTarget;
@@ -221,16 +222,9 @@ export default class MarketPlazaScene extends Phaser.Scene {
 
   private createSeller() {
     const seller = this.add.container(270, 500);
-    const shadow = this.add.ellipse(0, 37, 72, 22, 0x10202a, 0.25);
+    const shadow = this.add.ellipse(0, 37, 72, 22, 0x1e2a44, 0.2);
     const body = this.add.graphics();
-    body.fillStyle(0xf0c040, 1);
-    body.fillRoundedRect(-31, -10, 62, 58, 20);
-    body.fillStyle(0xffcda9, 1);
-    body.fillCircle(0, -30, 32);
-    body.fillStyle(0x7b3f2c, 1);
-    body.fillRoundedRect(-28, -54, 56, 23, 12);
-    body.fillCircle(-11, -31, 3);
-    body.fillCircle(11, -31, 3);
+    drawVillagerBody(body, { outfit: 0xe5960a, skin: 0xffcda9, hair: 0x7b3f2c });
     const label = this.add.text(0, 60, "ELENA · VENDEDORA", {
       color: "#ffffff",
       fontFamily: "Space Grotesk, sans-serif",
@@ -254,16 +248,9 @@ export default class MarketPlazaScene extends Phaser.Scene {
 
   private createBuyer() {
     const buyer = this.add.container(1010, 500);
-    const shadow = this.add.ellipse(0, 37, 72, 22, 0x10202a, 0.25);
+    const shadow = this.add.ellipse(0, 37, 72, 22, 0x1e2a44, 0.2);
     const body = this.add.graphics();
-    body.fillStyle(0x60a5fa, 1);
-    body.fillRoundedRect(-31, -10, 62, 58, 20);
-    body.fillStyle(0xd8a779, 1);
-    body.fillCircle(0, -30, 32);
-    body.fillStyle(0x26313b, 1);
-    body.fillRoundedRect(-28, -53, 56, 19, 10);
-    body.fillCircle(-11, -31, 3);
-    body.fillCircle(11, -31, 3);
+    drawVillagerBody(body, { outfit: 0x3b82f6, skin: 0xd8a779, hair: 0x26313b });
     const label = this.add.text(0, 60, "LEO · COMPRADOR", {
       color: "#ffffff",
       fontFamily: "Space Grotesk, sans-serif",
@@ -306,22 +293,7 @@ export default class MarketPlazaScene extends Phaser.Scene {
 
   private drawPlayerBody(color: number) {
     if (!this.playerBody) return;
-    this.playerBody.clear();
-    this.playerBody.fillStyle(0x27333a, 1);
-    this.playerBody.fillRoundedRect(-24, 28, 18, 25, 8);
-    this.playerBody.fillRoundedRect(6, 28, 18, 25, 8);
-    this.playerBody.fillStyle(color, 1);
-    this.playerBody.fillRoundedRect(-34, -16, 68, 63, 25);
-    this.playerBody.fillStyle(0xffd4ad, 1);
-    this.playerBody.fillCircle(0, -32, 34);
-    this.playerBody.fillStyle(0x26313b, 1);
-    this.playerBody.fillRoundedRect(-30, -55, 60, 22, 11);
-    this.playerBody.fillCircle(-11, -33, 3);
-    this.playerBody.fillCircle(11, -33, 3);
-    this.playerBody.lineStyle(3, 0xffffff, 0.36);
-    this.playerBody.strokeRoundedRect(-34, -16, 68, 63, 25);
-    this.playerBody.fillStyle(0x37566a, 1);
-    this.playerBody.fillRoundedRect(20, -2, 20, 40, 8);
+    drawExplorerBody(this.playerBody, color);
   }
 
   private createDestinationMarker() {

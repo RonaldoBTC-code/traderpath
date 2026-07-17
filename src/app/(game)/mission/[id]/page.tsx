@@ -346,7 +346,7 @@ export default function MissionPage() {
         <div className="text-4xl">🔒</div>
         <h2 className="font-display text-xl font-bold text-tp-supply">Misión bloqueada</h2>
         <p className="text-tp-text-muted">Debes completar las misiones anteriores para desbloquear esta.</p>
-        <button onClick={() => router.push("/world")} className="px-6 py-2 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition">
+        <button onClick={() => router.push("/world")} className="px-6 py-2 bg-tp-gold text-tp-text font-display font-bold rounded-sm hover:brightness-110 transition">
           Volver al Dashboard
         </button>
       </div>
@@ -431,7 +431,7 @@ export default function MissionPage() {
       {phase === "intro" && (
         <div className="space-y-4">
           <CharacterDialogue dialogue={mission.introDialogues[dialogueIndex]} />
-          <button onClick={handleIntroNext} className="px-6 py-2 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition">
+          <button onClick={handleIntroNext} className="px-6 py-2 bg-tp-gold text-tp-text font-display font-bold rounded-sm hover:brightness-110 transition">
             {dialogueIndex < mission.introDialogues.length - 1 ? "Continuar →" : "Comenzar misión →"}
           </button>
         </div>
@@ -461,7 +461,7 @@ export default function MissionPage() {
                     setAssessmentFailure(null);
                     setMinigameAttempt((attempt) => attempt + 1);
                   }}
-                  className="mt-3 rounded-lg bg-tp-gold px-4 py-2 font-display text-xs font-bold text-tp-base"
+                  className="mt-3 rounded-lg bg-tp-gold px-4 py-2 font-display text-xs font-bold text-tp-text"
                 >
                   Repetir práctica
                 </button>
@@ -555,7 +555,7 @@ export default function MissionPage() {
                 <div className="bg-tp-base border border-tp-border rounded-sm p-4">
                   <p className="text-sm text-tp-text-muted italic">{mission.minigame.instructions}</p>
                 </div>
-                <button onClick={() => handleMinigameComplete()} className="px-6 py-2 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition">
+                <button onClick={() => handleMinigameComplete()} className="px-6 py-2 bg-tp-gold text-tp-text font-display font-bold rounded-sm hover:brightness-110 transition">
                   Completar mini-juego →
                 </button>
               </div>
@@ -580,7 +580,7 @@ export default function MissionPage() {
       {phase === "outro" && (
         <div className="space-y-4">
           <CharacterDialogue dialogue={mission.outroDialogues[outroIndex]} />
-          <button onClick={handleOutroNext} className="px-6 py-2 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition">
+          <button onClick={handleOutroNext} className="px-6 py-2 bg-tp-gold text-tp-text font-display font-bold rounded-sm hover:brightness-110 transition">
             {outroIndex < mission.outroDialogues.length - 1 ? "Continuar →" : "Finalizar →"}
           </button>
         </div>
@@ -615,7 +615,7 @@ export default function MissionPage() {
               ))}
             </ul>
           </div>
-          <button onClick={() => router.push("/world")} className="px-6 py-3 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition">
+          <button onClick={() => router.push("/world")} className="px-6 py-3 bg-tp-gold text-tp-text font-display font-bold rounded-sm hover:brightness-110 transition">
             Volver al Dashboard
           </button>
         </div>

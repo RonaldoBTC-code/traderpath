@@ -81,7 +81,7 @@ export default function PairCalculator({
         <p className="text-sm text-tp-text-muted">
           Obtuviste {failedScore}%. Debes alcanzar {passingScore}%. Recuerda: riesgo máximo ÷ distancia al stop.
         </p>
-        <button onClick={reset} className="rounded-sm bg-tp-gold px-5 py-2 font-display font-bold text-tp-base">
+        <button onClick={reset} className="rounded-sm bg-tp-gold px-5 py-2 font-display font-bold text-tp-text">
           Reintentar
         </button>
       </div>
@@ -126,7 +126,7 @@ export default function PairCalculator({
         <button
           onClick={feedback ? next : checkAnswer}
           disabled={!feedback && !answer}
-          className="rounded-sm bg-tp-gold px-5 py-2 font-display font-bold text-tp-base disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-sm bg-tp-gold px-5 py-2 font-display font-bold text-tp-text disabled:cursor-not-allowed disabled:opacity-40"
         >
           {feedback ? (currentIndex === scenarios.length - 1 ? "Ver resultado" : "Siguiente") : "Comprobar"}
         </button>

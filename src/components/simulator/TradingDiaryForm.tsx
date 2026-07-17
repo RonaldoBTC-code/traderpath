@@ -66,7 +66,7 @@ export default function TradingDiaryForm({ operation, saving, onSubmit }: Props)
       <button
         disabled={!complete || saving}
         onClick={() => onSubmit(reasoning.trim(), emotion, lesson.trim())}
-        className="mt-5 w-full rounded-sm bg-tp-info px-4 py-3 font-display font-bold text-tp-base disabled:cursor-not-allowed disabled:opacity-35"
+        className="mt-5 w-full rounded-sm bg-tp-info px-4 py-3 font-display font-bold text-white disabled:cursor-not-allowed disabled:opacity-35"
       >
         {saving ? "Guardando reflexión..." : "Guardar y cerrar operación"}
       </button>

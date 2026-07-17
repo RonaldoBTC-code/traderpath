@@ -91,7 +91,7 @@ export default function RiskCalculator({ scenarios, riskPercentage, onComplete }
           className="flex-1 px-4 py-2 bg-tp-base border border-tp-border rounded-sm text-tp-text font-data placeholder:text-tp-text-muted/50 focus:outline-none focus:border-tp-gold transition"
         />
         <button onClick={handleSubmit} disabled={!answer || !!feedback}
-          className="px-4 py-2 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition disabled:opacity-50">
+          className="px-4 py-2 bg-tp-gold text-tp-text font-display font-bold rounded-sm hover:brightness-110 transition disabled:opacity-50">
           Verificar
         </button>
       </div>

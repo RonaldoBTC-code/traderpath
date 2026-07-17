@@ -46,7 +46,7 @@ export default function MissionMarketChart({ missionId }: { missionId: string })
   if (!config || config.hidden) return null;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-tp-info/25 bg-tp-surface shadow-[0_18px_50px_rgba(0,0,0,.2)]">
+    <section className="overflow-hidden rounded-2xl border border-tp-info/25 bg-tp-surface shadow-[0_14px_36px_rgba(30,42,68,.12)]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-tp-border px-4 py-3">
         <div>
           <p className="text-[9px] uppercase tracking-[0.18em] text-tp-info">Escenario técnico explicado</p>
@@ -85,7 +85,7 @@ export default function MissionMarketChart({ missionId }: { missionId: string })
             Marca tu análisis antes de responder
           </p>
         </div>
-        <p className="rounded-lg border border-white/[0.06] bg-tp-base/50 px-3 py-2 text-[10px] leading-relaxed text-tp-text-muted">
+        <p className="rounded-lg border border-tp-border bg-tp-base/50 px-3 py-2 text-[10px] leading-relaxed text-tp-text-muted">
           <span className="font-semibold text-tp-gold">Evidencia del gráfico:</span> {identification.evidence}
         </p>
       </div>
@@ -105,8 +105,8 @@ function createChartIdentification(candles: MarketCandle[], preset: ChartAnalysi
     to: price + range * width,
   });
   const extremes = (): ChartPriceLevel[] => [
-    { price: stats.maximum, title: "Máximo observado", color: "#60A5FA" },
-    { price: stats.minimum, title: "Mínimo observado", color: "#60A5FA" },
+    { price: stats.maximum, title: "Máximo observado", color: "#2563EB" },
+    { price: stats.minimum, title: "Mínimo observado", color: "#2563EB" },
   ];
 
   if (preset === "ohlc") {
@@ -138,8 +138,8 @@ function createChartIdentification(candles: MarketCandle[], preset: ChartAnalysi
     const currentSupport = zone(candle(16).low + range * 0.018, 0.035);
     return {
       levels: [
-        { price: (resistanceBase + resistanceTop) / 2, title: "Resistencia", color: "#EF4444" },
-        { price: (currentSupport.from + currentSupport.to) / 2, title: "Soporte (HL)", color: "#22C55E" },
+        { price: (resistanceBase + resistanceTop) / 2, title: "Resistencia", color: "#DC2626" },
+        { price: (currentSupport.from + currentSupport.to) / 2, title: "Soporte (HL)", color: "#16A34A" },
       ],
       zones: [
         { from: resistanceBase, to: resistanceTop, label: "Resistencia: 3 rechazos", color: "supply" },
@@ -171,9 +171,9 @@ function createChartIdentification(candles: MarketCandle[], preset: ChartAnalysi
     const equilibrium = (support + resistance) / 2;
     return {
       levels: [
-        { price: equilibrium, title: "Equilibrio 50%", color: "#F0C040" },
-        { price: resistance, title: "Resistencia", color: "#EF4444" },
-        { price: support, title: "Soporte", color: "#22C55E" },
+        { price: equilibrium, title: "Equilibrio 50%", color: "#E5960A" },
+        { price: resistance, title: "Resistencia", color: "#DC2626" },
+        { price: support, title: "Soporte", color: "#16A34A" },
       ],
       zones: [
         { ...zone(support, 0.045), label: preset === "orders" ? "Buy Limit / soporte" : "Soporte: varios rebotes", color: "demand" },
@@ -197,8 +197,8 @@ function createChartIdentification(candles: MarketCandle[], preset: ChartAnalysi
     const invalidation = retest.from - range * 0.07;
     return {
       levels: [
-        { price: brokenResistance, title: "Nivel roto", color: "#F0C040" },
-        ...(preset === "integrated" ? [{ price: invalidation, title: "Invalidación", color: "#EF4444" }] : []),
+        { price: brokenResistance, title: "Nivel roto", color: "#E5960A" },
+        ...(preset === "integrated" ? [{ price: invalidation, title: "Invalidación", color: "#DC2626" }] : []),
       ],
       zones: [{ ...retest, label: "Resistencia → soporte", color: "demand" }],
       labels: [
@@ -219,9 +219,9 @@ function createChartIdentification(candles: MarketCandle[], preset: ChartAnalysi
     const invalidation = demand.from - range * 0.045;
     return {
       levels: [
-        { price: entry, title: preset === "risk" ? "Entrada tras confirmación" : "Confirmación 1H", color: "#F0C040" },
-        { price: invalidation, title: "Invalidación / Stop", color: "#EF4444" },
-        { price: stats.maximum, title: "Objetivo estructural", color: "#22C55E" },
+        { price: entry, title: preset === "risk" ? "Entrada tras confirmación" : "Confirmación 1H", color: "#E5960A" },
+        { price: invalidation, title: "Invalidación / Stop", color: "#DC2626" },
+        { price: stats.maximum, title: "Objetivo estructural", color: "#16A34A" },
       ],
       zones: [{ ...demand, label: preset === "risk" ? "Demanda defendida" : "Zona mayor 4H", color: "demand" }],
       labels: [

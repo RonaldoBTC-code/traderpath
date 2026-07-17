@@ -138,7 +138,7 @@ export default function BitcoinOriginGame({ onComplete }: { onComplete: (score: 
       <div className="space-y-4 rounded-md border border-tp-warning/30 bg-tp-warning/5 p-5 text-center">
         <p className="font-display text-lg font-bold">La ciudad aún tiene zonas por explorar</p>
         <p className="text-sm text-tp-text-muted">Resultado: {failedScore}%. Necesitas 75% para abrir el camino hacia el mercado cripto.</p>
-        <button onClick={retry} className="rounded-sm bg-tp-gold px-5 py-2.5 font-display font-bold text-tp-base">
+        <button onClick={retry} className="rounded-sm bg-tp-gold px-5 py-2.5 font-display font-bold text-tp-text">
           Recorrer de nuevo
         </button>
       </div>
@@ -147,9 +147,9 @@ export default function BitcoinOriginGame({ onComplete }: { onComplete: (score: 
 
   return (
     <div className="space-y-5">
-      <div className="overflow-hidden rounded-md border border-amber-300/20 bg-gradient-to-br from-[#233a3d] via-[#162b32] to-[#101824]">
+      <div className="overflow-hidden rounded-md border-2 border-tp-crypto/25 bg-gradient-to-br from-[#bfe3f5] via-[#a8d8ef] to-[#8ecdea]">
         <div className="relative h-44">
-          <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-[#ffd59a] to-[#f6b86f]" />
+          <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-[#ffd59a] to-transparent" />
           <div className="absolute inset-x-0 bottom-0 h-28 rounded-t-[50%] bg-[#6f9d57]" />
           <div className="absolute bottom-8 left-[8%] h-14 w-16 rounded-t-xl bg-[#f5e1b9] shadow-lg">
             <div className="mx-auto -mt-6 h-8 w-10 rotate-45 rounded-sm bg-[#d96e4a]" />
@@ -159,12 +159,12 @@ export default function BitcoinOriginGame({ onComplete }: { onComplete: (score: 
           </div>
           <div className="absolute bottom-7 right-[9%] h-12 w-24 rounded-full bg-[#57a7bd] shadow-lg" />
           <div className="absolute bottom-2 left-1/2 h-24 w-5 -translate-x-1/2 rotate-[62deg] rounded-full bg-[#ead7aa]" />
-          <div className="absolute left-4 top-4 rounded-full bg-black/45 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white">
+          <div className="absolute left-4 top-4 rounded-full border-2 border-tp-border bg-white/85 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-tp-text backdrop-blur">
             Ciudad Origen · estación {index + 1}/{stations.length}
           </div>
-          <div className="absolute bottom-4 right-4 rounded-md border border-white/20 bg-black/55 px-3 py-2 text-right backdrop-blur">
-            <p className="text-[9px] uppercase tracking-widest text-white/65">{current.eyebrow}</p>
-            <p className="font-display text-sm font-bold text-white">{current.place}</p>
+          <div className="absolute bottom-4 right-4 rounded-md border-2 border-tp-border bg-white/85 px-3 py-2 text-right backdrop-blur">
+            <p className="text-[9px] uppercase tracking-widest text-tp-text-muted">{current.eyebrow}</p>
+            <p className="font-display text-sm font-bold text-tp-text">{current.place}</p>
           </div>
         </div>
       </div>
@@ -206,7 +206,7 @@ export default function BitcoinOriginGame({ onComplete }: { onComplete: (score: 
           <p className="font-display text-sm font-bold">{selected.correct ? "Lectura correcta" : "Revisa el concepto"}</p>
           <p className="mt-1 text-sm text-tp-text-muted">{selected.feedback}</p>
           <p className="mt-2 text-xs leading-relaxed text-tp-text">{current.lesson}</p>
-          <button onClick={advance} className="mt-4 rounded-sm bg-tp-gold px-4 py-2 font-display text-sm font-bold text-tp-base">
+          <button onClick={advance} className="mt-4 rounded-sm bg-tp-gold px-4 py-2 font-display text-sm font-bold text-tp-text">
             {index < stations.length - 1 ? "Siguiente lugar" : "Completar recorrido"}
           </button>
         </div>

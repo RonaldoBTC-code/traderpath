@@ -29,7 +29,7 @@ export default function Home() {
         <div className="flex gap-4 justify-center flex-wrap">
           <Link
             href="/world"
-            className="px-7 py-3 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition shadow-gold"
+            className="px-7 py-3 bg-tp-gold text-tp-text font-display font-bold rounded-sm hover:brightness-110 transition shadow-gold"
           >
             Comenzar Aventura
           </Link>

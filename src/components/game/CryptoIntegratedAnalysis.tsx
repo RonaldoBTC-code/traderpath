@@ -183,7 +183,7 @@ export default function CryptoIntegratedAnalysis({
       <button
         onClick={passingPercent !== null ? () => onComplete(passingPercent) : evaluate}
         disabled={passingPercent === null && !canSubmit}
-        className="w-full rounded-sm bg-tp-gold px-5 py-3 font-display font-bold text-tp-base disabled:cursor-not-allowed disabled:opacity-40"
+        className="w-full rounded-sm bg-tp-gold px-5 py-3 font-display font-bold text-tp-text disabled:cursor-not-allowed disabled:opacity-40"
       >
         {passingPercent !== null ? "Continuar al quiz" : "Validar plan de trading"}
       </button>
@@ -195,7 +195,7 @@ function Step({ number, title, children }: { number: number; title: string; chil
   return (
     <section className="rounded-sm border border-tp-border bg-tp-surface p-4">
       <h4 className="mb-3 font-display text-sm font-bold text-tp-text">
-        <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-tp-gold text-xs text-tp-base">{number}</span>
+        <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-tp-gold text-xs text-tp-text">{number}</span>
         {title}
       </h4>
       {children}

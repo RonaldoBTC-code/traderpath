@@ -130,7 +130,7 @@ export default function MarketPreview({ onComplete }: Props) {
             type="button"
             disabled={!selectedSpecialization}
             onClick={handleConfirm}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-tp-gold px-4 py-3 font-display text-sm font-bold text-tp-base disabled:opacity-40"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-tp-gold px-4 py-3 font-display text-sm font-bold text-tp-text disabled:opacity-40"
           >
             <Check size={15} /> Confirmar destino
           </button>

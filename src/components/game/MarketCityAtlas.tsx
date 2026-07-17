@@ -29,15 +29,15 @@ export default function MarketCityAtlas({ activeId, visited = EMPTY_VISITED, onS
                 type="button"
                 onClick={() => onSelect?.(city.id)}
                 aria-pressed={selected}
-                className={`group relative overflow-hidden rounded-xl border p-3 text-left transition ${
+                className={`group relative overflow-hidden rounded-xl border-2 p-3 text-left transition ${
                   selected
-                    ? "border-white/25 bg-white/[0.08] shadow-[0_12px_30px_rgba(0,0,0,.25)]"
-                    : "border-white/[0.06] bg-tp-base/70 hover:-translate-y-0.5 hover:border-white/15"
+                    ? "border-tp-info bg-tp-info/5 shadow-[0_10px_24px_rgba(37,99,235,.15)]"
+                    : "border-tp-border bg-tp-surface hover:-translate-y-0.5 hover:border-tp-info/40"
                 }`}
               >
-                <div className="absolute inset-x-0 top-0 h-0.5" style={{ backgroundColor: city.accent }} />
+                <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: city.accent }} />
                 <div className="flex items-center justify-between">
-                  <span className="font-data text-sm font-bold" style={{ color: city.accentSoft }}>{city.symbol}</span>
+                  <span className="font-data text-sm font-bold" style={{ color: city.accent }}>{city.symbol}</span>
                   {wasVisited ? <Check size={13} className="text-tp-demand" /> : <LockKeyhole size={11} className="text-tp-text-muted/45" />}
                 </div>
                 <p className="mt-2 truncate text-[10px] font-semibold text-tp-text">{city.city}</p>
@@ -57,28 +57,28 @@ export function MarketCityScene({ marketId, compact = false }: { marketId: strin
   return (
     <div
       data-market-city={city.id}
-      className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-tp-base shadow-[0_22px_70px_rgba(0,0,0,.34)] ${compact ? "min-h-[260px]" : "min-h-[330px]"}`}
+      className={`group relative overflow-hidden rounded-2xl border-2 border-tp-border bg-tp-base shadow-[0_16px_44px_rgba(30,42,68,.16)] ${compact ? "min-h-[260px]" : "min-h-[330px]"}`}
       style={{ background: `linear-gradient(150deg, ${city.sky[0]}, ${city.sky[1]} 68%)` }}
     >
       <div className="absolute inset-0 opacity-[0.12]" style={{ backgroundImage: "repeating-radial-gradient(circle at 65% 75%, transparent 0 22px, white 23px 24px)" }} />
       <CityIllustration marketId={city.id} accent={city.accent} accentSoft={city.accentSoft} />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#050914]/90 via-[#050914]/35 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#050914] to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-r from-white/80 via-white/35 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-white/85 to-transparent" />
 
       <div className="relative z-10 flex min-h-[inherit] max-w-md flex-col justify-between p-5 sm:p-7">
-        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/15 bg-black/25 px-3 py-1.5 backdrop-blur">
+        <div className="inline-flex w-fit items-center gap-2 rounded-full border-2 border-tp-border bg-white/75 px-3 py-1.5 backdrop-blur">
           <MapPin size={12} style={{ color: city.accent }} />
-          <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-white/70">{city.reference}</span>
+          <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-tp-text-muted">{city.reference}</span>
         </div>
         <div className="mt-20">
-          <div className="font-data text-2xl font-bold" style={{ color: city.accentSoft }}>{city.symbol}</div>
-          <h3 className="mt-1 font-display text-2xl font-bold text-white sm:text-3xl">{city.city}</h3>
-          <p className="mt-1 text-[10px] uppercase tracking-[0.16em]" style={{ color: city.accentSoft }}>{city.landmark}</p>
-          <p className="mt-3 max-w-sm text-xs leading-relaxed text-white/65">{city.lesson}</p>
+          <div className="font-data text-2xl font-bold" style={{ color: city.accent }}>{city.symbol}</div>
+          <h3 className="mt-1 font-display text-2xl font-bold text-[#1E2A44] sm:text-3xl">{city.city}</h3>
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: city.accent }}>{city.landmark}</p>
+          <p className="mt-3 max-w-sm text-xs font-medium leading-relaxed text-[#33415E]">{city.lesson}</p>
         </div>
       </div>
 
-      <div className="absolute bottom-5 right-5 z-10 hidden rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-[9px] text-white/55 backdrop-blur sm:block">
+      <div className="absolute bottom-5 right-5 z-10 hidden rounded-xl border-2 border-tp-border bg-white/75 px-3 py-2 text-[9px] text-tp-text-muted backdrop-blur sm:block">
         Portal de aprendizaje · prototipo 2.5D
       </div>
     </div>

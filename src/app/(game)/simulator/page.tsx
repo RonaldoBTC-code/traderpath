@@ -87,7 +87,7 @@ function SimulatorContent() {
         <div className="text-4xl">🔒</div>
         <h1 className="mt-3 font-display text-2xl font-bold">Simulador bloqueado</h1>
         <p className="mt-2 text-sm text-tp-text-muted">Primero completa “Tu Capital, Tu Responsabilidad”. No puedes operar hasta comprender Stop Loss, R:R y tamaño de posición.</p>
-        <Link href="/world" className="mt-5 inline-block rounded-sm bg-tp-gold px-5 py-2 font-bold text-tp-base">Volver al mundo</Link>
+        <Link href="/world" className="mt-5 inline-block rounded-sm bg-tp-gold px-5 py-2 font-bold text-tp-text">Volver al mundo</Link>
       </div>
     );
   }
@@ -191,7 +191,7 @@ function SimulatorContent() {
             type: "enemy_taunt",
             text: "¿Stop Loss? Si tu análisis es bueno, no lo necesitas. Acabas de pagar $300 por comprobar por qué esa idea destruye cuentas.",
           }} />
-          <button onClick={() => setShowSpeculator(false)} className="rounded-sm bg-tp-supply px-4 py-2 text-xs font-bold text-tp-base">Volver y proteger la operación</button>
+          <button onClick={() => setShowSpeculator(false)} className="rounded-sm bg-tp-supply px-4 py-2 text-xs font-bold text-white">Volver y proteger la operación</button>
         </div>
       )}
 
@@ -236,7 +236,7 @@ function SimulatorContent() {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={closeAtMarket} className="rounded-sm border border-tp-border px-3 py-2 text-xs text-tp-text-muted">Cerrar al mercado</button>
-                  <button onClick={advanceMarket} disabled={remainingCandles === 0} className="rounded-sm bg-tp-gold px-4 py-2 text-xs font-bold text-tp-base disabled:opacity-40">Avanzar 1 vela</button>
+                  <button onClick={advanceMarket} disabled={remainingCandles === 0} className="rounded-sm bg-tp-gold px-4 py-2 text-xs font-bold text-tp-text disabled:opacity-40">Avanzar 1 vela</button>
                 </div>
               </div>
             </div>
@@ -255,7 +255,7 @@ function SimulatorContent() {
           <p className="font-display text-lg font-bold">Operación reflexionada</p>
           <p className="mt-1 text-sm text-tp-text-muted">{saveMessage}</p>
           <p className={`mt-3 font-data text-2xl ${completedOperation.pnl >= 0 ? "text-tp-demand" : "text-tp-supply"}`}>{completedOperation.pnl >= 0 ? "+" : ""}{formatCurrency(completedOperation.pnl)}</p>
-          <button onClick={resetOperation} className="mt-4 rounded-sm bg-tp-gold px-5 py-2 font-bold text-tp-base">Preparar otra operación</button>
+          <button onClick={resetOperation} className="mt-4 rounded-sm bg-tp-gold px-5 py-2 font-bold text-tp-text">Preparar otra operación</button>
         </div>
       )}
     </div>

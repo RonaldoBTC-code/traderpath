@@ -122,7 +122,7 @@ export default function TimeframeSwitcher({ asset, timeframes, requiredCorrect, 
       <div className="space-y-4 text-center">
         <p className="font-display font-bold text-tp-warning">La tesis perdió coherencia entre capas</p>
         <p className="text-sm text-tp-text-muted">Acertaste {score} de {questions.length}; necesitas {requiredCorrect}. Orden correcto: macro → contexto → ejecución.</p>
-        <button onClick={reset} className="rounded-sm bg-tp-gold px-5 py-2 font-bold text-tp-base">Repetir análisis</button>
+        <button onClick={reset} className="rounded-sm bg-tp-gold px-5 py-2 font-bold text-tp-text">Repetir análisis</button>
       </div>
     );
   }
@@ -195,7 +195,7 @@ export default function TimeframeSwitcher({ asset, timeframes, requiredCorrect, 
         <div className={`rounded-sm border p-3 ${isCorrect ? "border-tp-demand/40 bg-tp-demand/10" : "border-tp-supply/40 bg-tp-supply/10"}`}>
           <p className={`text-sm font-semibold ${isCorrect ? "text-tp-demand" : "text-tp-supply"}`}>{isCorrect ? "Lectura correcta" : "Lectura incompleta"}</p>
           <p className="mt-1 text-xs text-tp-text-muted">{current.explanation}</p>
-          <button onClick={next} className="mt-3 rounded-sm bg-tp-gold px-4 py-2 text-xs font-bold text-tp-base">
+          <button onClick={next} className="mt-3 rounded-sm bg-tp-gold px-4 py-2 text-xs font-bold text-tp-text">
             {currentIndex === questions.length - 1 ? "Cerrar tesis" : "Siguiente capa"}
           </button>
         </div>

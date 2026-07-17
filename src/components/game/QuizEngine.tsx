@@ -102,7 +102,7 @@ export default function QuizEngine({ questions, onComplete, minPassPercent }: Qu
             <button
               type="button"
               onClick={retry}
-              className="rounded-xl bg-tp-gold px-5 py-2.5 font-display text-sm font-bold text-tp-base transition hover:brightness-110"
+              className="rounded-xl bg-tp-gold px-5 py-2.5 font-display text-sm font-bold text-tp-text transition hover:brightness-110"
             >
               Repasar e intentar de nuevo
             </button>
@@ -187,7 +187,7 @@ export default function QuizEngine({ questions, onComplete, minPassPercent }: Qu
             <p className="text-xs text-tp-text-muted leading-relaxed">{current.explanation}</p>
           </div>
           <button onClick={handleNext}
-            className="w-full px-5 py-2 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition">
+            className="w-full px-5 py-2 bg-tp-gold text-tp-text font-display font-bold rounded-sm hover:brightness-110 transition">
             {currentIndex < randomizedQuestions.length - 1 ? "Siguiente pregunta →" : "Ver resultado →"}
           </button>
         </div>
