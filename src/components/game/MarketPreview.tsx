@@ -11,6 +11,10 @@ interface Props {
   onComplete: (score: number) => void;
 }
 
+// Only markets with a playable level 3 can be selected. Widen this set as
+// level3-* content files are wired into gameStore (getLevelConfig / isLevelUnlocked).
+const AVAILABLE_MARKETS = new Set(["crypto"]);
+
 export default function MarketPreview({ onComplete }: Props) {
   const [visitedMarkets, setVisitedMarkets] = useState<Set<string>>(new Set());
   const [currentMarket, setCurrentMarket] = useState<string>("crypto");
@@ -29,6 +33,8 @@ export default function MarketPreview({ onComplete }: Props) {
 
   const handleConfirm = () => {
     if (!selectedSpecialization || !allVisited) return;
+    // Guard against stale/corrupted state: only markets with playable content
+    if (!AVAILABLE_MARKETS.has(selectedSpecialization)) return;
     setMarketSpecialization(selectedSpecialization);
     setConfirmed(true);
     onComplete(100);
@@ -90,21 +96,32 @@ export default function MarketPreview({ onComplete }: Props) {
       {allVisited ? (
         <section className="rounded-2xl border border-tp-gold/30 bg-[linear-gradient(135deg,rgba(240,192,64,.10),rgba(19,24,39,.9))] p-4">
           <p className="flex items-center gap-2 font-display text-sm font-bold text-tp-gold"><Map size={15} /> Elige tu primer destino</p>
-          <p className="mt-1 text-xs text-tp-text-muted">Esta elección define la próxima ciudad educativa. Podrás cambiarla una vez.</p>
+          <p className="mt-1 text-xs text-tp-text-muted">Esta elección define la próxima ciudad educativa. Por ahora solo la ruta cripto está abierta: las demás ciudades se inaugurarán en próximas actualizaciones.</p>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
             {marketOptions.map((option) => {
               const optionCity = getMarketCity(option.id);
               const selected = selectedSpecialization === option.id;
+              const available = AVAILABLE_MARKETS.has(option.id);
               return (
                 <button
                   key={option.id}
                   type="button"
+                  disabled={!available}
                   onClick={() => setSelectedSpecialization(option.id)}
-                  className={`rounded-xl border px-3 py-3 text-left transition ${selected ? "border-tp-gold bg-tp-gold/10" : "border-tp-border bg-tp-base hover:border-tp-gold/35"}`}
+                  className={`rounded-xl border px-3 py-3 text-left transition ${
+                    !available
+                      ? "cursor-not-allowed border-tp-border bg-tp-base opacity-45"
+                      : selected
+                        ? "border-tp-gold bg-tp-gold/10"
+                        : "border-tp-border bg-tp-base hover:border-tp-gold/35"
+                  }`}
                 >
                   <span className="font-data text-xs font-bold" style={{ color: option.uiColor }}>{optionCity.symbol}</span>
                   <p className="mt-1 truncate text-[10px] font-semibold">{optionCity.city}</p>
                   <p className="truncate text-[8px] text-tp-text-muted">{option.name}</p>
+                  {!available && (
+                    <p className="mt-1 text-[8px] font-semibold uppercase tracking-wider text-tp-warning">Próximamente</p>
+                  )}
                 </button>
               );
             })}
