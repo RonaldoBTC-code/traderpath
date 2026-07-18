@@ -33,6 +33,7 @@ import {
   type AcademyWorldEvent,
   type WorldRoom,
 } from "@/game/phaser/worldEvents";
+import { WORLD_ROOMS, isReturnableRoom } from "@/game/phaser/worldRooms";
 
 interface GameHandle {
   destroy: (removeCanvas?: boolean, noReturn?: boolean) => void;
@@ -74,19 +75,48 @@ type MarketPanelState = Extract<Exclude<OpenPanel, null>, { type: `market-${stri
 type CandlePanelState = Extract<Exclude<OpenPanel, null>, { type: `candle-${string}` }>;
 type AcademyPanelState = Exclude<OpenPanel, null | IntroPanelState | MarketPanelState | CandlePanelState>;
 
-const INTRO_STORAGE_KEY = "traderpath-world-intro-v1";
-const INTRO_REWARD_KEY = "traderpath-world-intro-reward-v1";
-const MARKET_SELLER_KEY = "traderpath-market-seller-v1";
-const MARKET_BUYER_KEY = "traderpath-market-buyer-v1";
-const CANDLE_OPEN_KEY = "traderpath-candle-open-v1";
-const CANDLE_HIGH_KEY = "traderpath-candle-high-v1";
-const CANDLE_LOW_KEY = "traderpath-candle-low-v1";
-const CANDLE_CLOSE_KEY = "traderpath-candle-close-v1";
-const CANDLE_DIRECTION_KEY = "traderpath-candle-direction-v1";
-const CANDLE_BODY_KEY = "traderpath-candle-body-v1";
-const CANDLE_UPPER_WICK_KEY = "traderpath-candle-upper-wick-v1";
-const CANDLE_LOWER_WICK_KEY = "traderpath-candle-lower-wick-v1";
-const RETURN_ROOM_KEY = "traderpath-world-return-room-v1";
+// World progress lives in gameStore.worldFlags (persisted). Flag key === target id.
+const INTRO_COMPLETED_FLAG = "intro-completed";
+const INTRO_REWARD_FLAG = "intro-reward-claimed";
+
+// Station targets that record progress (a world flag) AND open the matching
+// lesson panel. Adding a station = add it here + its panel + the scene hotspot.
+const FLAG_STATION_TARGETS = [
+  "market-seller",
+  "market-buyer",
+  "candle-open",
+  "candle-high",
+  "candle-low",
+  "candle-close",
+  "candle-direction",
+  "candle-body",
+  "candle-upper-wick",
+  "candle-lower-wick",
+] as const;
+type FlagStationTarget = (typeof FLAG_STATION_TARGETS)[number];
+
+// Targets that only open an informational panel of the same name.
+const PANEL_ONLY_TARGETS = [
+  "market-board",
+  "market-practice",
+  "market-practice-locked",
+  "candle-direction-locked",
+  "candle-body-locked",
+  "candle-upper-wick-locked",
+  "candle-lower-wick-locked",
+  "candle-practice",
+  "candle-practice-locked",
+] as const;
+type PanelOnlyTarget = (typeof PANEL_ONLY_TARGETS)[number];
+
+function isFlagStationTarget(target: string): target is FlagStationTarget {
+  return (FLAG_STATION_TARGETS as readonly string[]).includes(target);
+}
+
+function isPanelOnlyTarget(target: string): target is PanelOnlyTarget {
+  return (PANEL_ONLY_TARGETS as readonly string[]).includes(target);
+}
+
 const AVATAR_COLORS = ["#F0C040", "#38BDF8", "#22C55E", "#F97316", "#D946EF"];
 
 const MISSION_META = {
@@ -130,6 +160,7 @@ export default function AcademyWorld() {
   const router = useRouter();
   const mountRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<GameHandle | null>(null);
+  const startRoomRef = useRef<WorldRoom | null>(null);
   const [startResolved, setStartResolved] = useState(false);
   const [room, setRoom] = useState<WorldRoom>("welcome-harbor");
   const [ready, setReady] = useState(false);
@@ -141,16 +172,6 @@ export default function AcademyWorld() {
   const [passportOpen, setPassportOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
-  const [sellerVisited, setSellerVisited] = useState(false);
-  const [buyerVisited, setBuyerVisited] = useState(false);
-  const [candleOpenVisited, setCandleOpenVisited] = useState(false);
-  const [candleHighVisited, setCandleHighVisited] = useState(false);
-  const [candleLowVisited, setCandleLowVisited] = useState(false);
-  const [candleCloseVisited, setCandleCloseVisited] = useState(false);
-  const [candleDirectionVisited, setCandleDirectionVisited] = useState(false);
-  const [candleBodyVisited, setCandleBodyVisited] = useState(false);
-  const [candleUpperWickVisited, setCandleUpperWickVisited] = useState(false);
-  const [candleLowerWickVisited, setCandleLowerWickVisited] = useState(false);
 
   const {
     xp,
@@ -159,9 +180,21 @@ export default function AcademyWorld() {
     currentLevelId,
     currentMissionId,
     completedMissions,
+    worldFlags,
     getMissionStatus,
     applyCapitalChange,
   } = useGameStore();
+
+  const sellerVisited = !!worldFlags["market-seller"];
+  const buyerVisited = !!worldFlags["market-buyer"];
+  const candleOpenVisited = !!worldFlags["candle-open"];
+  const candleHighVisited = !!worldFlags["candle-high"];
+  const candleLowVisited = !!worldFlags["candle-low"];
+  const candleCloseVisited = !!worldFlags["candle-close"];
+  const candleDirectionVisited = !!worldFlags["candle-direction"];
+  const candleBodyVisited = !!worldFlags["candle-body"];
+  const candleUpperWickVisited = !!worldFlags["candle-upper-wick"];
+  const candleLowerWickVisited = !!worldFlags["candle-lower-wick"];
 
   const statusM11 = getMissionStatus("level_1", "m1_1");
   const statusM12 = getMissionStatus("level_1", "m1_2");
@@ -176,28 +209,22 @@ export default function AcademyWorld() {
   ).length;
 
   useEffect(() => {
-    const introCompleted = window.localStorage.getItem(INTRO_STORAGE_KEY) === "completed";
-    const returnRoom = window.localStorage.getItem(RETURN_ROOM_KEY);
-    window.localStorage.removeItem(RETURN_ROOM_KEY);
-    setSellerVisited(window.localStorage.getItem(MARKET_SELLER_KEY) === "seen");
-    setBuyerVisited(window.localStorage.getItem(MARKET_BUYER_KEY) === "seen");
-    setCandleOpenVisited(window.localStorage.getItem(CANDLE_OPEN_KEY) === "seen");
-    setCandleHighVisited(window.localStorage.getItem(CANDLE_HIGH_KEY) === "seen");
-    setCandleLowVisited(window.localStorage.getItem(CANDLE_LOW_KEY) === "seen");
-    setCandleCloseVisited(window.localStorage.getItem(CANDLE_CLOSE_KEY) === "seen");
-    setCandleDirectionVisited(window.localStorage.getItem(CANDLE_DIRECTION_KEY) === "seen");
-    setCandleBodyVisited(window.localStorage.getItem(CANDLE_BODY_KEY) === "seen");
-    setCandleUpperWickVisited(window.localStorage.getItem(CANDLE_UPPER_WICK_KEY) === "seen");
-    setCandleLowerWickVisited(window.localStorage.getItem(CANDLE_LOWER_WICK_KEY) === "seen");
-    setRoom(
-      introCompleted
-        ? returnRoom === "market-plaza"
-          ? "market-plaza"
-          : returnRoom === "candle-workshop"
-            ? "candle-workshop"
-            : "academy-agora"
-        : "welcome-harbor"
-    );
+    // One-time migration of the legacy per-flag localStorage keys, then
+    // resolve the starting room from persisted store state. The ref guard
+    // keeps StrictMode's double effect run from consuming the return room
+    // twice (second consume would return null and land in the agora).
+    if (startRoomRef.current === null) {
+      useGameStore.getState().importLegacyWorldProgress();
+      const store = useGameStore.getState();
+      const returnRoom = store.consumeWorldReturnRoom();
+      const introCompleted = !!store.worldFlags[INTRO_COMPLETED_FLAG];
+      startRoomRef.current = introCompleted
+        ? isReturnableRoom(returnRoom)
+          ? returnRoom
+          : "academy-agora"
+        : "welcome-harbor";
+    }
+    setRoom(startRoomRef.current);
     setStartResolved(true);
   }, []);
 
@@ -215,7 +242,7 @@ export default function AcademyWorld() {
       return;
     }
     if (event.type === "introComplete") {
-      window.localStorage.setItem(INTRO_STORAGE_KEY, "completed");
+      useGameStore.getState().setWorldFlag(INTRO_COMPLETED_FLAG);
       setOpenPanel(null);
       setMapOpen(false);
       setReady(false);
@@ -223,11 +250,30 @@ export default function AcademyWorld() {
       return;
     }
 
+    // Lesson stations: record progress and open the matching panel.
+    if (isFlagStationTarget(event.target)) {
+      useGameStore.getState().setWorldFlag(event.target);
+      setOpenPanel({ type: event.target });
+      return;
+    }
+    // Informational targets: just open the panel of the same name.
+    if (isPanelOnlyTarget(event.target)) {
+      setOpenPanel({ type: event.target });
+      return;
+    }
+    if (event.target === "market-exit" || event.target === "candle-exit") {
+      setOpenPanel(null);
+      setReady(false);
+      setRoom("academy-agora");
+      return;
+    }
+
     if (event.target === "intro-aria") setOpenPanel({ type: "intro-welcome" });
     if (event.target === "intro-token") {
-      if (window.localStorage.getItem(INTRO_REWARD_KEY) !== "claimed") {
+      const store = useGameStore.getState();
+      if (!store.worldFlags[INTRO_REWARD_FLAG]) {
         applyCapitalChange(50);
-        window.localStorage.setItem(INTRO_REWARD_KEY, "claimed");
+        store.setWorldFlag(INTRO_REWARD_FLAG);
       }
       setIntroStage("enter-academy");
       gameRef.current?.events.emit(ACADEMY_GAME_EVENTS.enableIntroGate);
@@ -240,75 +286,6 @@ export default function AcademyWorld() {
     if (event.target === "candle-workshop") setOpenPanel({ type: "mission", missionId: "m1_2" });
     if (event.target === "trend-observatory") setOpenPanel({ type: "mission", missionId: "m1_3" });
     if (event.target === "bitcoin-portal") setOpenPanel({ type: "portal" });
-    if (event.target === "market-seller") {
-      window.localStorage.setItem(MARKET_SELLER_KEY, "seen");
-      setSellerVisited(true);
-      setOpenPanel({ type: "market-seller" });
-    }
-    if (event.target === "market-buyer") {
-      window.localStorage.setItem(MARKET_BUYER_KEY, "seen");
-      setBuyerVisited(true);
-      setOpenPanel({ type: "market-buyer" });
-    }
-    if (event.target === "market-board") setOpenPanel({ type: "market-board" });
-    if (event.target === "market-practice") setOpenPanel({ type: "market-practice" });
-    if (event.target === "market-practice-locked") setOpenPanel({ type: "market-practice-locked" });
-    if (event.target === "market-exit") {
-      setOpenPanel(null);
-      setReady(false);
-      setRoom("academy-agora");
-    }
-    if (event.target === "candle-open") {
-      window.localStorage.setItem(CANDLE_OPEN_KEY, "seen");
-      setCandleOpenVisited(true);
-      setOpenPanel({ type: "candle-open" });
-    }
-    if (event.target === "candle-high") {
-      window.localStorage.setItem(CANDLE_HIGH_KEY, "seen");
-      setCandleHighVisited(true);
-      setOpenPanel({ type: "candle-high" });
-    }
-    if (event.target === "candle-low") {
-      window.localStorage.setItem(CANDLE_LOW_KEY, "seen");
-      setCandleLowVisited(true);
-      setOpenPanel({ type: "candle-low" });
-    }
-    if (event.target === "candle-close") {
-      window.localStorage.setItem(CANDLE_CLOSE_KEY, "seen");
-      setCandleCloseVisited(true);
-      setOpenPanel({ type: "candle-close" });
-    }
-    if (event.target === "candle-direction") {
-      window.localStorage.setItem(CANDLE_DIRECTION_KEY, "seen");
-      setCandleDirectionVisited(true);
-      setOpenPanel({ type: "candle-direction" });
-    }
-    if (event.target === "candle-direction-locked") setOpenPanel({ type: "candle-direction-locked" });
-    if (event.target === "candle-body") {
-      window.localStorage.setItem(CANDLE_BODY_KEY, "seen");
-      setCandleBodyVisited(true);
-      setOpenPanel({ type: "candle-body" });
-    }
-    if (event.target === "candle-body-locked") setOpenPanel({ type: "candle-body-locked" });
-    if (event.target === "candle-upper-wick") {
-      window.localStorage.setItem(CANDLE_UPPER_WICK_KEY, "seen");
-      setCandleUpperWickVisited(true);
-      setOpenPanel({ type: "candle-upper-wick" });
-    }
-    if (event.target === "candle-upper-wick-locked") setOpenPanel({ type: "candle-upper-wick-locked" });
-    if (event.target === "candle-lower-wick") {
-      window.localStorage.setItem(CANDLE_LOWER_WICK_KEY, "seen");
-      setCandleLowerWickVisited(true);
-      setOpenPanel({ type: "candle-lower-wick" });
-    }
-    if (event.target === "candle-lower-wick-locked") setOpenPanel({ type: "candle-lower-wick-locked" });
-    if (event.target === "candle-practice") setOpenPanel({ type: "candle-practice" });
-    if (event.target === "candle-practice-locked") setOpenPanel({ type: "candle-practice-locked" });
-    if (event.target === "candle-exit") {
-      setOpenPanel(null);
-      setReady(false);
-      setRoom("academy-agora");
-    }
   }, [applyCapitalChange]);
 
   useEffect(() => {
@@ -387,7 +364,7 @@ export default function AcademyWorld() {
   };
 
   const replayWelcome = () => {
-    window.localStorage.removeItem(INTRO_STORAGE_KEY);
+    useGameStore.getState().clearWorldFlag(INTRO_COMPLETED_FLAG);
     setPassportOpen(false);
     setOpenPanel(null);
     setIntroStage("meet-aria");
@@ -419,12 +396,12 @@ export default function AcademyWorld() {
   };
 
   const openMarketPractice = () => {
-    window.localStorage.setItem(RETURN_ROOM_KEY, "market-plaza");
+    useGameStore.getState().setWorldReturnRoom("market-plaza");
     openMission("m1_1");
   };
 
   const openCandlePractice = () => {
-    window.localStorage.setItem(RETURN_ROOM_KEY, "candle-workshop");
+    useGameStore.getState().setWorldReturnRoom("candle-workshop");
     openMission("m1_2");
   };
 
@@ -453,13 +430,7 @@ export default function AcademyWorld() {
             : "Entra a la evaluación y demuestra lo aprendido"
       : "Visita el siguiente edificio educativo";
 
-  const roomLabel = room === "welcome-harbor"
-    ? "Puerto de Bienvenida"
-    : room === "market-plaza"
-      ? "Mercado Plaza"
-      : room === "candle-workshop"
-        ? "Taller de Velas"
-        : "Academia Ágora";
+  const roomLabel = WORLD_ROOMS[room].label;
 
   return (
     <section
@@ -472,15 +443,7 @@ export default function AcademyWorld() {
       <div
         ref={mountRef}
         className="absolute inset-0 overflow-hidden [&_canvas]:!block"
-        aria-label={
-          room === "welcome-harbor"
-            ? "Puerto de Bienvenida jugable"
-            : room === "market-plaza"
-              ? "Mercado Plaza jugable"
-              : room === "candle-workshop"
-                ? "Taller de Velas jugable"
-                : "Academia Ágora jugable"
-        }
+        aria-label={WORLD_ROOMS[room].ariaLabel}
       />
 
       {(!ready || !startResolved) && (
@@ -952,179 +915,6 @@ function MarketLessonPanel({
       <h2 className="mt-2 font-display text-xl font-bold">Ya viste las dos fuerzas del mercado.</h2>
       <p className="mt-2 text-sm leading-relaxed text-tp-text-muted">Ahora demuestra que puedes distinguir quién ofrece, quién demanda y por qué cambia un precio.</p>
       <button type="button" onClick={onPractice} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-tp-gold px-5 py-3 font-display text-sm font-bold text-[#14222a]">Comenzar práctica M1.1 <ArrowRight size={15} /></button>
-    </div>
-  );
-}
-
-function CandleLessonPanelDraft({
-  panel,
-  ohlcCount,
-  conceptCount,
-  onClose,
-  onPractice,
-}: {
-  panel: CandlePanelState;
-  ohlcCount: number;
-  conceptCount: number;
-  onClose: () => void;
-  onPractice: () => void;
-}) {
-  const DEMO = { open: 100, high: 110, low: 95, close: 108 };
-  const bodyTop = Math.max(DEMO.open, DEMO.close);
-  const bodyBottom = Math.min(DEMO.open, DEMO.close);
-  const bullish = DEMO.close >= DEMO.open;
-
-  if (panel.type === "candle-open") {
-    return (
-      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-2xl rounded-3xl border border-tp-info/30 bg-[rgba(255,255,255,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
-        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
-        <p className="flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-tp-info"><Compass size={13} /> Estación Open · Apertura</p>
-        <h2 className="mt-2 font-display text-xl font-bold">O = {DEMO.open} · el precio de inicio</h2>
-        <p className="mt-2 text-sm leading-relaxed text-tp-text-muted">La <strong className="text-tp-text">apertura (Open)</strong> es el primer precio negociado cuando comienza el período de la vela.</p>
-        <button type="button" onClick={onClose} className="mt-5 flex items-center gap-2 rounded-2xl bg-tp-info px-5 py-3 font-display text-sm font-bold text-[#10202a]">Siguiente estación <ArrowRight size={15} /></button>
-      </div>
-    );
-  }
-
-  if (panel.type === "candle-high") {
-    return (
-      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-2xl rounded-3xl border border-tp-gold/30 bg-[rgba(255,255,255,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
-        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
-        <p className="flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-tp-gold"><Sparkles size={13} /> Estación High · Máximo</p>
-        <h2 className="mt-2 font-display text-xl font-bold">H = {DEMO.high} · el techo alcanzado</h2>
-        <p className="mt-2 text-sm leading-relaxed text-tp-text-muted">El <strong className="text-tp-text">máximo (High)</strong> es el precio más alto del período y define la mecha superior.</p>
-        <button type="button" onClick={onClose} className="mt-5 flex items-center gap-2 rounded-2xl bg-tp-gold px-5 py-3 font-display text-sm font-bold text-[#14222a]">Siguiente estación <ArrowRight size={15} /></button>
-      </div>
-    );
-  }
-
-  if (panel.type === "candle-low") {
-    return (
-      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-2xl rounded-3xl border border-tp-supply/30 bg-[rgba(255,255,255,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
-        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
-        <p className="flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-tp-supply"><Coins size={13} /> Estación Low · Mínimo</p>
-        <h2 className="mt-2 font-display text-xl font-bold">L = {DEMO.low} · el suelo alcanzado</h2>
-        <p className="mt-2 text-sm leading-relaxed text-tp-text-muted">El <strong className="text-tp-text">mínimo (Low)</strong> es el precio más bajo del período.</p>
-        <button type="button" onClick={onClose} className="mt-5 flex items-center gap-2 rounded-2xl bg-tp-supply px-5 py-3 font-display text-sm font-bold text-tp-text">Siguiente estación <ArrowRight size={15} /></button>
-      </div>
-    );
-  }
-
-  if (panel.type === "candle-close") {
-    return (
-      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-2xl rounded-3xl border border-tp-demand/30 bg-[rgba(255,255,255,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
-        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
-        <p className="flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-tp-demand"><Check size={13} /> Estación Close · Cierre</p>
-        <h2 className="mt-2 font-display text-xl font-bold">C = {DEMO.close} · el veredicto final</h2>
-        <p className="mt-2 text-sm leading-relaxed text-tp-text-muted">El <strong className="text-tp-text">cierre (Close)</strong> revela quién ganó: compradores o vendedores.</p>
-        <button type="button" onClick={onClose} className="mt-5 flex items-center gap-2 rounded-2xl bg-tp-demand px-5 py-3 font-display text-sm font-bold text-[#10202a]">Explorar la mesa central <ArrowRight size={15} /></button>
-      </div>
-    );
-  }
-
-  if (panel.type === "candle-direction-locked") {
-    return (
-      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-lg rounded-3xl border border-tp-border bg-[rgba(255,255,255,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
-        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
-        <p className="flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-tp-text-muted/80"><LockKeyhole size={13} /> Estación bloqueada</p>
-        <h2 className="mt-2 font-display text-xl font-bold">Primero lee los cuatro precios.</h2>
-        <p className="mt-2 text-sm leading-relaxed text-tp-text-muted">Visita Open, High, Low y Close. Progreso: {ohlcCount}/4.</p>
-      </div>
-    );
-  }
-
-  if (panel.type === "candle-direction") {
-    return (
-      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-2xl rounded-3xl border border-tp-demand/30 bg-[rgba(255,255,255,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
-        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
-        <p className="text-[9px] uppercase tracking-[0.18em] text-tp-demand">Dirección de la vela</p>
-        <h2 className="mt-2 font-display text-xl font-bold">{bullish ? "▲ Vela alcista" : "▼ Vela bajista"}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-tp-text-muted">C ({DEMO.close}) {bullish ? ">" : "<"} O ({DEMO.open}): vela <strong className={bullish ? "text-tp-demand" : "text-tp-supply"}>{bullish ? "alcista" : "bajista"}</strong>.</p>
-        <button type="button" onClick={onClose} className="mt-5 flex items-center gap-2 rounded-2xl bg-tp-gold px-5 py-3 font-display text-sm font-bold text-[#14222a]">Calcular el cuerpo <ArrowRight size={15} /></button>
-      </div>
-    );
-  }
-
-  if (panel.type === "candle-body-locked") {
-    return (
-      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-lg rounded-3xl border border-tp-border bg-[rgba(255,255,255,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
-        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
-        <h2 className="mt-2 font-display text-xl font-bold">Primero comprende la dirección.</h2>
-      </div>
-    );
-  }
-
-  if (panel.type === "candle-body") {
-    const bodySize = Math.abs(DEMO.close - DEMO.open);
-    return (
-      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-2xl rounded-3xl border border-tp-gold/30 bg-[rgba(255,255,255,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
-        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
-        <h2 className="mt-2 font-display text-xl font-bold">Cuerpo = |C − O| = {bodySize}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-tp-text-muted">|{DEMO.close} − {DEMO.open}| = {bodySize} puntos de dominio.</p>
-        <button type="button" onClick={onClose} className="mt-5 flex items-center gap-2 rounded-2xl bg-tp-gold px-5 py-3 font-display text-sm font-bold text-[#14222a]">Calcular mecha superior <ArrowRight size={15} /></button>
-      </div>
-    );
-  }
-
-  if (panel.type === "candle-upper-wick-locked") {
-    return (
-      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-lg rounded-3xl border border-tp-border bg-[rgba(255,255,255,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
-        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
-        <h2 className="mt-2 font-display text-xl font-bold">Primero calcula el cuerpo.</h2>
-      </div>
-    );
-  }
-
-  if (panel.type === "candle-upper-wick") {
-    const upperWick = DEMO.high - bodyTop;
-    return (
-      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-2xl rounded-3xl border border-tp-info/30 bg-[rgba(255,255,255,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
-        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
-        <h2 className="mt-2 font-display text-xl font-bold">Mecha sup. = {upperWick}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-tp-text-muted">{DEMO.high} − max(O,C) = {upperWick}.</p>
-        <button type="button" onClick={onClose} className="mt-5 flex items-center gap-2 rounded-2xl bg-tp-info px-5 py-3 font-display text-sm font-bold text-[#10202a]">Calcular mecha inferior <ArrowRight size={15} /></button>
-      </div>
-    );
-  }
-
-  if (panel.type === "candle-lower-wick-locked") {
-    return (
-      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-lg rounded-3xl border border-tp-border bg-[rgba(255,255,255,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
-        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
-        <h2 className="mt-2 font-display text-xl font-bold">Primero calcula la mecha superior.</h2>
-      </div>
-    );
-  }
-
-  if (panel.type === "candle-lower-wick") {
-    const lowerWick = bodyBottom - DEMO.low;
-    return (
-      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-2xl rounded-3xl border border-tp-supply/30 bg-[rgba(255,255,255,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
-        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
-        <h2 className="mt-2 font-display text-xl font-bold">Mecha inf. = {lowerWick}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-tp-text-muted">min(O,C) − L = {bodyBottom} − {DEMO.low} = {lowerWick}.</p>
-        <button type="button" onClick={onClose} className="mt-5 flex items-center gap-2 rounded-2xl bg-tp-demand px-5 py-3 font-display text-sm font-bold text-[#10202a]">¡Vela completa! <ArrowRight size={15} /></button>
-      </div>
-    );
-  }
-
-  if (panel.type === "candle-practice-locked") {
-    return (
-      <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-lg rounded-3xl border border-tp-border bg-[rgba(255,255,255,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
-        <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
-        <h2 className="mt-2 font-display text-xl font-bold">Construye la vela antes de responder.</h2>
-        <p className="mt-2 text-sm leading-relaxed text-tp-text-muted">OHLC: {ohlcCount}/4 · Conceptos: {conceptCount}/4.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="absolute inset-x-3 bottom-20 z-30 mx-auto max-w-xl rounded-3xl border border-tp-demand/30 bg-[rgba(255,255,255,.97)] p-5 shadow-2xl backdrop-blur-xl sm:p-6">
-      <IconButton label="Cerrar diálogo" onClick={onClose} className="absolute right-3 top-3" />
-      <p className="flex items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-tp-demand"><Check size={13} /> Evaluación desbloqueada</p>
-      <h2 className="mt-2 font-display text-xl font-bold">Ya construiste tu primera vela.</h2>
-      <p className="mt-2 text-sm leading-relaxed text-tp-text-muted">Demuestra que puedes calcular dirección, cuerpo y mechas tú mismo.</p>
-      <button type="button" onClick={onPractice} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-tp-gold px-5 py-3 font-display text-sm font-bold text-[#14222a]">Comenzar evaluación M1.2 <ArrowRight size={15} /></button>
     </div>
   );
 }

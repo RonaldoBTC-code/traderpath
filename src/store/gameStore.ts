@@ -42,6 +42,10 @@ interface GameState extends GameProgressSnapshot {
   marketSpecialization: string | null;
   marketChangeUsed: boolean;
 
+  // World exploration progress (flags keyed by station/target id)
+  worldFlags: Record<string, boolean>;
+  worldReturnRoom: string | null;
+
   // Actions
   completeMission: (levelId: string, missionId: string, score: number) => void;
   isMissionCompleted: (levelId: string, missionId: string) => boolean;
@@ -53,6 +57,11 @@ interface GameState extends GameProgressSnapshot {
   setMarketSpecialization: (market: string) => void;
   useMarketChange: (newMarket: string) => void;
   applyCapitalChange: (amount: number) => void;
+  setWorldFlag: (flag: string) => void;
+  clearWorldFlag: (flag: string) => void;
+  setWorldReturnRoom: (room: string | null) => void;
+  consumeWorldReturnRoom: () => string | null;
+  importLegacyWorldProgress: () => void;
   hydrateProgress: (progress: GameProgressSnapshot) => void;
   resetProgress: () => void;
 }
@@ -131,7 +140,28 @@ const INITIAL_STATE = {
   lastActivity: null as string | null,
   marketSpecialization: null as string | null,
   marketChangeUsed: false,
+  worldFlags: {} as Record<string, boolean>,
+  worldReturnRoom: null as string | null,
 };
+
+// Legacy per-flag localStorage keys used by the world before the flags moved
+// into this store. Imported once (and removed) by importLegacyWorldProgress so
+// existing players keep their exploration progress.
+const LEGACY_WORLD_FLAG_KEYS: Record<string, string> = {
+  "traderpath-world-intro-v1": "intro-completed",
+  "traderpath-world-intro-reward-v1": "intro-reward-claimed",
+  "traderpath-market-seller-v1": "market-seller",
+  "traderpath-market-buyer-v1": "market-buyer",
+  "traderpath-candle-open-v1": "candle-open",
+  "traderpath-candle-high-v1": "candle-high",
+  "traderpath-candle-low-v1": "candle-low",
+  "traderpath-candle-close-v1": "candle-close",
+  "traderpath-candle-direction-v1": "candle-direction",
+  "traderpath-candle-body-v1": "candle-body",
+  "traderpath-candle-upper-wick-v1": "candle-upper-wick",
+  "traderpath-candle-lower-wick-v1": "candle-lower-wick",
+};
+const LEGACY_RETURN_ROOM_KEY = "traderpath-world-return-room-v1";
 
 // ─── STORE ──────────────────────────────────────────────────
 
@@ -288,6 +318,50 @@ export const useGameStore = create<GameState>()(
         set((state) => ({
           virtualCapital: Math.max(0, Math.round((state.virtualCapital + amount) * 100) / 100),
           lastActivity: new Date().toISOString().split("T")[0],
+        }));
+      },
+
+      setWorldFlag: (flag: string) => {
+        set((state) =>
+          state.worldFlags[flag] ? state : { worldFlags: { ...state.worldFlags, [flag]: true } }
+        );
+      },
+
+      clearWorldFlag: (flag: string) => {
+        set((state) => {
+          if (!(flag in state.worldFlags)) return state;
+          const nextFlags = { ...state.worldFlags };
+          delete nextFlags[flag];
+          return { worldFlags: nextFlags };
+        });
+      },
+
+      setWorldReturnRoom: (room: string | null) => {
+        set({ worldReturnRoom: room });
+      },
+
+      consumeWorldReturnRoom: () => {
+        const room = get().worldReturnRoom;
+        if (room !== null) set({ worldReturnRoom: null });
+        return room;
+      },
+
+      importLegacyWorldProgress: () => {
+        if (typeof window === "undefined") return;
+        const imported: Record<string, boolean> = {};
+        for (const [legacyKey, flag] of Object.entries(LEGACY_WORLD_FLAG_KEYS)) {
+          if (window.localStorage.getItem(legacyKey) !== null) {
+            imported[flag] = true;
+            window.localStorage.removeItem(legacyKey);
+          }
+        }
+        const legacyReturnRoom = window.localStorage.getItem(LEGACY_RETURN_ROOM_KEY);
+        if (legacyReturnRoom !== null) window.localStorage.removeItem(LEGACY_RETURN_ROOM_KEY);
+        if (Object.keys(imported).length === 0 && legacyReturnRoom === null) return;
+        set((state) => ({
+          // Store values win over legacy ones: the store is the source of truth
+          worldFlags: { ...imported, ...state.worldFlags },
+          worldReturnRoom: state.worldReturnRoom ?? legacyReturnRoom,
         }));
       },
 

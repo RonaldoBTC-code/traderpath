@@ -5,6 +5,14 @@ import MarketPlazaScene from "@/game/phaser/MarketPlazaScene";
 import CandleWorkshopScene from "@/game/phaser/CandleWorkshopScene";
 import type { AcademyWorldEventHandler, WorldRoom } from "@/game/phaser/worldEvents";
 
+// One factory per room. Room labels/metadata live in worldRooms.ts (phaser-free).
+const SCENE_FACTORIES: Record<WorldRoom, (onWorldEvent: AcademyWorldEventHandler) => Phaser.Scene> = {
+  "welcome-harbor": (onWorldEvent) => new WelcomeHarborScene(onWorldEvent),
+  "academy-agora": (onWorldEvent) => new AcademyAgoraScene(onWorldEvent),
+  "market-plaza": (onWorldEvent) => new MarketPlazaScene(onWorldEvent),
+  "candle-workshop": (onWorldEvent) => new CandleWorkshopScene(onWorldEvent),
+};
+
 export function createAcademyGame(
   parent: HTMLElement,
   onWorldEvent: AcademyWorldEventHandler,
@@ -27,14 +35,6 @@ export function createAcademyGame(
       width: 1280,
       height: 720,
     },
-    scene: [
-      room === "welcome-harbor"
-        ? new WelcomeHarborScene(onWorldEvent)
-        : room === "market-plaza"
-          ? new MarketPlazaScene(onWorldEvent)
-          : room === "candle-workshop"
-            ? new CandleWorkshopScene(onWorldEvent)
-            : new AcademyAgoraScene(onWorldEvent),
-    ],
+    scene: [SCENE_FACTORIES[room](onWorldEvent)],
   });
 }
