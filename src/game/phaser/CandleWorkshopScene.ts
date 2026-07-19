@@ -4,7 +4,12 @@ import {
   type AcademyWorldEventHandler,
   type CandleTarget,
 } from "@/game/phaser/worldEvents";
-import { drawExplorerBody } from "@/game/phaser/characterArt";
+import {
+  createExplorerAvatar,
+  preloadExplorerSprite,
+  setExplorerAvatarColor,
+  type ExplorerAvatar,
+} from "@/game/phaser/characterArt";
 
 interface CandleHotspot {
   id: CandleTarget;
@@ -22,7 +27,7 @@ const DEMO = { open: 100, high: 110, low: 95, close: 108 };
 
 export default class CandleWorkshopScene extends Phaser.Scene {
   private player?: Phaser.GameObjects.Container;
-  private playerBody?: Phaser.GameObjects.Graphics;
+  private avatar?: ExplorerAvatar;
   private destinationMarker?: Phaser.GameObjects.Arc;
   private movementTween?: Phaser.Tweens.Tween;
   private pendingTarget?: CandleTarget;
@@ -43,6 +48,10 @@ export default class CandleWorkshopScene extends Phaser.Scene {
 
   constructor(private readonly onWorldEvent: AcademyWorldEventHandler) {
     super("candle-workshop");
+  }
+
+  preload() {
+    preloadExplorerSprite(this);
   }
 
   create() {
@@ -321,23 +330,19 @@ export default class CandleWorkshopScene extends Phaser.Scene {
   private createPlayer() {
     const player = this.add.container(640, 620);
     const shadow = this.add.ellipse(0, 38, 64, 20, 0x1e2a44, 0.4);
-    const body = this.add.graphics();
-    this.playerBody = body;
-    this.drawPlayerBody(0xe5960a);
+    // Same footprint the vector body already had here, so the workshop framing
+    // is unchanged: sprite offset y=-6 at 132px tall.
+    const avatar = createExplorerAvatar(this, { y: -6, height: 132, fallbackColor: 0xe5960a });
+    this.avatar = avatar;
     const label = this.add.text(0, 59, "Explorador", {
       color: "#1e2a44",
       fontFamily: "DM Sans, sans-serif",
       fontSize: "11px",
       fontStyle: "bold",
     }).setOrigin(0.5);
-    player.add([shadow, body, label]);
+    player.add([shadow, avatar.object, label]);
     player.setDepth(player.y);
     this.player = player;
-  }
-
-  private drawPlayerBody(color: number) {
-    if (!this.playerBody) return;
-    drawExplorerBody(this.playerBody, color);
   }
 
   private createDestinationMarker() {
@@ -578,6 +583,6 @@ export default class CandleWorkshopScene extends Phaser.Scene {
   }
 
   private setAvatarColor(color: string) {
-    this.drawPlayerBody(Phaser.Display.Color.HexStringToColor(color).color);
+    setExplorerAvatarColor(this, this.avatar, color);
   }
 }

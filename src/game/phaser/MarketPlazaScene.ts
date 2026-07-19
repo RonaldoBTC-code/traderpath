@@ -4,7 +4,13 @@ import {
   type AcademyWorldEventHandler,
   type MarketTarget,
 } from "@/game/phaser/worldEvents";
-import { drawExplorerBody, drawVillagerBody } from "@/game/phaser/characterArt";
+import {
+  createExplorerAvatar,
+  drawVillagerBody,
+  preloadExplorerSprite,
+  setExplorerAvatarColor,
+  type ExplorerAvatar,
+} from "@/game/phaser/characterArt";
 
 interface MarketHotspot {
   id: MarketTarget;
@@ -19,7 +25,7 @@ const WORLD_HEIGHT = 720;
 
 export default class MarketPlazaScene extends Phaser.Scene {
   private player?: Phaser.GameObjects.Container;
-  private playerBody?: Phaser.GameObjects.Graphics;
+  private avatar?: ExplorerAvatar;
   private destinationMarker?: Phaser.GameObjects.Arc;
   private movementTween?: Phaser.Tweens.Tween;
   private pendingTarget?: MarketTarget;
@@ -34,6 +40,10 @@ export default class MarketPlazaScene extends Phaser.Scene {
 
   constructor(private readonly onWorldEvent: AcademyWorldEventHandler) {
     super("market-plaza");
+  }
+
+  preload() {
+    preloadExplorerSprite(this);
   }
 
   create() {
@@ -275,9 +285,10 @@ export default class MarketPlazaScene extends Phaser.Scene {
   private createPlayer() {
     const player = this.add.container(640, 625);
     const shadow = this.add.ellipse(0, 38, 64, 20, 0x10202a, 0.3);
-    const body = this.add.graphics();
-    this.playerBody = body;
-    this.drawPlayerBody(0xf0c040);
+    // Same footprint the vector body already had here, so the plaza framing is
+    // unchanged: sprite offset y=-6 at 132px tall.
+    const avatar = createExplorerAvatar(this, { y: -6, height: 132, fallbackColor: 0xf0c040 });
+    this.avatar = avatar;
     const label = this.add.text(0, 59, "Explorador", {
       color: "#ffffff",
       fontFamily: "DM Sans, sans-serif",
@@ -286,14 +297,9 @@ export default class MarketPlazaScene extends Phaser.Scene {
       stroke: "#1c2b35",
       strokeThickness: 4,
     }).setOrigin(0.5);
-    player.add([shadow, body, label]);
+    player.add([shadow, avatar.object, label]);
     player.setDepth(player.y);
     this.player = player;
-  }
-
-  private drawPlayerBody(color: number) {
-    if (!this.playerBody) return;
-    drawExplorerBody(this.playerBody, color);
   }
 
   private createDestinationMarker() {
@@ -429,6 +435,6 @@ export default class MarketPlazaScene extends Phaser.Scene {
   }
 
   private setAvatarColor(color: string) {
-    this.drawPlayerBody(Phaser.Display.Color.HexStringToColor(color).color);
+    setExplorerAvatarColor(this, this.avatar, color);
   }
 }

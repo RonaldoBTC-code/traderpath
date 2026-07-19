@@ -92,6 +92,77 @@ export function preloadExplorerSprite(scene: Phaser.Scene) {
   scene.load.once("complete", () => scene.load.off("loaderror", swallow));
 }
 
+/**
+ * The player avatar as the world scenes use it: the Blender sprite when its PNG
+ * loaded, the vector drawing otherwise. Exactly one of `sprite`/`body` is set,
+ * which is what lets colour changes know which path to take — the earlier bug
+ * was a scene calling the vector redraw while the sprite branch was active.
+ */
+export interface ExplorerAvatar {
+  /** Display object to add to the scene's player container. */
+  object: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics;
+  sprite?: Phaser.GameObjects.Image;
+  body?: Phaser.GameObjects.Graphics;
+  /** Sprite height in px, kept so colour swaps can re-apply it. */
+  height: number;
+}
+
+export interface ExplorerAvatarOptions {
+  /**
+   * Sprite offset inside the player container. Ignored by the vector fallback,
+   * whose geometry is already positioned around the container origin.
+   */
+  x?: number;
+  y?: number;
+  /** Rendered sprite height in px. Each scene passes its own. */
+  height: number;
+  /** Colour for the vector fallback, used until a selection arrives. */
+  fallbackColor: number;
+}
+
+/** Build the avatar, preferring the sprite and degrading to the vector body. */
+export function createExplorerAvatar(
+  scene: Phaser.Scene,
+  options: ExplorerAvatarOptions,
+): ExplorerAvatar {
+  const { x = 0, y = 0, height, fallbackColor } = options;
+  const textureKey = explorerTextureKey(scene);
+  if (textureKey) {
+    const sprite = scene.add.image(x, y, textureKey);
+    sizeExplorerSprite(sprite, height);
+    return { object: sprite, sprite, height };
+  }
+  const body = scene.add.graphics();
+  drawExplorerBody(body, fallbackColor);
+  return { object: body, body, height };
+}
+
+/** Apply a selector colour: swap texture on the sprite, or redraw the vector. */
+export function setExplorerAvatarColor(
+  scene: Phaser.Scene,
+  avatar: ExplorerAvatar | undefined,
+  color: string,
+) {
+  if (!avatar) return;
+  const textureKey = explorerTextureKey(scene, color);
+  if (avatar.sprite && textureKey) {
+    avatar.sprite.setTexture(textureKey);
+    // Defensive: Phaser keeps the display size across setTexture (verified in
+    // runtime), and every variant is currently 512x640, so this is a no-op
+    // today. It only earns its keep if a future variant ships at a different
+    // resolution, which would otherwise resize the avatar mid-game.
+    sizeExplorerSprite(avatar.sprite, avatar.height);
+    return;
+  }
+  if (avatar.body) {
+    drawExplorerBody(avatar.body, Phaser.Display.Color.HexStringToColor(color).color);
+  }
+}
+
+function sizeExplorerSprite(sprite: Phaser.GameObjects.Image, height: number) {
+  sprite.setDisplaySize((sprite.width / sprite.height) * height, height);
+}
+
 /** Player avatar: chunky cartoon explorer with cap, face and backpack strap. */
 export function drawExplorerBody(g: Phaser.GameObjects.Graphics, color: number) {
   const dark = CHARACTER_INK;

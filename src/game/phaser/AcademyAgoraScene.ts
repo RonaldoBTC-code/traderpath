@@ -5,10 +5,11 @@ import {
   type AcademyWorldEventHandler,
 } from "@/game/phaser/worldEvents";
 import {
+  createExplorerAvatar,
   drawAriaBody,
-  drawExplorerBody,
-  explorerTextureKey,
   preloadExplorerSprite,
+  setExplorerAvatarColor,
+  type ExplorerAvatar,
 } from "@/game/phaser/characterArt";
 
 interface Hotspot {
@@ -25,8 +26,7 @@ const ACADEMY_MAP_KEY = "academy-agora-map";
 
 export default class AcademyAgoraScene extends Phaser.Scene {
   private player?: Phaser.GameObjects.Container;
-  private playerBody?: Phaser.GameObjects.Graphics;
-  private playerSprite?: Phaser.GameObjects.Image;
+  private avatar?: ExplorerAvatar;
   private destinationMarker?: Phaser.GameObjects.Arc;
   private movementTween?: Phaser.Tweens.Tween;
   private pendingTarget?: AcademyTarget;
@@ -350,21 +350,8 @@ export default class AcademyAgoraScene extends Phaser.Scene {
 
     // Prefer the Blender-rendered sprite; fall back to the vector body so the
     // world keeps working before build_explorer.py has produced the PNG.
-    let avatar: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics;
-    const textureKey = explorerTextureKey(this);
-    if (textureKey) {
-      const sprite = this.add.image(0, -6, textureKey);
-      this.sizeAvatarSprite(sprite);
-      this.playerBody = undefined;
-      this.playerSprite = sprite;
-      avatar = sprite;
-    } else {
-      const body = this.add.graphics();
-      this.playerBody = body;
-      this.playerSprite = undefined;
-      this.drawPlayerBody(0xe5960a);
-      avatar = body;
-    }
+    const avatar = createExplorerAvatar(this, { y: -6, height: 132, fallbackColor: 0xe5960a });
+    this.avatar = avatar;
 
     const name = this.add.text(0, 59, "Explorador", {
       color: "#ffffff",
@@ -374,14 +361,9 @@ export default class AcademyAgoraScene extends Phaser.Scene {
       stroke: "#1e2a44",
       strokeThickness: 4,
     }).setOrigin(0.5);
-    player.add([shadow, avatar, name]);
+    player.add([shadow, avatar.object, name]);
     player.setDepth(player.y);
     this.player = player;
-  }
-
-  private drawPlayerBody(color: number) {
-    if (!this.playerBody) return;
-    drawExplorerBody(this.playerBody, color);
   }
 
   private createDestinationMarker() {
@@ -451,25 +433,8 @@ export default class AcademyAgoraScene extends Phaser.Scene {
     });
   }
 
-  /** Keeps the sprite at a fixed 132px height, preserving its aspect ratio. */
-  private sizeAvatarSprite(sprite: Phaser.GameObjects.Image) {
-    sprite.setDisplaySize((sprite.width / sprite.height) * 132, 132);
-  }
-
   private setAvatarColor(color: string) {
-    // With the Blender sprites loaded we swap texture instead of redrawing:
-    // the vector body doesn't exist in that branch, so drawPlayerBody no-ops.
-    const textureKey = explorerTextureKey(this, color);
-    if (this.playerSprite && textureKey) {
-      this.playerSprite.setTexture(textureKey);
-      // Defensive: Phaser keeps the display size across setTexture (verified in
-      // runtime), and every variant is currently 512x640, so this is a no-op
-      // today. It only earns its keep if a future variant ships at a different
-      // resolution, which would otherwise resize the avatar mid-game.
-      this.sizeAvatarSprite(this.playerSprite);
-      return;
-    }
-    this.drawPlayerBody(Phaser.Display.Color.HexStringToColor(color).color);
+    setExplorerAvatarColor(this, this.avatar, color);
   }
 
   private focusTarget(target: AcademyTarget) {

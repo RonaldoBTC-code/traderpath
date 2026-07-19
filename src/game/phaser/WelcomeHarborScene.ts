@@ -4,7 +4,13 @@ import {
   type AcademyWorldEventHandler,
   type WelcomeTarget,
 } from "@/game/phaser/worldEvents";
-import { drawAriaBody, drawExplorerBody } from "@/game/phaser/characterArt";
+import {
+  createExplorerAvatar,
+  drawAriaBody,
+  preloadExplorerSprite,
+  setExplorerAvatarColor,
+  type ExplorerAvatar,
+} from "@/game/phaser/characterArt";
 
 interface WelcomeHotspot {
   id: WelcomeTarget;
@@ -20,7 +26,7 @@ const WALK_MIN_Y = 340;
 
 export default class WelcomeHarborScene extends Phaser.Scene {
   private player?: Phaser.GameObjects.Container;
-  private playerBody?: Phaser.GameObjects.Graphics;
+  private avatar?: ExplorerAvatar;
   private destinationMarker?: Phaser.GameObjects.Arc;
   private movementTween?: Phaser.Tweens.Tween;
   private pendingTarget?: WelcomeTarget;
@@ -33,6 +39,10 @@ export default class WelcomeHarborScene extends Phaser.Scene {
 
   constructor(private readonly onWorldEvent: AcademyWorldEventHandler) {
     super("welcome-harbor");
+  }
+
+  preload() {
+    preloadExplorerSprite(this);
   }
 
   create() {
@@ -281,9 +291,10 @@ export default class WelcomeHarborScene extends Phaser.Scene {
   private createPlayer() {
     const player = this.add.container(640, 625);
     const shadow = this.add.ellipse(0, 38, 64, 20, 0x10202a, 0.3);
-    const body = this.add.graphics();
-    this.playerBody = body;
-    this.drawPlayerBody(0xf0c040);
+    // Same footprint the vector body already had here, so the harbour framing
+    // is unchanged: sprite offset y=-6 at 132px tall.
+    const avatar = createExplorerAvatar(this, { y: -6, height: 132, fallbackColor: 0xf0c040 });
+    this.avatar = avatar;
     const name = this.add.text(0, 59, "Explorador", {
       color: "#ffffff",
       fontFamily: "DM Sans, sans-serif",
@@ -292,14 +303,9 @@ export default class WelcomeHarborScene extends Phaser.Scene {
       stroke: "#1c2b35",
       strokeThickness: 4,
     }).setOrigin(0.5);
-    player.add([shadow, body, name]);
+    player.add([shadow, avatar.object, name]);
     player.setDepth(player.y);
     this.player = player;
-  }
-
-  private drawPlayerBody(color: number) {
-    if (!this.playerBody) return;
-    drawExplorerBody(this.playerBody, color);
   }
 
   private createDestinationMarker() {
@@ -450,6 +456,6 @@ export default class WelcomeHarborScene extends Phaser.Scene {
   }
 
   private setAvatarColor(color: string) {
-    this.drawPlayerBody(Phaser.Display.Color.HexStringToColor(color).color);
+    setExplorerAvatarColor(this, this.avatar, color);
   }
 }
