@@ -37,16 +37,21 @@ OUTLINE_THICKNESS = 2.2
 INK_HEX = "#1E2A44"        # navy — contorno Freestyle
 SKY_HEX = "#EAF4FE"        # tp-base, ambiente diurno
 
-SEA_HEX = "#5FB4D8"        # mar abierto
-SHALLOW_HEX = "#8ECDEA"    # bajío (es el backgroundColor actual de la escena)
-GRASS_HEX = "#6FC28B"      # pasto
-GRASS_DARK_HEX = "#4E9E6E" # falda de isla
-SAND_HEX = "#F0DCA8"       # playa
-ROCK_HEX = "#8FA3B8"       # roca
-BRIDGE_HEX = "#C9A06A"     # madera de puente
+SEA_HEX = "#4FA9D6"        # mar abierto
+SHALLOW_HEX = "#93D6EF"    # bajío
+GRASS_HEX = "#7DCB92"      # pasto
+SAND_HEX = "#F2DFAE"       # playa
+STONE_HEX = "#D6DEE8"      # basamentos y plazas
+CREAM_HEX = "#FFF6E6"      # muros (VDD: superficies claras, acento en el techo)
+ROCK_HEX = "#8A8FA0"       # roca volcánica
+BRIDGE_HEX = "#C9A06A"     # madera
+PATH_HEX = "#E7CFA0"       # senderos
 TRUNK_HEX = "#7A5A3A"
 LEAF_HEX = "#3E8C63"
-ROOF_HEX = "#F7EDCF"
+CRATE_HEX = "#B98A55"
+LAVA_HEX = "#FF7A18"
+DEMAND_HEX = "#16A34A"     # tp-demand, para la vela alcista del Taller
+BTC_BLOCK_HEX = "#5D6E8C"  # tp-text-muted, monolitos de la Plaza del Bloque
 
 # Distritos, en píxeles de Phaser. Deben coincidir con drawDistrictMarker() y
 # con los hotspots de AcademyAgoraScene.createHotspots().
@@ -70,15 +75,14 @@ REQUIRED_WALKABLE_PX = {
     "approach:market-plaza": (850, 370),
     "approach:candle-workshop": (620, 535),
     "approach:trend-observatory": (510, 440),
-    "approach:bitcoin-portal": (770, 310),
+    "approach:bitcoin-portal": (772, 296),
     "approach:aria": (730, 500),
 }
 
-# `approach` heredados del hero pintado que, con terreno real, caen en agua.
-# No abortan el render: son una decisión de diseño pendiente (mover el punto en
-# AcademyAgoraScene.createHotspots), no un fallo del diorama. Vaciar esta lista
-# cuando Phaser se actualice.
-PENDING_APPROACH_MOVES = {"approach:bitcoin-portal"}
+# `approach` heredados del hero pintado que, con terreno real, caen en agua y
+# están pendientes de mover en AcademyAgoraScene.createHotspots(). Vacío: el de
+# bitcoin-portal ya se movió a (772,296) en Phaser y aquí.
+PENDING_APPROACH_MOVES: set[str] = set()
 
 # Tierra firme, como lóbulos circulares EN PANTALLA (px_x, px_y, radio_px).
 # Las tres masas están separadas a propósito: la única unión son los puentes,
@@ -104,16 +108,13 @@ BITCOIN_LOBES = [
 # justo encima del tablero, así que entrar exige pisar el puente.
 BRIDGES = [
     (795, 420, 920, 300, 82),   # central → Mercado Plaza (cubre 850,370)
-    (735, 352, 782, 240, 110),  # central → Ciudad Bitcoin
+    # Trazado para que su eje pase por (772,296), el approach de bitcoin-portal:
+    # a y=296 la línea da x=771. Antes se resolvía con un embarcadero suelto en
+    # medio del canal, que se leía como una losa flotante.
+    (740, 350, 800, 246, 90),   # central → Ciudad Bitcoin
 ]
 
-# Embarcaderos: plataformas caminables sobre el agua. El del canal norte no es
-# decorativo — el `approach` de bitcoin-portal cae en (770,310), en pleno canal,
-# y el ancho proyectado del puente no llegaba a cubrirlo. Un rellano a media
-# travesía lo resuelve y de paso le da sentido al puente largo.
-DOCKS = [
-    (770, 312, 58),
-]
+DOCKS: list = []
 
 LAND_HEIGHT = 0.35   # bajo a propósito: menos flanco visible = máscara ajustada
 
@@ -218,76 +219,159 @@ WALKABLE = []   # objetos que la máscara pinta de blanco
 BLOCKING = []   # todo lo demás
 
 
-def add_sea(cam, mat_sea, mat_shallow):
-    """Plano de mar único, más grande que el cuadro por todos lados.
+def _finish(obj, mat, walkable, smooth=False, shadow=True):
+    obj.data.materials.append(mat)
+    if smooth:
+        bpy.ops.object.shade_smooth()
+    obj.visible_shadow = shadow
+    (WALKABLE if walkable else BLOCKING).append(obj)
+    return obj
 
-    Un solo plano: la versión anterior añadía una lámina de bajío más pequeña
-    y su borde recto se veía como un rectángulo dibujado sobre el mar.
-    El bajío ahora es un disco por lóbulo, en add_shore().
-    """
+
+def disc_px(cam, name, px, py, radius_px, z, height, mat,
+            walkable=False, smooth=True, shadow=True, verts=48):
+    """Cilindro que se lee como un círculo de radius_px EN PANTALLA."""
+    step_x, step_y = pixel_scale(cam)
+    center = px_to_world(cam, px, py)
+    bpy.ops.mesh.primitive_cylinder_add(vertices=verts, radius=1.0, depth=height,
+                                        location=(center.x, center.y, z + height / 2.0))
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (radius_px * step_x, radius_px * step_y, 1.0)
+    return _finish(obj, mat, walkable, smooth, shadow)
+
+
+def box_px(cam, name, px, py, w_px, d_px, height, z, mat,
+           walkable=False, rot=0.0, bevel=0.05, shadow=True):
+    """Caja con planta de w_px × d_px EN PANTALLA."""
+    step_x, step_y = pixel_scale(cam)
+    center = px_to_world(cam, px, py)
+    bpy.ops.mesh.primitive_cube_add(size=1.0,
+                                    location=(center.x, center.y, z + height / 2.0))
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (w_px * step_x, d_px * step_y, height)
+    obj.rotation_euler = (0.0, 0.0, rot)
+    if bevel:
+        bev = obj.modifiers.new("bevel", "BEVEL")
+        bev.width = bevel
+        bev.segments = 2
+    return _finish(obj, mat, walkable, False, shadow)
+
+
+def pyramid_px(cam, name, px, py, w_px, d_px, height, z, mat, verts=4, shadow=True):
+    """Techo piramidal cuya base calza exactamente con w_px × d_px."""
+    step_x, step_y = pixel_scale(cam)
+    center = px_to_world(cam, px, py)
+    # Con 4 lados, un radio de √2/2 inscribe un cuadrado de lado 1; con más
+    # lados el polígono se aproxima al círculo y hace falta 0.5 para que el
+    # DIÁMETRO sea 1. Sin esta distinción, w_px se interpretaba como radio y
+    # los techos salían al doble de ancho.
+    radius = math.sqrt(2) / 2 if verts == 4 else 0.5
+    bpy.ops.mesh.primitive_cone_add(vertices=verts, radius1=radius, radius2=0.0,
+                                    depth=1.0,
+                                    location=(center.x, center.y, z + height / 2.0))
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (w_px * step_x, d_px * step_y, height)
+    if verts == 4:
+        obj.rotation_euler = (0.0, 0.0, math.radians(45))
+    return _finish(obj, mat, False, verts > 6, shadow)
+
+
+def dome_px(cam, name, px, py, radius_px, z, mat, squash=0.72):
+    step_x, step_y = pixel_scale(cam)
+    center = px_to_world(cam, px, py)
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=1.0,
+                                         location=(center.x, center.y, z))
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (radius_px * step_x, radius_px * step_y, radius_px * step_x * squash)
+    return _finish(obj, mat, False, True)
+
+
+def add_sea(cam, mat_sea):
+    """Plano de mar único, más grande que el cuadro por todos lados."""
     corners = [px_to_world(cam, x, y) for x, y in
                ((0, 0), (RESOLUTION[0], 0), (0, RESOLUTION[1]), RESOLUTION)]
     span = max(max(abs(c.x) for c in corners), max(abs(c.y) for c in corners)) * 2.6
-    bpy.ops.mesh.primitive_plane_add(size=span, location=(0, 0, -0.08))
+    bpy.ops.mesh.primitive_plane_add(size=span, location=(0, 0, -0.10))
     sea = bpy.context.active_object
     sea.name = "sea"
-    sea.data.materials.append(mat_sea)
-    BLOCKING.append(sea)
-    return sea
+    return _finish(sea, mat_sea, False)
 
 
-def add_shore(cam, name, px, py, radius_px, mat):
-    """Disco de bajío bajo un lóbulo, un poco más ancho: define la costa."""
+def _raw_disc(cam, px, py, radius_px, z, height, verts=56):
+    """Cilindro sin material ni registro, para fusionar después."""
     step_x, step_y = pixel_scale(cam)
     center = px_to_world(cam, px, py)
-    bpy.ops.mesh.primitive_cylinder_add(vertices=48, radius=1.0, depth=0.06,
-                                        location=(center.x, center.y, -0.02))
-    shore = bpy.context.active_object
-    shore.name = name
-    shore.scale = (radius_px * step_x * 1.13, radius_px * step_y * 1.13, 1.0)
-    shore.data.materials.append(mat)
-    bpy.ops.object.shade_smooth()
-    shore.visible_shadow = False
-    BLOCKING.append(shore)
-    return shore
+    bpy.ops.mesh.primitive_cylinder_add(vertices=verts, radius=1.0, depth=height,
+                                        location=(center.x, center.y, z + height / 2.0))
+    obj = bpy.context.active_object
+    obj.scale = (radius_px * step_x, radius_px * step_y, 1.0)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    return obj
 
 
-def add_land_lobe(cam, name, px, py, radius_px, mat_top, mat_side, height=LAND_HEIGHT):
-    """Meseta cilíndrica que se ve como un círculo de radio_px EN PANTALLA."""
-    step_x, step_y = pixel_scale(cam)
-    center = px_to_world(cam, px, py)
-    bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=1.0, depth=height,
-                                        location=(center.x, center.y, height / 2.0))
-    lobe = bpy.context.active_object
-    lobe.name = name
-    lobe.scale = (radius_px * step_x, radius_px * step_y, 1.0)
-    bev = lobe.modifiers.new("bevel", "BEVEL")
-    bev.width = 0.08
-    bev.segments = 3
-    lobe.data.materials.append(mat_top)
-    lobe.data.materials.append(mat_side)
-    bpy.ops.object.shade_smooth()
-    # El suelo no proyecta sombra. Los lóbulos se solapan y tienen la tapa a la
-    # misma altura, así que al sombrearse entre sí manchaban el mapa con
-    # regiones negras enormes que tapaban el terreno.
-    lobe.visible_shadow = False
-    WALKABLE.append(lobe)
-    return lobe
+def union_all(parts, name):
+    """Fusiona los lóbulos en una sola malla.
+
+    Sin esto, Freestyle contornea cada cilindro por separado y la isla se lee
+    como un racimo de pompas en vez de una costa. La unión deja una única
+    silueta, que es lo que se ve a esta escala.
+    """
+    base = parts[0]
+    for other in parts[1:]:
+        bpy.context.view_layer.objects.active = base
+        modifier = base.modifiers.new(f"union_{other.name}", "BOOLEAN")
+        modifier.operation = "UNION"
+        modifier.object = other
+        modifier.solver = "EXACT"
+        bpy.ops.object.modifier_apply(modifier=modifier.name)
+        bpy.data.objects.remove(other, do_unlink=True)
+    base.name = name
+    bpy.context.view_layer.objects.active = base
+    # La booleana hereda los slots de material del operando. Como los lóbulos
+    # se crean pelados, el resultado queda con un slot 0 VACÍO y todas las caras
+    # apuntando a él: el material que se asigne después cae en el slot 1 y la
+    # isla se renderiza blanca. Se limpia para que _finish escriba en el 0.
+    base.data.materials.clear()
+    for polygon in base.data.polygons:
+        polygon.material_index = 0
+    return base
 
 
-def add_dock(cam, name, px, py, radius_px, mat):
-    """Rellano de madera sobre el agua, caminable, a la altura del puente."""
-    step_x, step_y = pixel_scale(cam)
-    center = px_to_world(cam, px, py)
-    bpy.ops.mesh.primitive_cylinder_add(vertices=40, radius=1.0, depth=LAND_HEIGHT * 0.5,
-                                        location=(center.x, center.y, LAND_HEIGHT * 0.62))
-    dock = bpy.context.active_object
-    dock.name = name
-    dock.scale = (radius_px * step_x, radius_px * step_y, 1.0)
-    dock.data.materials.append(mat)
-    dock.visible_shadow = False
-    WALKABLE.append(dock)
-    return dock
+def add_island_group(cam, group, lobes, mats, ground_mat):
+    """Isla en tres anillos fusionados: bajío (agua), playa y pasto.
+
+    Playa y pasto se pisan; el pasto es más pequeño, así que el borde caminable
+    queda dentro de la silueta y no justo en el corte con el agua.
+    """
+    shallow, beach, grass = [], [], []
+    for px, py, radius in lobes:
+        shallow.append(_raw_disc(cam, px, py, radius * 1.20, -0.05, 0.05))
+        beach.append(_raw_disc(cam, px, py, radius, 0.0, LAND_HEIGHT * 0.7))
+        grass.append(_raw_disc(cam, px, py, radius * 0.86,
+                               LAND_HEIGHT * 0.7 - 0.02, LAND_HEIGHT * 0.5))
+    _finish(union_all(shallow, f"shallow_{group}"), mats["shallow"], False,
+            smooth=False, shadow=False)
+    _finish(union_all(beach, f"beach_{group}"), mats["sand"], True,
+            smooth=False, shadow=False)
+    _finish(union_all(grass, f"grass_{group}"), ground_mat, True,
+            smooth=False, shadow=False)
+
+
+GRASS_TOP = LAND_HEIGHT * 1.2 - 0.02   # cota de la hierba, base de los edificios
+
+
+def add_dock(cam, name, px, py, width_px, depth_px, rot, mat):
+    """Rellano de madera sobre el agua, alineado con el puente.
+
+    Era un disco y se leía como un nenúfar naranja gigante en medio del canal.
+    Rectangular y girado con el puente parece lo que es: un descansillo.
+    """
+    box_px(cam, name, px, py, width_px, depth_px, 0.16, GRASS_TOP - 0.16, mat,
+           walkable=True, rot=rot, bevel=0.0, shadow=False)
 
 
 def add_bridge(cam, name, px1, py1, px2, py2, width_px, mat):
@@ -296,174 +380,260 @@ def add_bridge(cam, name, px1, py1, px2, py2, width_px, mat):
     b = px_to_world(cam, px2, py2)
     mid = (a + b) / 2.0
     delta = b - a
-    length = delta.length
-    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(mid.x, mid.y, LAND_HEIGHT * 0.62))
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(mid.x, mid.y, GRASS_TOP - 0.08))
     bridge = bpy.context.active_object
     bridge.name = name
-    bridge.scale = (length, width_px * step_x, LAND_HEIGHT * 0.5)
+    bridge.scale = (delta.length, width_px * step_x, 0.16)
     bridge.rotation_euler = (0.0, 0.0, math.atan2(delta.y, delta.x))
-    bridge.data.materials.append(mat)
-    WALKABLE.append(bridge)
-    return bridge
+    return _finish(bridge, mat, True, False, False)
 
 
-def add_building(cam, name, px, py, width_px, depth_px, height, mat_body, mat_roof):
-    """Edificio de distrito. NO caminable: el jugador lo rodea.
+def add_path(cam, px1, py1, px2, py2, width_px, mat):
+    """Sendero sobre el pasto. Ya es zona caminable, así que no toca la máscara;
+    está para que el mapa tenga rutas legibles entre distritos."""
+    step_x, _ = pixel_scale(cam)
+    a = px_to_world(cam, px1, py1)
+    b = px_to_world(cam, px2, py2)
+    mid = (a + b) / 2.0
+    delta = b - a
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(mid.x, mid.y, GRASS_TOP + 0.012))
+    path = bpy.context.active_object
+    path.name = f"path_{px1}_{py1}"
+    path.scale = (delta.length, width_px * step_x, 0.03)
+    path.rotation_euler = (0.0, 0.0, math.atan2(delta.y, delta.x))
+    return _finish(path, mat, True, False, False)
 
-    width_px va con step_x y depth_px con step_y, para que la planta se lea
-    con esas medidas EN PANTALLA pese a la inclinación de la cámara.
+
+# ─── ARQUITECTURA POR DISTRITO ───────────────────────────────────────────────
+# Cada distrito tiene que reconocerse por su silueta, no por su color. A esta
+# escala un edificio mide ~70 px: se lee la forma, nada más.
+
+def add_academia(cam, px, py, mats):
+    """Templo circular: basamento escalonado, columnata y techo cónico dorado.
+
+    Es el hub y el punto de partida, así que se lleva la silueta más noble.
+    Redondo a propósito: destaca entre los demás, que son rectos.
     """
+    disc_px(cam, "academia_base2", px, py, 40, GRASS_TOP, 0.14, mats["stone"])
+    disc_px(cam, "academia_base1", px, py, 33, GRASS_TOP + 0.14, 0.14, mats["stone"])
+    columns = 10
+    for i in range(columns):
+        angle = 2 * math.pi * i / columns
+        cx = px + 25 * math.cos(angle)
+        cy = py + 25 * math.sin(angle) * 0.85
+        disc_px(cam, f"academia_col_{i}", cx, cy, 4.0, GRASS_TOP + 0.28, 1.0,
+                mats["cream"], verts=10)
+    disc_px(cam, "academia_arq", px, py, 30, GRASS_TOP + 1.28, 0.14, mats["cream"])
+    pyramid_px(cam, "academia_roof", px, py, 72, 72, 0.8, GRASS_TOP + 1.42,
+               mats["academia"], verts=12)
+    disc_px(cam, "academia_finial", px, py, 3.5, GRASS_TOP + 2.22, 0.26,
+            mats["academia"], verts=8)
+
+
+def add_mercado(cam, px, py, mats):
+    """Puestos de mercado: cuatro toldos a dos aguas alrededor de una placita."""
+    disc_px(cam, "mercado_plaza", px, py, 46, GRASS_TOP, 0.06, mats["stone"])
+    stalls = [(-26, -12), (24, -14), (-22, 16), (26, 14)]
+    for i, (dx, dy) in enumerate(stalls):
+        sx, sy = px + dx, py + dy
+        box_px(cam, f"mercado_stall_{i}", sx, sy, 30, 24, 0.75, GRASS_TOP + 0.06,
+               mats["cream"])
+        pyramid_px(cam, f"mercado_awn_{i}", sx, sy, 40, 32, 0.5, GRASS_TOP + 0.81,
+                   mats["mercado"])
+    for i, (dx, dy) in enumerate([(-2, -30), (6, 28)]):
+        box_px(cam, f"mercado_crate_{i}", px + dx, py + dy, 12, 10, 0.3,
+               GRASS_TOP + 0.06, mats["crate"])
+
+
+def add_taller(cam, px, py, mats):
+    """Taller con chimenea + una vela japonesa gigante como enseña.
+
+    La vela es el recurso que hace el distrito reconocible de un vistazo: es
+    literalmente lo que se enseña ahí (m1_2, velas OHLC).
+    """
+    box_px(cam, "taller_body", px, py, 62, 46, 1.15, GRASS_TOP, mats["cream"])
+    pyramid_px(cam, "taller_roof", px, py, 74, 56, 0.85, GRASS_TOP + 1.15,
+               mats["taller"])
+    box_px(cam, "taller_chimney", px + 22, py - 12, 11, 10, 0.9, GRASS_TOP + 1.2,
+           mats["stone"])
+    # Vela alcista: mecha, cuerpo verde, mecha superior.
+    cx, cy = px + 52, py + 4
+    box_px(cam, "taller_wick", cx, cy, 3.5, 3.5, 2.15, GRASS_TOP, mats["ink"])
+    box_px(cam, "taller_candle", cx, cy, 20, 16, 1.05, GRASS_TOP + 0.55,
+           mats["demand"])
+
+
+def add_observatorio(cam, px, py, mats):
+    """Torre cilíndrica con cúpula y telescopio asomando."""
+    disc_px(cam, "obs_base", px, py, 26, GRASS_TOP, 0.12, mats["stone"])
+    disc_px(cam, "obs_tower", px, py, 20, GRASS_TOP + 0.12, 1.15, mats["cream"],
+            verts=20)
+    dome_px(cam, "obs_dome", px, py, 21, GRASS_TOP + 1.27, mats["observatorio"])
     step_x, step_y = pixel_scale(cam)
-    world_w = width_px * step_x
-    world_d = depth_px * step_y
-    base = px_to_world(cam, px, py)
-    bpy.ops.mesh.primitive_cube_add(size=1.0,
-                                    location=(base.x, base.y, LAND_HEIGHT + height / 2.0))
-    body = bpy.context.active_object
-    body.name = name
-    body.scale = (world_w, world_d, height)
-    bev = body.modifiers.new("bevel", "BEVEL")
-    bev.width = 0.06
-    bev.segments = 2
-    body.data.materials.append(mat_body)
-    BLOCKING.append(body)
-
-    # Pirámide de base exactamente igual a la planta: un cono de 4 lados con
-    # radio √2/2 girado 45° inscribe un cuadrado de lado 1, que al escalar por
-    # (world_w, world_d) calza con el cuerpo. La versión anterior escalaba el
-    # radio por 1.5 y el techo salía al doble del edificio.
-    roof_height = 0.62
-    bpy.ops.mesh.primitive_cone_add(
-        vertices=4, radius1=math.sqrt(2) / 2, radius2=0.0, depth=1.0,
-        location=(base.x, base.y, LAND_HEIGHT + height + roof_height / 2.0))
-    roof = bpy.context.active_object
-    roof.name = f"{name}_roof"
-    roof.scale = (world_w * 1.12, world_d * 1.12, roof_height)
-    roof.rotation_euler = (0.0, 0.0, math.radians(45))
-    roof.data.materials.append(mat_roof)
-    BLOCKING.append(roof)
-    return body
+    center = px_to_world(cam, px + 4, py - 6)
+    bpy.ops.mesh.primitive_cylinder_add(
+        vertices=16, radius=1.0, depth=1.0,
+        location=(center.x, center.y, GRASS_TOP + 1.95))
+    tube = bpy.context.active_object
+    tube.name = "obs_telescope"
+    tube.scale = (5.5 * step_x, 5.5 * step_x, 1.5)
+    tube.rotation_euler = (math.radians(52), 0.0, math.radians(-28))
+    _finish(tube, mats["ink"], False, True)
 
 
-def add_volcano(cam, name, px, py, radius_px, height, mat_rock, mat_glow):
+def add_ciudad_bitcoin(cam, px, py, mats):
+    """Volcán + Plaza del Bloque.
+
+    marketCities.ts fija para crypto: acento #F7931A, landmark "Plaza del
+    Bloque", referencia Conchagua (El Salvador). De ahí el volcán y los
+    monolitos cúbicos al pie.
+    """
+    disc_px(cam, "btc_cone_base", px, py - 4, 52, GRASS_TOP, 0.4, mats["rock"])
     step_x, step_y = pixel_scale(cam)
-    base = px_to_world(cam, px, py)
-    bpy.ops.mesh.primitive_cone_add(vertices=48, radius1=1.0, radius2=0.34, depth=height,
-                                    location=(base.x, base.y, LAND_HEIGHT + height / 2.0))
+    center = px_to_world(cam, px, py - 4)
+    bpy.ops.mesh.primitive_cone_add(vertices=9, radius1=0.5, radius2=0.15, depth=2.5,
+                                    location=(center.x, center.y, GRASS_TOP + 1.65))
     cone = bpy.context.active_object
-    cone.name = name
-    cone.scale = (radius_px * step_x, radius_px * step_y, 1.0)
-    cone.data.materials.append(mat_rock)
-    bpy.ops.object.shade_smooth()
-    BLOCKING.append(cone)
-
-    bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=1.0, depth=0.12,
-                                        location=(base.x, base.y, LAND_HEIGHT + height - 0.02))
-    crater = bpy.context.active_object
-    crater.name = f"{name}_crater"
-    crater.scale = (radius_px * step_x * 0.3, radius_px * step_y * 0.3, 1.0)
-    crater.data.materials.append(mat_glow)
-    BLOCKING.append(crater)
-    return cone
+    cone.name = "btc_cone"
+    cone.scale = (86 * step_x, 86 * step_y, 1.0)
+    # Facetado a propósito: sombreado suave lo convertía en una bola gris.
+    _finish(cone, mats["rock"], False, smooth=False)
+    disc_px(cam, "btc_crater", px, py - 4, 12, GRASS_TOP + 2.88, 0.1,
+            mats["lava"], verts=9)
+    # Plaza del Bloque: monolitos cúbicos al pie, en el lado que da a la cámara.
+    for i, (dx, dy) in enumerate([(-46, 46), (-18, 56), (16, 54), (44, 42)]):
+        box_px(cam, f"btc_block_{i}", px + dx, py + dy, 17, 15, 0.55 + 0.14 * (i % 3),
+               GRASS_TOP, mats["btc_block"])
+    box_px(cam, "btc_monolith", px - 2, py + 70, 13, 12, 1.35, GRASS_TOP,
+           mats["bitcoin"])
 
 
-def add_tree(cam, px, py, mat_trunk, mat_leaf, scale=1.0):
+# ─── VEGETACIÓN Y ROCAS ──────────────────────────────────────────────────────
+def add_tree(cam, px, py, mats, scale=1.0):
+    step_x, step_y = pixel_scale(cam)
+    disc_px(cam, f"trunk_{px}_{py}", px, py, 3.4 * scale, GRASS_TOP, 0.55 * scale,
+            mats["trunk"], verts=8)
+    base = px_to_world(cam, px, py)
+    bpy.ops.mesh.primitive_ico_sphere_add(
+        subdivisions=2, radius=1.0,
+        location=(base.x, base.y, GRASS_TOP + 0.95 * scale))
+    leaves = bpy.context.active_object
+    leaves.name = f"leaves_{px}_{py}"
+    leaves.scale = (13 * scale * step_x, 13 * scale * step_y, 11 * scale * step_x)
+    _finish(leaves, mats["leaf"], False, True)
+
+
+def add_islet(cam, name, px, py, radius_px, mats, palm=True):
+    """Islote decorativo. NO caminable: equilibra la composición sin prometer
+    terreno al jugador — el mar ya es negro en la máscara y estos también."""
+    disc_px(cam, f"islet_halo_{name}", px, py, radius_px * 1.35, -0.05, 0.05,
+            mats["shallow"], shadow=False)
+    disc_px(cam, f"islet_sand_{name}", px, py, radius_px, 0.0, LAND_HEIGHT * 0.6,
+            mats["sand"], shadow=False)
+    if palm:
+        add_tree(cam, px, py - 2, mats, 0.62)
+    else:
+        add_rock(cam, px + 2, py - 2, radius_px * 0.42, mats["rock"])
+
+
+def add_rock(cam, px, py, size_px, mat):
     step_x, step_y = pixel_scale(cam)
     base = px_to_world(cam, px, py)
-    bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=0.13 * scale, depth=0.72 * scale,
-                                        location=(base.x, base.y, LAND_HEIGHT + 0.36 * scale))
-    trunk = bpy.context.active_object
-    trunk.name = f"tree_trunk_{px}_{py}"
-    trunk.data.materials.append(mat_trunk)
-    BLOCKING.append(trunk)
-
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=20, ring_count=12, radius=0.46 * scale,
-                                         location=(base.x, base.y, LAND_HEIGHT + 0.95 * scale))
-    leaves = bpy.context.active_object
-    leaves.name = f"tree_leaves_{px}_{py}"
-    leaves.scale = (1.0, 1.0 * (step_y / step_x) * 0.55 + 0.45, 0.9)
-    leaves.data.materials.append(mat_leaf)
-    bpy.ops.object.shade_smooth()
-    BLOCKING.append(leaves)
-
-
-def add_rock(cam, px, py, size, mat):
-    base = px_to_world(cam, px, py)
-    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=size,
-                                          location=(base.x, base.y, LAND_HEIGHT * 0.4))
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=1.0,
+                                          location=(base.x, base.y, GRASS_TOP + 0.05))
     rock = bpy.context.active_object
     rock.name = f"rock_{px}_{py}"
-    rock.scale = (1.0, 0.8, 0.62)
-    rock.data.materials.append(mat)
-    BLOCKING.append(rock)
+    rock.scale = (size_px * step_x, size_px * step_y * 0.8, size_px * step_x * 0.7)
+    _finish(rock, mat, False, False)
 
 
+# ─── ENSAMBLADO ──────────────────────────────────────────────────────────────
 def build_overworld(cam):
-    mat_sea = make_material("sea", SEA_HEX, roughness=0.25)
-    mat_shallow = make_material("shallow", SHALLOW_HEX, roughness=0.3)
-    mat_grass = make_material("grass", GRASS_HEX)
-    mat_grass_dark = make_material("grass_side", GRASS_DARK_HEX)
-    mat_sand = make_material("sand", SAND_HEX)
-    mat_rock = make_material("rock", ROCK_HEX)
-    mat_bridge = make_material("bridge", BRIDGE_HEX)
-    mat_trunk = make_material("trunk", TRUNK_HEX)
-    mat_leaf = make_material("leaf", LEAF_HEX)
-    mat_roof = make_material("roof", ROOF_HEX)
-    mat_glow = make_material("crater", BITCOIN_HEX, roughness=0.4)
+    mats = {
+        "sea": make_material("sea", SEA_HEX, roughness=0.22),
+        "shallow": make_material("shallow", SHALLOW_HEX, roughness=0.28),
+        "grass": make_material("grass", GRASS_HEX),
+        "sand": make_material("sand", SAND_HEX),
+        "stone": make_material("stone", STONE_HEX),
+        "cream": make_material("cream", CREAM_HEX),
+        "rock": make_material("rock", ROCK_HEX),
+        "bridge": make_material("bridge", BRIDGE_HEX),
+        "path": make_material("path", PATH_HEX),
+        "trunk": make_material("trunk", TRUNK_HEX),
+        "leaf": make_material("leaf", LEAF_HEX),
+        "ink": make_material("ink", INK_HEX, roughness=0.75),
+        "demand": make_material("demand", DEMAND_HEX),
+        "crate": make_material("crate", CRATE_HEX),
+        "lava": make_material("lava", LAVA_HEX, roughness=0.35),
+        "academia": make_material("academia", ACADEMIA_HEX),
+        "mercado": make_material("mercado", MERCADO_HEX),
+        "taller": make_material("taller", TALLER_HEX),
+        "observatorio": make_material("observatorio", OBSERVATORIO_HEX),
+        "bitcoin": make_material("bitcoin", BITCOIN_HEX),
+        "btc_block": make_material("btc_block", BTC_BLOCK_HEX),
+    }
 
-    add_sea(cam, mat_sea, mat_shallow)
+    add_sea(cam, mats["sea"])
 
-    all_lobes = (
-        [(f"main_{i}", px, py, r, mat_grass, mat_grass_dark)
-         for i, (px, py, r) in enumerate(MAIN_LOBES)]
-        + [(f"mercado_{i}", px, py, r, mat_grass, mat_grass_dark)
-           for i, (px, py, r) in enumerate(MERCADO_LOBES)]
-        + [(f"bitcoin_{i}", px, py, r, mat_rock, mat_rock)
-           for i, (px, py, r) in enumerate(BITCOIN_LOBES)]
-    )
-    # El bajío va primero para que quede debajo de la tierra.
-    for name, px, py, radius, _top, _side in all_lobes:
-        add_shore(cam, f"shore_{name}", px, py, radius, mat_shallow)
-    for name, px, py, radius, mat_top, mat_side in all_lobes:
-        add_land_lobe(cam, f"land_{name}", px, py, radius, mat_top, mat_side)
+    for group, lobes in (("main", MAIN_LOBES), ("mercado", MERCADO_LOBES),
+                         ("bitcoin", BITCOIN_LOBES)):
+        ground = mats["rock"] if group == "bitcoin" else mats["grass"]
+        add_island_group(cam, group, lobes, mats, ground)
 
     for index, (x1, y1, x2, y2, width) in enumerate(BRIDGES):
-        add_bridge(cam, f"bridge_{index}", x1, y1, x2, y2, width, mat_bridge)
-    for index, (px, py, radius) in enumerate(DOCKS):
-        add_dock(cam, f"dock_{index}", px, py, radius, mat_bridge)
+        add_bridge(cam, f"bridge_{index}", x1, y1, x2, y2, width, mats["bridge"])
+    for index, (px, py, w_px, d_px, rot) in enumerate(DOCKS):
+        add_dock(cam, f"dock_{index}", px, py, w_px, d_px, rot, mats["bridge"])
 
-    # Edificios de distrito, desplazados hacia arriba respecto del pin para que
-    # el punto de aproximación quede libre delante de la puerta.
-    add_building(cam, "academia", ACADEMIA_PX[0], ACADEMIA_PX[1] - 18, 74, 58, 2.2,
-                 make_material("academia", ACADEMIA_HEX), mat_roof)
-    add_building(cam, "mercado", MERCADO_PX[0] + 20, MERCADO_PX[1] - 14, 62, 50, 1.8,
-                 make_material("mercado", MERCADO_HEX), mat_roof)
-    # Desplazado a la izquierda del pin a propósito: un edificio se proyecta
-    # ~23 px hacia arriba en pantalla por cada unidad de altura, así que puesto
-    # bajo el pin tapaba el `approach` del Observatorio en (510,440).
-    add_building(cam, "taller", TALLER_PX[0] - 46, TALLER_PX[1] + 2, 62, 50, 1.8,
-                 make_material("taller", TALLER_HEX), mat_roof)
-    add_building(cam, "observatorio", OBSERVATORIO_PX[0], OBSERVATORIO_PX[1] - 12, 58, 48, 2.0,
-                 make_material("observatorio", OBSERVATORIO_HEX), mat_roof)
+    # Senderos: la Academia como centro del que salen las rutas.
+    for x1, y1, x2, y2 in (
+        (730, 455, 620, 520),    # → Taller
+        (620, 520, 470, 470),    # → Observatorio
+        (470, 470, 400, 410),
+        (730, 455, 795, 420),    # → puente de Mercado
+        (730, 455, 738, 355),    # → puente de Bitcoin
+    ):
+        add_path(cam, x1, y1, x2, y2, 26, mats["path"])
+    add_path(cam, 935, 300, 985, 268, 24, mats["path"])
 
-    # Ciudad Bitcoin: volcán, coherente con la referencia de Conchagua que
-    # marketCities.ts fija para la ciudad cripto.
-    add_volcano(cam, "volcan_bitcoin", BITCOIN_PX[0], BITCOIN_PX[1] - 8, 62, 3.0,
-                mat_rock, mat_glow)
+    add_academia(cam, ACADEMIA_PX[0], ACADEMIA_PX[1] - 6, mats)
+    add_mercado(cam, MERCADO_PX[0] + 12, MERCADO_PX[1] - 6, mats)
+    # Desplazado a la izquierda del pin: un edificio se proyecta ~23 px hacia
+    # arriba en pantalla por unidad de altura y tapaba el approach del
+    # Observatorio en (510,440).
+    add_taller(cam, TALLER_PX[0] - 58, TALLER_PX[1] + 4, mats)
+    add_observatorio(cam, OBSERVATORIO_PX[0], OBSERVATORIO_PX[1] - 4, mats)
+    add_ciudad_bitcoin(cam, BITCOIN_PX[0], BITCOIN_PX[1] - 10, mats)
 
     for px, py, scale in [
-        (640, 560, 1.0), (560, 555, 0.85), (790, 520, 0.95), (760, 545, 0.8),
-        (335, 420, 0.9), (330, 355, 0.8), (445, 355, 0.85), (470, 560, 0.9),
-        (1035, 240, 0.85), (1060, 355, 0.8), (930, 300, 0.7),
+        (648, 578, 1.0), (596, 592, 0.8), (786, 540, 0.95), (818, 500, 0.8),
+        (330, 442, 0.9), (322, 372, 0.8), (452, 344, 0.85), (426, 556, 0.9),
+        (500, 578, 0.75), (1046, 250, 0.85), (1074, 344, 0.8), (940, 320, 0.7),
+        (896, 232, 0.75),
     ]:
-        add_tree(cam, px, py, mat_trunk, mat_leaf, scale)
+        add_tree(cam, px, py, mats, scale)
 
     for px, py, size in [
-        (630, 430, 0.28), (620, 560, 0.24), (395, 465, 0.26), (1070, 290, 0.24),
-        (745, 205, 0.22),
+        (676, 470, 7), (556, 452, 6), (392, 486, 6.5), (1082, 286, 6),
+        (742, 230, 5.5), (868, 214, 5),
     ]:
-        add_rock(cam, px, py, size, mat_rock)
+        add_rock(cam, px, py, size, mats["rock"])
 
+    # Islotes: los distritos viven en el centro-derecha del cuadro y dejaban un
+    # vacío azul enorme a la izquierda. Rellenan la composición sin tocar la
+    # máscara, porque no son caminables.
+    for name, px, py, radius, palm in [
+        ("w1", 150, 470, 34, True),
+        ("w2", 96, 372, 22, False),
+        ("s1", 372, 648, 28, True),
+        ("s2", 560, 676, 20, False),
+        ("n1", 300, 176, 26, True),
+        ("n2", 452, 120, 18, False),
+        ("e1", 1196, 214, 24, True),
+        ("e2", 1150, 520, 30, True),
+        ("e3", 992, 592, 21, False),
+    ]:
+        add_islet(cam, name, px, py, radius, mats, palm)
 
 # ─── LUCES / MUNDO ───────────────────────────────────────────────────────────
 def setup_lights():

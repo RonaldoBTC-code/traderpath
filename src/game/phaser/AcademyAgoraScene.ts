@@ -180,7 +180,12 @@ export default class AcademyAgoraScene extends BaseWorldScene {
       {
         id: "bitcoin-portal",
         area: new Phaser.Geom.Rectangle(720, 115, 190, 160),
-        approach: new Phaser.Math.Vector2(770, 310),
+        // Movido de (770,310) a (772,296). Con el hero pintado daba igual —
+        // todo el mapa era pisable. En el diorama de Blender ese punto cae en
+        // el canal entre la isla central y la de Ciudad Bitcoin; la máscara de
+        // caminabilidad lo marca como agua. (772,296) es el caminable más
+        // cercano, sobre el puente. Ver blender/build_overworld.py.
+        approach: new Phaser.Math.Vector2(772, 296),
         prompt: "Examinar el portal hacia Ciudad Bitcoin",
       },
       {
