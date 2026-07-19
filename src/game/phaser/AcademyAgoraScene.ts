@@ -5,9 +5,9 @@ import {
   type AcademyWorldEventHandler,
 } from "@/game/phaser/worldEvents";
 import {
-  EXPLORER_SPRITE_KEY,
   drawAriaBody,
   drawExplorerBody,
+  explorerTextureKey,
   preloadExplorerSprite,
 } from "@/game/phaser/characterArt";
 
@@ -26,6 +26,7 @@ const ACADEMY_MAP_KEY = "academy-agora-map";
 export default class AcademyAgoraScene extends Phaser.Scene {
   private player?: Phaser.GameObjects.Container;
   private playerBody?: Phaser.GameObjects.Graphics;
+  private playerSprite?: Phaser.GameObjects.Image;
   private destinationMarker?: Phaser.GameObjects.Arc;
   private movementTween?: Phaser.Tweens.Tween;
   private pendingTarget?: AcademyTarget;
@@ -350,14 +351,17 @@ export default class AcademyAgoraScene extends Phaser.Scene {
     // Prefer the Blender-rendered sprite; fall back to the vector body so the
     // world keeps working before build_explorer.py has produced the PNG.
     let avatar: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics;
-    if (this.textures.exists(EXPLORER_SPRITE_KEY)) {
-      const sprite = this.add.image(0, -6, EXPLORER_SPRITE_KEY);
-      sprite.setDisplaySize((sprite.width / sprite.height) * 132, 132);
+    const textureKey = explorerTextureKey(this);
+    if (textureKey) {
+      const sprite = this.add.image(0, -6, textureKey);
+      this.sizeAvatarSprite(sprite);
       this.playerBody = undefined;
+      this.playerSprite = sprite;
       avatar = sprite;
     } else {
       const body = this.add.graphics();
       this.playerBody = body;
+      this.playerSprite = undefined;
       this.drawPlayerBody(0xe5960a);
       avatar = body;
     }
@@ -447,7 +451,21 @@ export default class AcademyAgoraScene extends Phaser.Scene {
     });
   }
 
+  /** Keeps the sprite at a fixed 132px height, preserving its aspect ratio. */
+  private sizeAvatarSprite(sprite: Phaser.GameObjects.Image) {
+    sprite.setDisplaySize((sprite.width / sprite.height) * 132, 132);
+  }
+
   private setAvatarColor(color: string) {
+    // With the Blender sprites loaded we swap texture instead of redrawing:
+    // the vector body doesn't exist in that branch, so drawPlayerBody no-ops.
+    const textureKey = explorerTextureKey(this, color);
+    if (this.playerSprite && textureKey) {
+      this.playerSprite.setTexture(textureKey);
+      // setTexture resets the frame size, so re-apply the display size.
+      this.sizeAvatarSprite(this.playerSprite);
+      return;
+    }
     this.drawPlayerBody(Phaser.Display.Color.HexStringToColor(color).color);
   }
 

@@ -16,18 +16,76 @@ export const EXPLORER_SPRITE_KEY = "explorer-sprite";
 export const EXPLORER_SPRITE_PATH = "/assets/sprites/explorer.png";
 
 /**
- * Queue the explorer sprite in a scene's preload(). Safe if the PNG is absent:
- * Phaser emits 'loaderror', the texture simply won't exist, and callers fall
- * back to the vector body. We swallow that one error to avoid a scary console
- * 404 before the artist has rendered anything.
+ * Avatar colour variants rendered by blender/build_explorer.py (Fase 2).
+ *
+ * Order matters: index i is the sprite rendered to explorer_{i}.png, so this
+ * must stay in sync with AVATAR_COLORS in components/world/AcademyWorld.tsx.
+ * It is duplicated rather than imported so Phaser code pulls in no React
+ * modules; the same duplication exists on the Blender side (AVATAR_HEXES).
+ *
+ * PENDIENTE: explorer.png is its own render in tp-gold (#E5960A) and is NOT one
+ * of these five — the selector's first colour is #F0C040. Whether the default
+ * avatar should become explorer_0.png is still an open decision, so the base
+ * sprite stays as the fallback and nothing here forces the choice.
+ */
+export const EXPLORER_VARIANT_HEXES = [
+  "#F0C040",
+  "#38BDF8",
+  "#22C55E",
+  "#F97316",
+  "#D946EF",
+] as const;
+
+export const explorerVariantKey = (index: number) => `explorer-sprite-${index}`;
+
+const explorerVariantPath = (index: number) => `/assets/sprites/explorer_${index}.png`;
+
+/** Index of a colour within the variant list, or -1 when it isn't one of them. */
+export function explorerVariantIndex(color: string): number {
+  const target = color.trim().toLowerCase();
+  return EXPLORER_VARIANT_HEXES.findIndex((hex) => hex.toLowerCase() === target);
+}
+
+/**
+ * Resolve a colour to a loaded texture key, falling back to the base sprite and
+ * then to undefined (which means: caller should draw the vector body). Every
+ * step degrades gracefully, so a missing or half-rendered sprite set never
+ * breaks the world.
+ */
+export function explorerTextureKey(scene: Phaser.Scene, color?: string): string | undefined {
+  if (color) {
+    const index = explorerVariantIndex(color);
+    if (index >= 0) {
+      const key = explorerVariantKey(index);
+      if (scene.textures.exists(key)) return key;
+    }
+  }
+  return scene.textures.exists(EXPLORER_SPRITE_KEY) ? EXPLORER_SPRITE_KEY : undefined;
+}
+
+/**
+ * Queue the explorer sprites in a scene's preload(). Safe if the PNGs are
+ * absent: Phaser emits 'loaderror', the textures simply won't exist, and
+ * callers fall back to the vector body. We swallow those errors to avoid scary
+ * console 404s before the artist has rendered anything.
  */
 export function preloadExplorerSprite(scene: Phaser.Scene) {
   scene.load.image(EXPLORER_SPRITE_KEY, EXPLORER_SPRITE_PATH);
-  scene.load.once("loaderror", (file: { key?: string }) => {
-    if (file?.key === EXPLORER_SPRITE_KEY) {
+  EXPLORER_VARIANT_HEXES.forEach((_, index) => {
+    scene.load.image(explorerVariantKey(index), explorerVariantPath(index));
+  });
+
+  // 'on' rather than 'once': there are six files now, and one missing PNG must
+  // not leave the remaining five unhandled.
+  const swallow = (file: { key?: string }) => {
+    const key = file?.key;
+    if (!key) return;
+    if (key === EXPLORER_SPRITE_KEY || key.startsWith("explorer-sprite-")) {
       // Expected until blender/build_explorer.py has been run; vector fallback used.
     }
-  });
+  };
+  scene.load.on("loaderror", swallow);
+  scene.load.once("complete", () => scene.load.off("loaderror", swallow));
 }
 
 /** Player avatar: chunky cartoon explorer with cap, face and backpack strap. */
