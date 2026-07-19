@@ -24,8 +24,23 @@ import { WalkMask } from "@/game/phaser/WalkMask";
  * copy-pasted across all four scenes.
  */
 
-export const WORLD_WIDTH = 1280;
-export const WORLD_HEIGHT = 720;
+/**
+ * Tamaño del lienzo, fijado en createAcademyGame. NO es el tamaño del mundo.
+ *
+ * Los interiores planos (puerto, plaza, taller) miden exactamente esto y por
+ * eso dibujan sus fondos con estas constantes. El overworld es mayor y declara
+ * su tamaño en `world`; ahí la cámara sigue al jugador.
+ */
+export const VIEWPORT_WIDTH = 1280;
+export const VIEWPORT_HEIGHT = 720;
+
+/**
+ * Alias históricos. Las tres salas interiores los usan para pintar su
+ * escenario, donde mundo y lienzo coinciden; conservarlos evita reescribir
+ * cientos de coordenadas de dibujo que no cambian.
+ */
+export const WORLD_WIDTH = VIEWPORT_WIDTH;
+export const WORLD_HEIGHT = VIEWPORT_HEIGHT;
 
 /**
  * A clickable region in a room.
@@ -54,6 +69,11 @@ export interface WorldSceneConfig {
    * set `walkMask` instead and the rectangle is ignored.
    */
   walkArea: { minX: number; maxX: number; minY: number; maxY: number };
+  /**
+   * Tamaño del mundo. Por defecto coincide con el lienzo, que es el caso de
+   * los interiores. Si es mayor, la cámara acota a él y sigue al jugador.
+   */
+  world?: { width: number; height: number };
   /**
    * Optional walkability mask rendered alongside the room art. When present it
    * replaces `walkArea`: clicks resolve against the mask and movement follows a
@@ -101,22 +121,49 @@ export abstract class BaseWorldScene extends Phaser.Scene {
     }
   }
 
+  /** Tamaño del mundo de esta sala; por defecto, el del lienzo. */
+  protected get worldSize() {
+    return this.worldConfig.world ?? { width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT };
+  }
+
   /**
-   * Player, destination marker, pointer handlers and the avatar-colour
-   * listener. Scenes call this from create() after drawing their room and
-   * building their hotspot list, then register any extra game events with
-   * registerGameEvent.
+   * Player, destination marker, camera, pointer handlers y el listener de
+   * color de avatar. Las escenas lo llaman desde create() tras pintar su
+   * escenario y construir sus hotspots, y luego registran sus propios eventos
+   * con registerGameEvent.
    */
   protected createWorldBase() {
+    const { width, height } = this.worldSize;
     const mask = this.worldConfig.walkMask;
     if (mask) {
-      this.walkMask = WalkMask.fromTexture(this, mask.key, WORLD_WIDTH, WORLD_HEIGHT);
+      // La máscara se escala al mundo: puede venir a menor resolución que el
+      // diorama sin que las consultas dejen de ser correctas.
+      this.walkMask = WalkMask.fromTexture(this, mask.key, width, height);
     }
     this.createPlayer();
     this.createDestinationMarker();
+    this.setUpCamera(width, height);
     this.input.on("pointermove", this.handlePointerMove, this);
     this.input.on("pointerdown", this.handlePointerDown, this);
     this.registerGameEvent(ACADEMY_GAME_EVENTS.avatarColor, this.setAvatarColor);
+  }
+
+  /**
+   * Acota la cámara al mundo y, si éste no cabe en el lienzo, la pone a seguir
+   * al jugador.
+   *
+   * En los interiores mundo y lienzo coinciden: acotar deja el scroll clavado
+   * en cero y `startFollow` sería ruido, así que no se activa. Un lerp bajo
+   * evita que la cámara persiga con brusquedad cada paso del recorrido.
+   */
+  private setUpCamera(width: number, height: number) {
+    const camera = this.cameras.main;
+    camera.setBounds(0, 0, width, height);
+    if (width <= VIEWPORT_WIDTH && height <= VIEWPORT_HEIGHT) return;
+    if (this.player) {
+      camera.startFollow(this.player, true, 0.08, 0.08);
+      camera.centerOn(this.player.x, this.player.y);
+    }
   }
 
   /** Subscribe to a game-level event and drop it automatically on shutdown. */

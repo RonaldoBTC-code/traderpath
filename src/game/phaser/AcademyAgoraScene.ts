@@ -5,10 +5,20 @@ import {
   type AcademyWorldEventHandler,
 } from "@/game/phaser/worldEvents";
 import { drawAriaBody } from "@/game/phaser/characterArt";
-import { BaseWorldScene, WORLD_HEIGHT, WORLD_WIDTH } from "@/game/phaser/BaseWorldScene";
+import { BaseWorldScene } from "@/game/phaser/BaseWorldScene";
 
 const ACADEMY_MAP_KEY = "academy-agora-map";
 const ACADEMY_MASK_KEY = "academy-agora-walkmask";
+
+/**
+ * El overworld mide el doble del lienzo en cada eje: la cámara sigue al
+ * jugador y sólo se ve un cuarto del mundo a la vez, que es lo que da sensación
+ * de territorio. Al ser exactamente 2×, cada coordenada heredada del mapa de
+ * 1280×720 es la vieja multiplicada por dos, y el diorama de Blender se autora
+ * en este mismo espacio.
+ */
+const ACADEMY_WORLD_WIDTH = 2560;
+const ACADEMY_WORLD_HEIGHT = 1440;
 
 export default class AcademyAgoraScene extends BaseWorldScene {
   constructor(onWorldEvent: AcademyWorldEventHandler) {
@@ -16,16 +26,22 @@ export default class AcademyAgoraScene extends BaseWorldScene {
       {
         room: "academy-agora",
         idlePrompt: "Haz clic en el suelo para caminar",
+        world: { width: ACADEMY_WORLD_WIDTH, height: ACADEMY_WORLD_HEIGHT },
         // Sólo se usa si la máscara no cargara; con ella, el destino se
         // resuelve contra el terreno real y este rectángulo queda sin efecto.
-        walkArea: { minX: 80, maxX: WORLD_WIDTH - 80, minY: 170, maxY: WORLD_HEIGHT - 55 },
+        walkArea: {
+          minX: 160,
+          maxX: ACADEMY_WORLD_WIDTH - 160,
+          minY: 340,
+          maxY: ACADEMY_WORLD_HEIGHT - 110,
+        },
         walkMask: {
           key: ACADEMY_MASK_KEY,
           path: "/assets/world/overworld_walkmask.png",
         },
         player: {
-          x: 730,
-          y: 520,
+          x: 1460,
+          y: 1040,
           shadowColor: 0x1e2a44,
           shadowAlpha: 0.3,
           fallbackColor: 0xe5960a,
@@ -66,29 +82,31 @@ export default class AcademyAgoraScene extends BaseWorldScene {
   }
 
   private drawRoom() {
-    this.add.image(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, ACADEMY_MAP_KEY)
-      .setDisplaySize(WORLD_WIDTH, WORLD_HEIGHT)
+    this.add.image(ACADEMY_WORLD_WIDTH / 2, ACADEMY_WORLD_HEIGHT / 2, ACADEMY_MAP_KEY)
+      .setDisplaySize(ACADEMY_WORLD_WIDTH, ACADEMY_WORLD_HEIGHT)
       .setDepth(0);
 
     const atmosphere = this.add.graphics();
     atmosphere.setDepth(1);
     // Warm daylight wash: subtle sunny tint at the top, soft haze at the bottom
     atmosphere.fillGradientStyle(0xfff3cf, 0xfff3cf, 0xffffff, 0xffffff, 0.14, 0.14, 0.0, 0.06);
-    atmosphere.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    atmosphere.fillRect(0, 0, ACADEMY_WORLD_WIDTH, ACADEMY_WORLD_HEIGHT);
 
     const hub = this.add.graphics();
     hub.setDepth(2);
     hub.lineStyle(3, 0xffffff, 0.55);
-    hub.strokeCircle(730, 410, 66);
+    hub.strokeCircle(1460, 820, 132);
     hub.lineStyle(2, 0xe5960a, 0.4);
-    hub.strokeCircle(730, 410, 88);
+    hub.strokeCircle(1460, 820, 176);
 
-    this.drawDistrictMarker(965, 262, 0x33b77a, "Mercado Plaza", "Aprende: oferta y demanda", "M1.1");
-    this.drawDistrictMarker(516, 504, 0xe8743b, "Taller de Velas", "Aprende: velas OHLC", "M1.2");
-    this.drawDistrictMarker(372, 394, 0x8b72ff, "Observatorio", "Aprende: tendencias", "M1.3");
-    this.drawDistrictMarker(805, 196, 0xf7931a, "Ciudad Bitcoin", "Se abre al dominar la isla", "BTC");
-    this.drawDistrictMarker(730, 410, 0xe5960a, "Academia Ágora", "Tu punto de partida", "TP");
+    this.drawDistrictMarker(1930, 524, 0x33b77a, "Mercado Plaza", "Aprende: oferta y demanda", "M1.1");
+    this.drawDistrictMarker(1032, 1008, 0xe8743b, "Taller de Velas", "Aprende: velas OHLC", "M1.2");
+    this.drawDistrictMarker(744, 788, 0x8b72ff, "Observatorio", "Aprende: tendencias", "M1.3");
+    this.drawDistrictMarker(1610, 392, 0xf7931a, "Ciudad Bitcoin", "Se abre al dominar la isla", "BTC");
+    this.drawDistrictMarker(1460, 820, 0xe5960a, "Academia Ágora", "Tu punto de partida", "TP");
 
+    // Rótulos anclados al lienzo: con la cámara desplazándose, en coordenadas
+    // de mundo se irían de pantalla en cuanto el jugador caminara.
     this.add.text(36, 28, "ACADEMIA ÁGORA", {
       color: "#ffffff",
       fontFamily: "Baloo 2, DM Sans, sans-serif",
@@ -96,14 +114,14 @@ export default class AcademyAgoraScene extends BaseWorldScene {
       fontStyle: "bold",
       stroke: "#1e2a44",
       strokeThickness: 6,
-    }).setDepth(20);
+    }).setDepth(20).setScrollFactor(0);
     this.add.text(38, 62, "Isla inicial · aprende fundamentos antes de viajar a otros mercados", {
       color: "#ffffff",
       fontFamily: "DM Sans, sans-serif",
       fontSize: "12px",
       stroke: "#1e2a44",
       strokeThickness: 4,
-    }).setDepth(20);
+    }).setDepth(20).setScrollFactor(0);
   }
 
   private drawDistrictMarker(
@@ -174,44 +192,45 @@ export default class AcademyAgoraScene extends BaseWorldScene {
     this.hotspots = [
       {
         id: "market-plaza",
-        area: new Phaser.Geom.Rectangle(890, 195, 190, 160),
-        approach: new Phaser.Math.Vector2(850, 370),
+        area: new Phaser.Geom.Rectangle(1780, 390, 380, 320),
+        approach: new Phaser.Math.Vector2(1700, 740),
         prompt: "Entrar a Mercado Plaza · Misión 1.1",
       },
       {
         id: "candle-workshop",
-        area: new Phaser.Geom.Rectangle(430, 440, 215, 145),
-        approach: new Phaser.Math.Vector2(620, 535),
+        area: new Phaser.Geom.Rectangle(860, 880, 430, 290),
+        approach: new Phaser.Math.Vector2(1240, 1070),
         prompt: "Entrar al Taller de Velas · Misión 1.2",
       },
       {
         id: "trend-observatory",
-        area: new Phaser.Geom.Rectangle(290, 315, 200, 150),
-        approach: new Phaser.Math.Vector2(510, 440),
+        area: new Phaser.Geom.Rectangle(580, 630, 400, 300),
+        approach: new Phaser.Math.Vector2(1020, 880),
         prompt: "Entrar al Observatorio · Misión 1.3",
       },
       {
         id: "bitcoin-portal",
-        area: new Phaser.Geom.Rectangle(720, 115, 190, 160),
+        area: new Phaser.Geom.Rectangle(1440, 230, 380, 320),
         // Movido de (770,310) a (772,296). Con el hero pintado daba igual —
         // todo el mapa era pisable. En el diorama de Blender ese punto cae en
         // el canal entre la isla central y la de Ciudad Bitcoin; la máscara de
-        // caminabilidad lo marca como agua. (772,296) es el caminable más
-        // cercano, sobre el puente. Ver blender/build_overworld.py.
-        approach: new Phaser.Math.Vector2(772, 296),
+        // caminabilidad lo marca como agua. (772,296) era el caminable más
+        // cercano, sobre el puente; ×2 en el mundo actual. Ver
+        // blender/build_overworld.py.
+        approach: new Phaser.Math.Vector2(1544, 592),
         prompt: "Examinar el portal hacia Ciudad Bitcoin",
       },
       {
         id: "aria",
-        area: new Phaser.Geom.Rectangle(660, 340, 165, 135),
-        approach: new Phaser.Math.Vector2(730, 500),
+        area: new Phaser.Geom.Rectangle(1320, 680, 330, 270),
+        approach: new Phaser.Math.Vector2(1460, 1000),
         prompt: "Hablar con ARIA",
       },
     ];
   }
 
   private createAria() {
-    const aria = this.add.container(730, 440);
+    const aria = this.add.container(1460, 880);
     const shadow = this.add.ellipse(0, 38, 70, 22, 0x1e2a44, 0.18);
     const body = this.add.graphics();
     drawAriaBody(body);
