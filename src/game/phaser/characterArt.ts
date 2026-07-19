@@ -159,6 +159,33 @@ export function setExplorerAvatarColor(
   }
 }
 
+/**
+ * Face the avatar left (-1) or right (1) while walking.
+ *
+ * Only the avatar flips. Scenes must NOT scale the player container to turn the
+ * character: the container also holds the name label and the ground shadow, so
+ * a negative scaleX renders "Explorador" backwards.
+ *
+ * Mirroring the 3/4 render is sound here because the Blender model is
+ * bilaterally symmetric (centred backpack, symmetric straps, arms and legs), so
+ * the flip reads as the opposite 3/4 view. Only the key light lands on the
+ * other side, which is invisible at this size. If the character art ever gains
+ * a lateralised detail, this is the place that would need a dedicated
+ * left-facing render instead.
+ */
+export function setExplorerAvatarFacing(avatar: ExplorerAvatar | undefined, facing: 1 | -1) {
+  if (!avatar) return;
+  if (avatar.sprite) {
+    // setFlipX, not a negative scaleX: the sprite's scale carries its display
+    // size, so flipping the scale would fight sizeExplorerSprite.
+    avatar.sprite.setFlipX(facing < 0);
+    return;
+  }
+  if (avatar.body) {
+    avatar.body.scaleX = facing;
+  }
+}
+
 function sizeExplorerSprite(sprite: Phaser.GameObjects.Image, height: number) {
   sprite.setDisplaySize((sprite.width / sprite.height) * height, height);
 }

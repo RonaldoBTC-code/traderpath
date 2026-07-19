@@ -8,6 +8,7 @@ import {
   createExplorerAvatar,
   preloadExplorerSprite,
   setExplorerAvatarColor,
+  setExplorerAvatarFacing,
   type ExplorerAvatar,
 } from "@/game/phaser/characterArt";
 
@@ -504,7 +505,7 @@ export default class CandleWorkshopScene extends Phaser.Scene {
     this.destinationMarker.setPosition(x, y + 32).setVisible(true).setAlpha(1).setScale(1);
     this.tweens.add({ targets: this.destinationMarker, alpha: 0, scale: 1.8, duration: 420 });
     const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y);
-    this.player.setScale(x < this.player.x ? -1 : 1, 1);
+    setExplorerAvatarFacing(this.avatar, x < this.player.x ? -1 : 1);
     this.onWorldEvent({ type: "moving", moving: true });
     this.movementTween = this.tweens.add({
       targets: this.player,
@@ -520,7 +521,7 @@ export default class CandleWorkshopScene extends Phaser.Scene {
       onComplete: () => {
         if (!this.player) return;
         this.player.rotation = 0;
-        this.player.setScale(1);
+        // Facing is deliberately kept (see AcademyAgoraScene).
         this.onWorldEvent({ type: "moving", moving: false });
         if (!this.pendingTarget) return;
         const target = this.pendingTarget;
