@@ -12,6 +12,7 @@ import {
   setExplorerAvatarFacing,
   type ExplorerAvatar,
 } from "@/game/phaser/characterArt";
+import { WalkMask } from "@/game/phaser/WalkMask";
 
 /**
  * Shared behaviour for every explorable room: the player avatar, click-to-walk
@@ -45,8 +46,20 @@ export interface WorldSceneConfig {
   room: WorldRoom;
   /** Prompt shown while the pointer is not over any active hotspot. */
   idlePrompt: string;
-  /** Region the player can be sent to by clicking empty ground. */
+  /**
+   * Rectangle the player can be sent to by clicking empty ground.
+   *
+   * This is the fallback for rooms drawn as flat interiors, where every pixel
+   * is floor and a rectangle describes it perfectly. Rooms with real terrain
+   * set `walkMask` instead and the rectangle is ignored.
+   */
   walkArea: { minX: number; maxX: number; minY: number; maxY: number };
+  /**
+   * Optional walkability mask rendered alongside the room art. When present it
+   * replaces `walkArea`: clicks resolve against the mask and movement follows a
+   * path around obstacles. Only the overworld has one today.
+   */
+  walkMask?: { key: string; path: string };
   player: {
     x: number;
     y: number;
@@ -70,6 +83,8 @@ export abstract class BaseWorldScene extends Phaser.Scene {
   protected pendingTarget?: WorldTarget;
   protected hoveredTarget?: WorldTarget;
   protected hotspots: WorldHotspot[] = [];
+  /** Set only in rooms whose config declares a walkMask and whose PNG loaded. */
+  protected walkMask?: WalkMask;
 
   protected constructor(
     protected readonly worldConfig: WorldSceneConfig,
@@ -80,6 +95,10 @@ export abstract class BaseWorldScene extends Phaser.Scene {
 
   preload() {
     preloadExplorerSprite(this);
+    const mask = this.worldConfig.walkMask;
+    if (mask) {
+      this.load.image(mask.key, mask.path);
+    }
   }
 
   /**
@@ -89,6 +108,10 @@ export abstract class BaseWorldScene extends Phaser.Scene {
    * registerGameEvent.
    */
   protected createWorldBase() {
+    const mask = this.worldConfig.walkMask;
+    if (mask) {
+      this.walkMask = WalkMask.fromTexture(this, mask.key, WORLD_WIDTH, WORLD_HEIGHT);
+    }
     this.createPlayer();
     this.createDestinationMarker();
     this.input.on("pointermove", this.handlePointerMove, this);
@@ -159,11 +182,27 @@ export abstract class BaseWorldScene extends Phaser.Scene {
       return;
     }
     this.pendingTarget = undefined;
+    const target = this.resolveDestination(point.x, point.y);
+    if (target) this.movePlayerTo(target.x, target.y);
+  }
+
+  /**
+   * Where a click on empty ground actually sends the player.
+   *
+   * With a mask, a click on water resolves to the nearest walkable point rather
+   * than being dropped — clicking and having nothing happen reads as the game
+   * being broken. Without a mask we keep the old rectangular clamp, which is
+   * exactly right for the flat interiors.
+   */
+  private resolveDestination(x: number, y: number): { x: number; y: number } | undefined {
+    if (this.walkMask) {
+      return this.walkMask.nearestWalkable(x, y);
+    }
     const { minX, maxX, minY, maxY } = this.worldConfig.walkArea;
-    this.movePlayerTo(
-      Phaser.Math.Clamp(point.x, minX, maxX),
-      Phaser.Math.Clamp(point.y, minY, maxY)
-    );
+    return {
+      x: Phaser.Math.Clamp(x, minX, maxX),
+      y: Phaser.Math.Clamp(y, minY, maxY),
+    };
   }
 
   protected movePlayerTo(x: number, y: number) {
@@ -172,33 +211,61 @@ export abstract class BaseWorldScene extends Phaser.Scene {
     this.destinationMarker.setPosition(x, y + 32).setVisible(true).setAlpha(1).setScale(1);
     this.tweens.add({ targets: this.destinationMarker, alpha: 0, scale: 1.8, duration: 420 });
 
-    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y);
-    setExplorerAvatarFacing(this.avatar, x < this.player.x ? -1 : 1);
+    // Con máscara la ruta rodea el agua; sin ella es un único tramo recto,
+    // que es lo que hacían las cuatro escenas antes.
+    const from = { x: this.player.x, y: this.player.y };
+    const waypoints = this.walkMask
+      ? this.walkMask.findPath(from, { x, y })
+      : [{ x, y }];
+
     this.onWorldEvent({ type: "moving", moving: true });
+    this.walkSegment(waypoints, 0);
+  }
+
+  /** Recorre un tramo de la ruta y encadena el siguiente al terminar. */
+  private walkSegment(waypoints: { x: number; y: number }[], index: number) {
+    const player = this.player;
+    if (!player) return;
+    const step = waypoints[index];
+    if (!step) {
+      this.finishWalk();
+      return;
+    }
+
+    const distance = Phaser.Math.Distance.Between(player.x, player.y, step.x, step.y);
+    if (distance < 1) {
+      this.walkSegment(waypoints, index + 1);
+      return;
+    }
+    setExplorerAvatarFacing(this.avatar, step.x < player.x ? -1 : 1);
     this.movementTween = this.tweens.add({
-      targets: this.player,
-      x,
-      y,
-      duration: Phaser.Math.Clamp(distance * this.worldConfig.walkSpeed, 220, 1400),
-      ease: "Sine.InOut",
+      targets: player,
+      x: step.x,
+      y: step.y,
+      duration: Phaser.Math.Clamp(distance * this.worldConfig.walkSpeed, 120, 1400),
+      // Sólo se suaviza la salida del primer tramo y la llegada del último: en
+      // los intermedios un ease completo frenaría en cada esquina del camino.
+      ease: index === waypoints.length - 1 ? "Sine.Out" : "Linear",
       onUpdate: () => {
         if (!this.player) return;
         this.player.setDepth(this.player.y);
         this.player.rotation = Math.sin(this.time.now / 75) * 0.025;
       },
-      onComplete: () => {
-        if (!this.player) return;
-        this.player.rotation = 0;
-        // Facing is deliberately kept: the explorer stays looking the way it
-        // last walked.
-        this.onWorldEvent({ type: "moving", moving: false });
-        if (!this.pendingTarget) return;
-        const target = this.pendingTarget;
-        this.pendingTarget = undefined;
-        this.onArrive(target);
-        this.onWorldEvent({ type: "interact", target });
-      },
+      onComplete: () => this.walkSegment(waypoints, index + 1),
     });
+  }
+
+  private finishWalk() {
+    if (!this.player) return;
+    this.player.rotation = 0;
+    // Facing is deliberately kept: the explorer stays looking the way it
+    // last walked.
+    this.onWorldEvent({ type: "moving", moving: false });
+    if (!this.pendingTarget) return;
+    const target = this.pendingTarget;
+    this.pendingTarget = undefined;
+    this.onArrive(target);
+    this.onWorldEvent({ type: "interact", target });
   }
 
   /**

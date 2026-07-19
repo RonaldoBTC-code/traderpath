@@ -8,6 +8,7 @@ import { drawAriaBody } from "@/game/phaser/characterArt";
 import { BaseWorldScene, WORLD_HEIGHT, WORLD_WIDTH } from "@/game/phaser/BaseWorldScene";
 
 const ACADEMY_MAP_KEY = "academy-agora-map";
+const ACADEMY_MASK_KEY = "academy-agora-walkmask";
 
 export default class AcademyAgoraScene extends BaseWorldScene {
   constructor(onWorldEvent: AcademyWorldEventHandler) {
@@ -15,7 +16,13 @@ export default class AcademyAgoraScene extends BaseWorldScene {
       {
         room: "academy-agora",
         idlePrompt: "Haz clic en el suelo para caminar",
+        // Sólo se usa si la máscara no cargara; con ella, el destino se
+        // resuelve contra el terreno real y este rectángulo queda sin efecto.
         walkArea: { minX: 80, maxX: WORLD_WIDTH - 80, minY: 170, maxY: WORLD_HEIGHT - 55 },
+        walkMask: {
+          key: ACADEMY_MASK_KEY,
+          path: "/assets/world/overworld_walkmask.png",
+        },
         player: {
           x: 730,
           y: 520,
@@ -40,7 +47,10 @@ export default class AcademyAgoraScene extends BaseWorldScene {
 
   preload() {
     super.preload();
-    this.load.image(ACADEMY_MAP_KEY, "/assets/traderpath-world-hero.png");
+    // Diorama de blender/build_overworld.py. Sustituye al hero generado por IA:
+    // este render y la máscara de caminabilidad salen de la misma cámara y la
+    // misma geometría, así que el terreno y la colisión no pueden desalinearse.
+    this.load.image(ACADEMY_MAP_KEY, "/assets/world/overworld.png");
   }
 
   create() {
@@ -104,7 +114,10 @@ export default class AcademyAgoraScene extends BaseWorldScene {
     subtitle: string,
     tag: string
   ) {
-    const marker = this.add.container(x, y).setDepth(y + 120);
+    // Profundidad = su posición en el mundo, igual que el jugador y ARIA. Antes
+    // era y + 120, que metía al jugador por detrás de marcadores más lejanos
+    // que él: un pin en y=262 quedaba delante de alguien parado en y=300.
+    const marker = this.add.container(x, y).setDepth(y);
     const pulse = this.add.circle(0, 0, 34, color, 0.12);
     pulse.setStrokeStyle(2, color, 0.42);
 
