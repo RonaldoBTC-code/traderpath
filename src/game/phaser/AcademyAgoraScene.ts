@@ -4,7 +4,12 @@ import {
   type AcademyTarget,
   type AcademyWorldEventHandler,
 } from "@/game/phaser/worldEvents";
-import { drawAriaBody, drawExplorerBody } from "@/game/phaser/characterArt";
+import {
+  EXPLORER_SPRITE_KEY,
+  drawAriaBody,
+  drawExplorerBody,
+  preloadExplorerSprite,
+} from "@/game/phaser/characterArt";
 
 interface Hotspot {
   id: AcademyTarget;
@@ -33,6 +38,7 @@ export default class AcademyAgoraScene extends Phaser.Scene {
 
   preload() {
     this.load.image(ACADEMY_MAP_KEY, "/assets/traderpath-world-hero.png");
+    preloadExplorerSprite(this);
   }
 
   create() {
@@ -340,9 +346,22 @@ export default class AcademyAgoraScene extends Phaser.Scene {
   private createPlayer() {
     const player = this.add.container(730, 520);
     const shadow = this.add.ellipse(0, 38, 64, 20, 0x1e2a44, 0.3);
-    const body = this.add.graphics();
-    this.playerBody = body;
-    this.drawPlayerBody(0xe5960a);
+
+    // Prefer the Blender-rendered sprite; fall back to the vector body so the
+    // world keeps working before build_explorer.py has produced the PNG.
+    let avatar: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics;
+    if (this.textures.exists(EXPLORER_SPRITE_KEY)) {
+      const sprite = this.add.image(0, -6, EXPLORER_SPRITE_KEY);
+      sprite.setDisplaySize((sprite.width / sprite.height) * 132, 132);
+      this.playerBody = undefined;
+      avatar = sprite;
+    } else {
+      const body = this.add.graphics();
+      this.playerBody = body;
+      this.drawPlayerBody(0xe5960a);
+      avatar = body;
+    }
+
     const name = this.add.text(0, 59, "Explorador", {
       color: "#ffffff",
       fontFamily: "Baloo 2, DM Sans, sans-serif",
@@ -351,7 +370,7 @@ export default class AcademyAgoraScene extends Phaser.Scene {
       stroke: "#1e2a44",
       strokeThickness: 4,
     }).setOrigin(0.5);
-    player.add([shadow, body, name]);
+    player.add([shadow, avatar, name]);
     player.setDepth(player.y);
     this.player = player;
   }

@@ -7,6 +7,29 @@ import Phaser from "phaser";
 
 export const CHARACTER_INK = 0x1e2a44;
 
+// ─── Blender-rendered sprites (2.5D pipeline) ───────────────────────────────
+// Pre-rendered PNGs live in public/assets/sprites/ (see blender/README.md).
+// When a sprite texture is present we use it; otherwise scenes fall back to the
+// vector drawing below, so the world keeps working before any render exists.
+
+export const EXPLORER_SPRITE_KEY = "explorer-sprite";
+export const EXPLORER_SPRITE_PATH = "/assets/sprites/explorer.png";
+
+/**
+ * Queue the explorer sprite in a scene's preload(). Safe if the PNG is absent:
+ * Phaser emits 'loaderror', the texture simply won't exist, and callers fall
+ * back to the vector body. We swallow that one error to avoid a scary console
+ * 404 before the artist has rendered anything.
+ */
+export function preloadExplorerSprite(scene: Phaser.Scene) {
+  scene.load.image(EXPLORER_SPRITE_KEY, EXPLORER_SPRITE_PATH);
+  scene.load.once("loaderror", (file: { key?: string }) => {
+    if (file?.key === EXPLORER_SPRITE_KEY) {
+      // Expected until blender/build_explorer.py has been run; vector fallback used.
+    }
+  });
+}
+
 /** Player avatar: chunky cartoon explorer with cap, face and backpack strap. */
 export function drawExplorerBody(g: Phaser.GameObjects.Graphics, color: number) {
   const dark = CHARACTER_INK;
