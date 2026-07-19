@@ -204,6 +204,13 @@ Cada fase es secuencial. El jugador no puede saltar fases.
 
 ## 6. DISEÑO VISUAL ACTUAL
 
+> **⚠️ OBSOLETO (jul 2026).** Esta sección describe la dirección visual v1.0
+> (tema oscuro tipo TradingView). La dirección vigente es **VDD v2.0 "Día de
+> Mercado"**: cartoon claro, fondo celeste `#EAF4FE`, superficies blancas,
+> texto navy `#1E2A44`, tipografías Baloo 2 / DM Sans / JetBrains Mono.
+> Ver `CLAUDE.md` §5, que tiene precedencia, y `docs/VISUAL_DIRECTION.md`.
+> El contenido de abajo se conserva como registro histórico.
+
 ### 6.1 Paleta de Colores (Dark Theme — estilo TradingView)
 ```
 Backgrounds:
@@ -405,6 +412,12 @@ Security:
 ---
 
 ## 10. NOTAS PARA DISEÑO VISUAL
+
+> **⚠️ OBSOLETO (jul 2026).** §10.1 pide explícitamente "No cartoon" y una
+> estética "cyberpunk financiero", que es lo contrario de la dirección vigente
+> **VDD v2.0 "Día de Mercado"** (cartoon claro y cálido, referencia *Alba: A
+> Wildlife Adventure*). Ver `CLAUDE.md` §5 y `docs/VISUAL_DIRECTION.md`.
+> El contenido de abajo se conserva como registro histórico.
 
 ### 10.1 Atmósfera Deseada
 - **Estética TradingView dark** — profesional, seria, pero accesible
