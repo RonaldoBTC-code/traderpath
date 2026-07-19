@@ -4,39 +4,15 @@ import {
   type AcademyWorldEventHandler,
   type CandleTarget,
 } from "@/game/phaser/worldEvents";
-import {
-  createExplorerAvatar,
-  preloadExplorerSprite,
-  setExplorerAvatarColor,
-  setExplorerAvatarFacing,
-  type ExplorerAvatar,
-} from "@/game/phaser/characterArt";
-
-interface CandleHotspot {
-  id: CandleTarget;
-  area: Phaser.Geom.Rectangle;
-  approach: Phaser.Math.Vector2;
-  prompt: string;
-  enabled: () => boolean;
-}
-
-const WORLD_WIDTH = 1280;
-const WORLD_HEIGHT = 720;
+import { BaseWorldScene, WORLD_HEIGHT, WORLD_WIDTH } from "@/game/phaser/BaseWorldScene";
 
 /** Demo candle: O=100, H=110, L=95, C=108 (alcista) */
 const DEMO = { open: 100, high: 110, low: 95, close: 108 };
 
-export default class CandleWorkshopScene extends Phaser.Scene {
-  private player?: Phaser.GameObjects.Container;
-  private avatar?: ExplorerAvatar;
-  private destinationMarker?: Phaser.GameObjects.Arc;
-  private movementTween?: Phaser.Tweens.Tween;
-  private pendingTarget?: CandleTarget;
-  private hoveredTarget?: CandleTarget;
+export default class CandleWorkshopScene extends BaseWorldScene {
   private candleGraphics?: Phaser.GameObjects.Graphics;
   private practiceGlow?: Phaser.GameObjects.Arc;
   private statusText?: Phaser.GameObjects.Text;
-  private hotspots: CandleHotspot[] = [];
 
   private openVisited = false;
   private highVisited = false;
@@ -47,30 +23,40 @@ export default class CandleWorkshopScene extends Phaser.Scene {
   private upperWickVisited = false;
   private lowerWickVisited = false;
 
-  constructor(private readonly onWorldEvent: AcademyWorldEventHandler) {
-    super("candle-workshop");
-  }
-
-  preload() {
-    preloadExplorerSprite(this);
+  constructor(onWorldEvent: AcademyWorldEventHandler) {
+    super(
+      {
+        room: "candle-workshop",
+        idlePrompt: "Haz clic en el suelo para caminar",
+        walkArea: { minX: 80, maxX: WORLD_WIDTH - 80, minY: 520, maxY: WORLD_HEIGHT - 55 },
+        player: {
+          x: 640,
+          y: 620,
+          shadowColor: 0x1e2a44,
+          shadowAlpha: 0.4,
+          fallbackColor: 0xe5960a,
+          labelStyle: {
+            color: "#1e2a44",
+            fontFamily: "DM Sans, sans-serif",
+            fontSize: "11px",
+            fontStyle: "bold",
+          },
+        },
+        markerColor: 0xe5960a,
+        walkSpeed: 2.1,
+      },
+      onWorldEvent
+    );
   }
 
   create() {
     this.cameras.main.setBackgroundColor("#f6e7cd");
     this.drawWorkshop();
     this.createCentralCandle();
-    this.createPlayer();
-    this.createDestinationMarker();
     this.createHotspots();
+    this.createWorldBase();
 
-    this.input.on("pointermove", this.handlePointerMove, this);
-    this.input.on("pointerdown", this.handlePointerDown, this);
-    this.game.events.on(ACADEMY_GAME_EVENTS.avatarColor, this.setAvatarColor, this);
-    this.game.events.on(ACADEMY_GAME_EVENTS.candleProgress, this.setCandleProgress, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.game.events.off(ACADEMY_GAME_EVENTS.avatarColor, this.setAvatarColor, this);
-      this.game.events.off(ACADEMY_GAME_EVENTS.candleProgress, this.setCandleProgress, this);
-    });
+    this.registerGameEvent(ACADEMY_GAME_EVENTS.candleProgress, this.setCandleProgress);
 
     this.cameras.main.fadeIn(450, 10, 14, 26);
     this.onWorldEvent({ type: "ready", room: "candle-workshop" });
@@ -328,31 +314,6 @@ export default class CandleWorkshopScene extends Phaser.Scene {
     }
   }
 
-  private createPlayer() {
-    const player = this.add.container(640, 620);
-    const shadow = this.add.ellipse(0, 38, 64, 20, 0x1e2a44, 0.4);
-    // Same footprint the vector body already had here, so the workshop framing
-    // is unchanged: sprite offset y=-6 at 132px tall.
-    const avatar = createExplorerAvatar(this, { y: -6, height: 132, fallbackColor: 0xe5960a });
-    this.avatar = avatar;
-    const label = this.add.text(0, 59, "Explorador", {
-      color: "#1e2a44",
-      fontFamily: "DM Sans, sans-serif",
-      fontSize: "11px",
-      fontStyle: "bold",
-    }).setOrigin(0.5);
-    player.add([shadow, avatar.object, label]);
-    player.setDepth(player.y);
-    this.player = player;
-  }
-
-  private createDestinationMarker() {
-    this.destinationMarker = this.add.circle(0, 0, 13, 0xe5960a, 0.15);
-    this.destinationMarker.setStrokeStyle(3, 0xe5960a, 0.9);
-    this.destinationMarker.setVisible(false);
-    this.destinationMarker.setDepth(1000);
-  }
-
   private allOhlcVisited() {
     return this.openVisited && this.highVisited && this.lowVisited && this.closeVisited;
   }
@@ -475,62 +436,6 @@ export default class CandleWorkshopScene extends Phaser.Scene {
     ];
   }
 
-  private handlePointerMove(pointer: Phaser.Input.Pointer) {
-    const point = pointer.positionToCamera(this.cameras.main) as Phaser.Math.Vector2;
-    const hotspot = this.hotspots.find((item) => item.enabled() && item.area.contains(point.x, point.y));
-    if (hotspot?.id === this.hoveredTarget) return;
-    this.hoveredTarget = hotspot?.id;
-    this.onWorldEvent({ type: "prompt", message: hotspot?.prompt ?? "Haz clic en el suelo para caminar" });
-    this.game.canvas.style.cursor = hotspot ? "pointer" : "default";
-  }
-
-  private handlePointerDown(pointer: Phaser.Input.Pointer) {
-    const point = pointer.positionToCamera(this.cameras.main) as Phaser.Math.Vector2;
-    const hotspot = this.hotspots.find((item) => item.enabled() && item.area.contains(point.x, point.y));
-    if (hotspot) {
-      this.pendingTarget = hotspot.id;
-      this.movePlayerTo(hotspot.approach.x, hotspot.approach.y);
-      return;
-    }
-    this.pendingTarget = undefined;
-    this.movePlayerTo(
-      Phaser.Math.Clamp(point.x, 80, WORLD_WIDTH - 80),
-      Phaser.Math.Clamp(point.y, 520, WORLD_HEIGHT - 55)
-    );
-  }
-
-  private movePlayerTo(x: number, y: number) {
-    if (!this.player || !this.destinationMarker) return;
-    this.movementTween?.stop();
-    this.destinationMarker.setPosition(x, y + 32).setVisible(true).setAlpha(1).setScale(1);
-    this.tweens.add({ targets: this.destinationMarker, alpha: 0, scale: 1.8, duration: 420 });
-    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y);
-    setExplorerAvatarFacing(this.avatar, x < this.player.x ? -1 : 1);
-    this.onWorldEvent({ type: "moving", moving: true });
-    this.movementTween = this.tweens.add({
-      targets: this.player,
-      x,
-      y,
-      duration: Phaser.Math.Clamp(distance * 2.1, 220, 1400),
-      ease: "Sine.InOut",
-      onUpdate: () => {
-        if (!this.player) return;
-        this.player.setDepth(this.player.y);
-        this.player.rotation = Math.sin(this.time.now / 75) * 0.025;
-      },
-      onComplete: () => {
-        if (!this.player) return;
-        this.player.rotation = 0;
-        // Facing is deliberately kept (see AcademyAgoraScene).
-        this.onWorldEvent({ type: "moving", moving: false });
-        if (!this.pendingTarget) return;
-        const target = this.pendingTarget;
-        this.pendingTarget = undefined;
-        this.onWorldEvent({ type: "interact", target });
-      },
-    });
-  }
-
   private setCandleProgress(progress: {
     openVisited: boolean;
     highVisited: boolean;
@@ -581,9 +486,5 @@ export default class CandleWorkshopScene extends Phaser.Scene {
     } else {
       this.statusText?.setText(`OHLC: ${ohlcCount}/4 · visita cada estación`);
     }
-  }
-
-  private setAvatarColor(color: string) {
-    setExplorerAvatarColor(this, this.avatar, color);
   }
 }

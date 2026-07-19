@@ -4,47 +4,43 @@ import {
   type AcademyWorldEventHandler,
   type MarketTarget,
 } from "@/game/phaser/worldEvents";
-import {
-  createExplorerAvatar,
-  drawVillagerBody,
-  preloadExplorerSprite,
-  setExplorerAvatarColor,
-  setExplorerAvatarFacing,
-  type ExplorerAvatar,
-} from "@/game/phaser/characterArt";
+import { drawVillagerBody } from "@/game/phaser/characterArt";
+import { BaseWorldScene, WORLD_HEIGHT, WORLD_WIDTH } from "@/game/phaser/BaseWorldScene";
 
-interface MarketHotspot {
-  id: MarketTarget;
-  area: Phaser.Geom.Rectangle;
-  approach: Phaser.Math.Vector2;
-  prompt: string;
-  enabled: () => boolean;
-}
-
-const WORLD_WIDTH = 1280;
-const WORLD_HEIGHT = 720;
-
-export default class MarketPlazaScene extends Phaser.Scene {
-  private player?: Phaser.GameObjects.Container;
-  private avatar?: ExplorerAvatar;
-  private destinationMarker?: Phaser.GameObjects.Arc;
-  private movementTween?: Phaser.Tweens.Tween;
-  private pendingTarget?: MarketTarget;
-  private hoveredTarget?: MarketTarget;
+export default class MarketPlazaScene extends BaseWorldScene {
   private sellerVisited = false;
   private buyerVisited = false;
   private practiceGlow?: Phaser.GameObjects.Arc;
   private supplyLight?: Phaser.GameObjects.Arc;
   private demandLight?: Phaser.GameObjects.Arc;
   private statusText?: Phaser.GameObjects.Text;
-  private hotspots: MarketHotspot[] = [];
 
-  constructor(private readonly onWorldEvent: AcademyWorldEventHandler) {
-    super("market-plaza");
-  }
-
-  preload() {
-    preloadExplorerSprite(this);
+  constructor(onWorldEvent: AcademyWorldEventHandler) {
+    super(
+      {
+        room: "market-plaza",
+        idlePrompt: "Haz clic en el suelo para caminar",
+        walkArea: { minX: 80, maxX: WORLD_WIDTH - 80, minY: 315, maxY: WORLD_HEIGHT - 55 },
+        player: {
+          x: 640,
+          y: 625,
+          shadowColor: 0x10202a,
+          shadowAlpha: 0.3,
+          fallbackColor: 0xf0c040,
+          labelStyle: {
+            color: "#ffffff",
+            fontFamily: "DM Sans, sans-serif",
+            fontSize: "11px",
+            fontStyle: "bold",
+            stroke: "#1c2b35",
+            strokeThickness: 4,
+          },
+        },
+        markerColor: 0xf0c040,
+        walkSpeed: 2.1,
+      },
+      onWorldEvent
+    );
   }
 
   create() {
@@ -52,18 +48,10 @@ export default class MarketPlazaScene extends Phaser.Scene {
     this.drawMarket();
     this.createSeller();
     this.createBuyer();
-    this.createPlayer();
-    this.createDestinationMarker();
     this.createHotspots();
+    this.createWorldBase();
 
-    this.input.on("pointermove", this.handlePointerMove, this);
-    this.input.on("pointerdown", this.handlePointerDown, this);
-    this.game.events.on(ACADEMY_GAME_EVENTS.avatarColor, this.setAvatarColor, this);
-    this.game.events.on(ACADEMY_GAME_EVENTS.marketProgress, this.setMarketProgress, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.game.events.off(ACADEMY_GAME_EVENTS.avatarColor, this.setAvatarColor, this);
-      this.game.events.off(ACADEMY_GAME_EVENTS.marketProgress, this.setMarketProgress, this);
-    });
+    this.registerGameEvent(ACADEMY_GAME_EVENTS.marketProgress, this.setMarketProgress);
 
     this.cameras.main.fadeIn(450, 16, 29, 31);
     this.onWorldEvent({ type: "ready", room: "market-plaza" });
@@ -283,33 +271,6 @@ export default class MarketPlazaScene extends Phaser.Scene {
     this.tweens.add({ targets: icon, y: -88, duration: 1050, yoyo: true, repeat: -1, ease: "Sine.InOut" });
   }
 
-  private createPlayer() {
-    const player = this.add.container(640, 625);
-    const shadow = this.add.ellipse(0, 38, 64, 20, 0x10202a, 0.3);
-    // Same footprint the vector body already had here, so the plaza framing is
-    // unchanged: sprite offset y=-6 at 132px tall.
-    const avatar = createExplorerAvatar(this, { y: -6, height: 132, fallbackColor: 0xf0c040 });
-    this.avatar = avatar;
-    const label = this.add.text(0, 59, "Explorador", {
-      color: "#ffffff",
-      fontFamily: "DM Sans, sans-serif",
-      fontSize: "11px",
-      fontStyle: "bold",
-      stroke: "#1c2b35",
-      strokeThickness: 4,
-    }).setOrigin(0.5);
-    player.add([shadow, avatar.object, label]);
-    player.setDepth(player.y);
-    this.player = player;
-  }
-
-  private createDestinationMarker() {
-    this.destinationMarker = this.add.circle(0, 0, 13, 0xf0c040, 0.15);
-    this.destinationMarker.setStrokeStyle(3, 0xf0c040, 0.9);
-    this.destinationMarker.setVisible(false);
-    this.destinationMarker.setDepth(1000);
-  }
-
   private createHotspots() {
     this.hotspots = [
       {
@@ -357,62 +318,6 @@ export default class MarketPlazaScene extends Phaser.Scene {
     ];
   }
 
-  private handlePointerMove(pointer: Phaser.Input.Pointer) {
-    const point = pointer.positionToCamera(this.cameras.main) as Phaser.Math.Vector2;
-    const hotspot = this.hotspots.find((item) => item.enabled() && item.area.contains(point.x, point.y));
-    if (hotspot?.id === this.hoveredTarget) return;
-    this.hoveredTarget = hotspot?.id;
-    this.onWorldEvent({ type: "prompt", message: hotspot?.prompt ?? "Haz clic en el suelo para caminar" });
-    this.game.canvas.style.cursor = hotspot ? "pointer" : "default";
-  }
-
-  private handlePointerDown(pointer: Phaser.Input.Pointer) {
-    const point = pointer.positionToCamera(this.cameras.main) as Phaser.Math.Vector2;
-    const hotspot = this.hotspots.find((item) => item.enabled() && item.area.contains(point.x, point.y));
-    if (hotspot) {
-      this.pendingTarget = hotspot.id;
-      this.movePlayerTo(hotspot.approach.x, hotspot.approach.y);
-      return;
-    }
-    this.pendingTarget = undefined;
-    this.movePlayerTo(
-      Phaser.Math.Clamp(point.x, 80, WORLD_WIDTH - 80),
-      Phaser.Math.Clamp(point.y, 315, WORLD_HEIGHT - 55)
-    );
-  }
-
-  private movePlayerTo(x: number, y: number) {
-    if (!this.player || !this.destinationMarker) return;
-    this.movementTween?.stop();
-    this.destinationMarker.setPosition(x, y + 32).setVisible(true).setAlpha(1).setScale(1);
-    this.tweens.add({ targets: this.destinationMarker, alpha: 0, scale: 1.8, duration: 420 });
-    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y);
-    setExplorerAvatarFacing(this.avatar, x < this.player.x ? -1 : 1);
-    this.onWorldEvent({ type: "moving", moving: true });
-    this.movementTween = this.tweens.add({
-      targets: this.player,
-      x,
-      y,
-      duration: Phaser.Math.Clamp(distance * 2.1, 220, 1400),
-      ease: "Sine.InOut",
-      onUpdate: () => {
-        if (!this.player) return;
-        this.player.setDepth(this.player.y);
-        this.player.rotation = Math.sin(this.time.now / 75) * 0.025;
-      },
-      onComplete: () => {
-        if (!this.player) return;
-        this.player.rotation = 0;
-        // Facing is deliberately kept (see AcademyAgoraScene).
-        this.onWorldEvent({ type: "moving", moving: false });
-        if (!this.pendingTarget) return;
-        const target = this.pendingTarget;
-        this.pendingTarget = undefined;
-        this.onWorldEvent({ type: "interact", target });
-      },
-    });
-  }
-
   private setMarketProgress(progress: { sellerVisited: boolean; buyerVisited: boolean }) {
     this.sellerVisited = progress.sellerVisited;
     this.buyerVisited = progress.buyerVisited;
@@ -435,7 +340,4 @@ export default class MarketPlazaScene extends Phaser.Scene {
     }
   }
 
-  private setAvatarColor(color: string) {
-    setExplorerAvatarColor(this, this.avatar, color);
-  }
 }

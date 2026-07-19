@@ -4,43 +4,43 @@ import {
   type AcademyTarget,
   type AcademyWorldEventHandler,
 } from "@/game/phaser/worldEvents";
-import {
-  createExplorerAvatar,
-  drawAriaBody,
-  preloadExplorerSprite,
-  setExplorerAvatarColor,
-  setExplorerAvatarFacing,
-  type ExplorerAvatar,
-} from "@/game/phaser/characterArt";
+import { drawAriaBody } from "@/game/phaser/characterArt";
+import { BaseWorldScene, WORLD_HEIGHT, WORLD_WIDTH } from "@/game/phaser/BaseWorldScene";
 
-interface Hotspot {
-  id: AcademyTarget;
-  area: Phaser.Geom.Rectangle;
-  approach: Phaser.Math.Vector2;
-  prompt: string;
-}
-
-const WORLD_WIDTH = 1280;
-const WORLD_HEIGHT = 720;
-const WALK_MIN_Y = 170;
 const ACADEMY_MAP_KEY = "academy-agora-map";
 
-export default class AcademyAgoraScene extends Phaser.Scene {
-  private player?: Phaser.GameObjects.Container;
-  private avatar?: ExplorerAvatar;
-  private destinationMarker?: Phaser.GameObjects.Arc;
-  private movementTween?: Phaser.Tweens.Tween;
-  private pendingTarget?: AcademyTarget;
-  private hoveredTarget?: AcademyTarget;
-  private hotspots: Hotspot[] = [];
-
-  constructor(private readonly onWorldEvent: AcademyWorldEventHandler) {
-    super("academy-agora");
+export default class AcademyAgoraScene extends BaseWorldScene {
+  constructor(onWorldEvent: AcademyWorldEventHandler) {
+    super(
+      {
+        room: "academy-agora",
+        idlePrompt: "Haz clic en el suelo para caminar",
+        walkArea: { minX: 80, maxX: WORLD_WIDTH - 80, minY: 170, maxY: WORLD_HEIGHT - 55 },
+        player: {
+          x: 730,
+          y: 520,
+          shadowColor: 0x1e2a44,
+          shadowAlpha: 0.3,
+          fallbackColor: 0xe5960a,
+          labelStyle: {
+            color: "#ffffff",
+            fontFamily: "Baloo 2, DM Sans, sans-serif",
+            fontSize: "11px",
+            fontStyle: "bold",
+            stroke: "#1e2a44",
+            strokeThickness: 4,
+          },
+        },
+        markerColor: 0xe5960a,
+        walkSpeed: 2.2,
+      },
+      onWorldEvent
+    );
   }
 
   preload() {
+    super.preload();
     this.load.image(ACADEMY_MAP_KEY, "/assets/traderpath-world-hero.png");
-    preloadExplorerSprite(this);
   }
 
   create() {
@@ -48,17 +48,8 @@ export default class AcademyAgoraScene extends Phaser.Scene {
     this.drawRoom();
     this.createHotspots();
     this.createAria();
-    this.createPlayer();
-    this.createDestinationMarker();
-
-    this.input.on("pointermove", this.handlePointerMove, this);
-    this.input.on("pointerdown", this.handlePointerDown, this);
-    this.game.events.on(ACADEMY_GAME_EVENTS.avatarColor, this.setAvatarColor, this);
-    this.game.events.on(ACADEMY_GAME_EVENTS.focusTarget, this.focusTarget, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.game.events.off(ACADEMY_GAME_EVENTS.avatarColor, this.setAvatarColor, this);
-      this.game.events.off(ACADEMY_GAME_EVENTS.focusTarget, this.focusTarget, this);
-    });
+    this.createWorldBase();
+    this.registerGameEvent(ACADEMY_GAME_EVENTS.focusTarget, this.focusTarget);
 
     this.onWorldEvent({ type: "ready", room: "academy-agora" });
     this.onWorldEvent({ type: "prompt", message: "Haz clic en el suelo para caminar" });
@@ -166,123 +157,6 @@ export default class AcademyAgoraScene extends Phaser.Scene {
     });
   }
 
-  private drawBuilding(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    color: number,
-    title: string,
-    subtitle: string,
-    mission: string
-  ) {
-    const building = this.add.graphics();
-    building.fillStyle(0x0c1720, 0.2);
-    building.fillRoundedRect(x + 12, y + 18, width, height, 24);
-    building.fillStyle(color, 1);
-    building.fillRoundedRect(x, y, width, height, 24);
-    building.fillStyle(0xf7edcf, 1);
-    building.fillTriangle(x - 15, y + 30, x + width / 2, y - 55, x + width + 15, y + 30);
-    building.fillStyle(0x23323b, 1);
-    building.fillRoundedRect(x + width / 2 - 38, y + height - 88, 76, 88, 28);
-    building.fillStyle(0xffd56a, 0.72);
-    building.fillRoundedRect(x + 38, y + 70, 52, 60, 10);
-    building.fillRoundedRect(x + width - 90, y + 70, 52, 60, 10);
-    building.lineStyle(4, 0xffffff, 0.32);
-    building.strokeRoundedRect(x, y, width, height, 24);
-
-    this.add.text(x + width / 2, y + 20, title, {
-      color: "#ffffff",
-      fontFamily: "Space Grotesk, sans-serif",
-      fontSize: "16px",
-      fontStyle: "bold",
-      stroke: "#17232b",
-      strokeThickness: 4,
-      align: "center",
-    }).setOrigin(0.5, 0).setDepth(y + height + 1);
-    this.add.text(x + width / 2, y + 45, subtitle, {
-      color: "#e8f1ef",
-      fontFamily: "DM Sans, sans-serif",
-      fontSize: "11px",
-      stroke: "#17232b",
-      strokeThickness: 3,
-    }).setOrigin(0.5, 0).setDepth(y + height + 1);
-
-    this.add.text(x + width / 2, y + height - 24, mission.toUpperCase(), {
-      color: "#f0c040",
-      fontFamily: "JetBrains Mono, monospace",
-      fontSize: "10px",
-      fontStyle: "bold",
-    }).setOrigin(0.5).setDepth(y + height + 2);
-  }
-
-  private drawPortal() {
-    const portal = this.add.graphics();
-    portal.fillStyle(0x0f1624, 1);
-    portal.fillRoundedRect(1055, 365, 160, 120, 70);
-    portal.lineStyle(8, 0xf7931a, 1);
-    portal.strokeRoundedRect(1070, 379, 130, 128, 62);
-    portal.lineStyle(3, 0xffd08a, 0.7);
-    portal.strokeRoundedRect(1087, 396, 96, 110, 48);
-    portal.fillStyle(0xf7931a, 0.22);
-    portal.fillRoundedRect(1087, 396, 96, 110, 48);
-    this.add.text(1135, 429, "₿", {
-      color: "#ffd08a",
-      fontFamily: "JetBrains Mono, monospace",
-      fontSize: "40px",
-      fontStyle: "bold",
-    }).setOrigin(0.5).setDepth(205);
-    this.add.text(1135, 344, "PORTAL BITCOIN", {
-      color: "#fff1d8",
-      fontFamily: "Space Grotesk, sans-serif",
-      fontSize: "12px",
-      fontStyle: "bold",
-      stroke: "#17232b",
-      strokeThickness: 4,
-    }).setOrigin(0.5).setDepth(205);
-  }
-
-  private drawFountain() {
-    const fountain = this.add.graphics();
-    fountain.fillStyle(0x6a7e87, 1);
-    fountain.fillEllipse(640, 535, 230, 92);
-    fountain.fillStyle(0x6ed1e4, 1);
-    fountain.fillEllipse(640, 525, 190, 65);
-    fountain.fillStyle(0xf5d67e, 1);
-    fountain.fillCircle(640, 500, 26);
-    fountain.fillStyle(0xffffff, 0.65);
-    fountain.fillCircle(630, 515, 5);
-    fountain.fillCircle(657, 507, 4);
-    this.add.text(640, 498, "TP", {
-      color: "#28333b",
-      fontFamily: "Space Grotesk, sans-serif",
-      fontSize: "12px",
-      fontStyle: "bold",
-    }).setOrigin(0.5).setDepth(536);
-  }
-
-  private drawDecorations() {
-    const decoration = this.add.graphics();
-    const trees = [
-      [85, 360], [1180, 360], [155, 560], [1120, 560], [315, 615], [960, 620],
-    ];
-    for (const [x, y] of trees) {
-      decoration.fillStyle(0x765535, 1);
-      decoration.fillRoundedRect(x - 7, y - 34, 14, 52, 5);
-      decoration.fillStyle(0x2f7957, 1);
-      decoration.fillCircle(x, y - 48, 34);
-      decoration.fillStyle(0x4fa56d, 1);
-      decoration.fillCircle(x - 16, y - 55, 20);
-    }
-
-    for (const x of [430, 850]) {
-      decoration.fillStyle(0x293943, 1);
-      decoration.fillRoundedRect(x - 4, 440, 8, 72, 4);
-      decoration.fillStyle(0xffdf83, 1);
-      decoration.fillCircle(x, 435, 12);
-    }
-  }
-
   private createHotspots() {
     this.hotspots = [
       {
@@ -343,101 +217,6 @@ export default class AcademyAgoraScene extends Phaser.Scene {
     aria.setDepth(aria.y);
     this.tweens.add({ targets: icon, y: -102, duration: 900, yoyo: true, repeat: -1, ease: "Sine.InOut" });
     this.tweens.add({ targets: body, y: -3, duration: 1600, yoyo: true, repeat: -1, ease: "Sine.InOut" });
-  }
-
-  private createPlayer() {
-    const player = this.add.container(730, 520);
-    const shadow = this.add.ellipse(0, 38, 64, 20, 0x1e2a44, 0.3);
-
-    // Prefer the Blender-rendered sprite; fall back to the vector body so the
-    // world keeps working before build_explorer.py has produced the PNG.
-    const avatar = createExplorerAvatar(this, { y: -6, height: 132, fallbackColor: 0xe5960a });
-    this.avatar = avatar;
-
-    const name = this.add.text(0, 59, "Explorador", {
-      color: "#ffffff",
-      fontFamily: "Baloo 2, DM Sans, sans-serif",
-      fontSize: "11px",
-      fontStyle: "bold",
-      stroke: "#1e2a44",
-      strokeThickness: 4,
-    }).setOrigin(0.5);
-    player.add([shadow, avatar.object, name]);
-    player.setDepth(player.y);
-    this.player = player;
-  }
-
-  private createDestinationMarker() {
-    this.destinationMarker = this.add.circle(0, 0, 13, 0xe5960a, 0.15);
-    this.destinationMarker.setStrokeStyle(3, 0xe5960a, 0.9);
-    this.destinationMarker.setVisible(false);
-    this.destinationMarker.setDepth(1000);
-  }
-
-  private handlePointerMove(pointer: Phaser.Input.Pointer) {
-    const worldPoint = pointer.positionToCamera(this.cameras.main) as Phaser.Math.Vector2;
-    const hotspot = this.hotspots.find((item) => item.area.contains(worldPoint.x, worldPoint.y));
-    if (hotspot?.id === this.hoveredTarget) return;
-    this.hoveredTarget = hotspot?.id;
-    this.onWorldEvent({
-      type: "prompt",
-      message: hotspot?.prompt ?? "Haz clic en el suelo para caminar",
-    });
-    this.game.canvas.style.cursor = hotspot ? "pointer" : "default";
-  }
-
-  private handlePointerDown(pointer: Phaser.Input.Pointer) {
-    const worldPoint = pointer.positionToCamera(this.cameras.main) as Phaser.Math.Vector2;
-    const hotspot = this.hotspots.find((item) => item.area.contains(worldPoint.x, worldPoint.y));
-    if (hotspot) {
-      this.pendingTarget = hotspot.id;
-      this.movePlayerTo(hotspot.approach.x, hotspot.approach.y);
-      return;
-    }
-
-    this.pendingTarget = undefined;
-    const x = Phaser.Math.Clamp(worldPoint.x, 80, WORLD_WIDTH - 80);
-    const y = Phaser.Math.Clamp(worldPoint.y, WALK_MIN_Y, WORLD_HEIGHT - 55);
-    this.movePlayerTo(x, y);
-  }
-
-  private movePlayerTo(x: number, y: number) {
-    if (!this.player || !this.destinationMarker) return;
-    this.movementTween?.stop();
-    this.destinationMarker.setPosition(x, y + 32).setVisible(true).setAlpha(1);
-    this.tweens.add({ targets: this.destinationMarker, alpha: 0, scale: 1.8, duration: 420 });
-
-    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y);
-    setExplorerAvatarFacing(this.avatar, x < this.player.x ? -1 : 1);
-    this.onWorldEvent({ type: "moving", moving: true });
-    this.movementTween = this.tweens.add({
-      targets: this.player,
-      x,
-      y,
-      duration: Phaser.Math.Clamp(distance * 2.2, 220, 1400),
-      ease: "Sine.InOut",
-      onUpdate: () => {
-        if (!this.player) return;
-        this.player.setDepth(this.player.y);
-        this.player.rotation = Math.sin(this.time.now / 75) * 0.025;
-      },
-      onComplete: () => {
-        if (!this.player) return;
-        this.player.rotation = 0;
-        // Facing is deliberately kept: the explorer stays looking the way it
-        // last walked. The old container setScale(1) reset it, but that was
-        // invisible with the near-symmetric vector body.
-        this.onWorldEvent({ type: "moving", moving: false });
-        if (this.pendingTarget) {
-          this.onWorldEvent({ type: "interact", target: this.pendingTarget });
-          this.pendingTarget = undefined;
-        }
-      },
-    });
-  }
-
-  private setAvatarColor(color: string) {
-    setExplorerAvatarColor(this, this.avatar, color);
   }
 
   private focusTarget(target: AcademyTarget) {

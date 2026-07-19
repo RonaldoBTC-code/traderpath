@@ -2,48 +2,43 @@ import Phaser from "phaser";
 import {
   ACADEMY_GAME_EVENTS,
   type AcademyWorldEventHandler,
-  type WelcomeTarget,
+  type WorldTarget,
 } from "@/game/phaser/worldEvents";
-import {
-  createExplorerAvatar,
-  drawAriaBody,
-  preloadExplorerSprite,
-  setExplorerAvatarColor,
-  setExplorerAvatarFacing,
-  type ExplorerAvatar,
-} from "@/game/phaser/characterArt";
+import { drawAriaBody } from "@/game/phaser/characterArt";
+import { BaseWorldScene, WORLD_HEIGHT, WORLD_WIDTH } from "@/game/phaser/BaseWorldScene";
 
-interface WelcomeHotspot {
-  id: WelcomeTarget;
-  area: Phaser.Geom.Rectangle;
-  approach: Phaser.Math.Vector2;
-  prompt: string;
-  enabled: () => boolean;
-}
-
-const WORLD_WIDTH = 1280;
-const WORLD_HEIGHT = 720;
-const WALK_MIN_Y = 340;
-
-export default class WelcomeHarborScene extends Phaser.Scene {
-  private player?: Phaser.GameObjects.Container;
-  private avatar?: ExplorerAvatar;
-  private destinationMarker?: Phaser.GameObjects.Arc;
-  private movementTween?: Phaser.Tweens.Tween;
-  private pendingTarget?: WelcomeTarget;
-  private hoveredTarget?: WelcomeTarget;
+export default class WelcomeHarborScene extends BaseWorldScene {
   private token?: Phaser.GameObjects.Container;
   private gateGlow?: Phaser.GameObjects.Arc;
   private tokenEnabled = false;
   private gateEnabled = false;
-  private hotspots: WelcomeHotspot[] = [];
 
-  constructor(private readonly onWorldEvent: AcademyWorldEventHandler) {
-    super("welcome-harbor");
-  }
-
-  preload() {
-    preloadExplorerSprite(this);
+  constructor(onWorldEvent: AcademyWorldEventHandler) {
+    super(
+      {
+        room: "welcome-harbor",
+        idlePrompt: "Haz clic en el muelle para caminar",
+        walkArea: { minX: 280, maxX: 1000, minY: 340, maxY: WORLD_HEIGHT - 55 },
+        player: {
+          x: 640,
+          y: 625,
+          shadowColor: 0x10202a,
+          shadowAlpha: 0.3,
+          fallbackColor: 0xf0c040,
+          labelStyle: {
+            color: "#ffffff",
+            fontFamily: "DM Sans, sans-serif",
+            fontSize: "11px",
+            fontStyle: "bold",
+            stroke: "#1c2b35",
+            strokeThickness: 4,
+          },
+        },
+        markerColor: 0xf0c040,
+        walkSpeed: 2.1,
+      },
+      onWorldEvent
+    );
   }
 
   create() {
@@ -51,22 +46,12 @@ export default class WelcomeHarborScene extends Phaser.Scene {
     this.drawHarbor();
     this.createGuide();
     this.createToken();
-    this.createPlayer();
-    this.createDestinationMarker();
     this.createHotspots();
+    this.createWorldBase();
 
-    this.input.on("pointermove", this.handlePointerMove, this);
-    this.input.on("pointerdown", this.handlePointerDown, this);
-    this.game.events.on(ACADEMY_GAME_EVENTS.avatarColor, this.setAvatarColor, this);
-    this.game.events.on(ACADEMY_GAME_EVENTS.enableIntroToken, this.enableToken, this);
-    this.game.events.on(ACADEMY_GAME_EVENTS.enableIntroGate, this.enableGate, this);
-    this.game.events.on(ACADEMY_GAME_EVENTS.enterAcademy, this.enterAcademy, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.game.events.off(ACADEMY_GAME_EVENTS.avatarColor, this.setAvatarColor, this);
-      this.game.events.off(ACADEMY_GAME_EVENTS.enableIntroToken, this.enableToken, this);
-      this.game.events.off(ACADEMY_GAME_EVENTS.enableIntroGate, this.enableGate, this);
-      this.game.events.off(ACADEMY_GAME_EVENTS.enterAcademy, this.enterAcademy, this);
-    });
+    this.registerGameEvent(ACADEMY_GAME_EVENTS.enableIntroToken, this.enableToken);
+    this.registerGameEvent(ACADEMY_GAME_EVENTS.enableIntroGate, this.enableGate);
+    this.registerGameEvent(ACADEMY_GAME_EVENTS.enterAcademy, this.enterAcademy);
 
     this.cameras.main.fadeIn(600, 8, 20, 34);
     this.onWorldEvent({ type: "ready", room: "welcome-harbor" });
@@ -289,33 +274,6 @@ export default class WelcomeHarborScene extends Phaser.Scene {
     });
   }
 
-  private createPlayer() {
-    const player = this.add.container(640, 625);
-    const shadow = this.add.ellipse(0, 38, 64, 20, 0x10202a, 0.3);
-    // Same footprint the vector body already had here, so the harbour framing
-    // is unchanged: sprite offset y=-6 at 132px tall.
-    const avatar = createExplorerAvatar(this, { y: -6, height: 132, fallbackColor: 0xf0c040 });
-    this.avatar = avatar;
-    const name = this.add.text(0, 59, "Explorador", {
-      color: "#ffffff",
-      fontFamily: "DM Sans, sans-serif",
-      fontSize: "11px",
-      fontStyle: "bold",
-      stroke: "#1c2b35",
-      strokeThickness: 4,
-    }).setOrigin(0.5);
-    player.add([shadow, avatar.object, name]);
-    player.setDepth(player.y);
-    this.player = player;
-  }
-
-  private createDestinationMarker() {
-    this.destinationMarker = this.add.circle(0, 0, 13, 0xf0c040, 0.15);
-    this.destinationMarker.setStrokeStyle(3, 0xf0c040, 0.9);
-    this.destinationMarker.setVisible(false);
-    this.destinationMarker.setDepth(1000);
-  }
-
   private createHotspots() {
     this.hotspots = [
       {
@@ -349,68 +307,9 @@ export default class WelcomeHarborScene extends Phaser.Scene {
     ];
   }
 
-  private handlePointerMove(pointer: Phaser.Input.Pointer) {
-    const worldPoint = pointer.positionToCamera(this.cameras.main) as Phaser.Math.Vector2;
-    const hotspot = this.hotspots.find(
-      (item) => item.enabled() && item.area.contains(worldPoint.x, worldPoint.y)
-    );
-    if (hotspot?.id === this.hoveredTarget) return;
-    this.hoveredTarget = hotspot?.id;
-    this.onWorldEvent({
-      type: "prompt",
-      message: hotspot?.prompt ?? "Haz clic en el muelle para caminar",
-    });
-    this.game.canvas.style.cursor = hotspot ? "pointer" : "default";
-  }
-
-  private handlePointerDown(pointer: Phaser.Input.Pointer) {
-    const worldPoint = pointer.positionToCamera(this.cameras.main) as Phaser.Math.Vector2;
-    const hotspot = this.hotspots.find(
-      (item) => item.enabled() && item.area.contains(worldPoint.x, worldPoint.y)
-    );
-    if (hotspot) {
-      this.pendingTarget = hotspot.id;
-      this.movePlayerTo(hotspot.approach.x, hotspot.approach.y);
-      return;
-    }
-    this.pendingTarget = undefined;
-    this.movePlayerTo(
-      Phaser.Math.Clamp(worldPoint.x, 280, 1000),
-      Phaser.Math.Clamp(worldPoint.y, WALK_MIN_Y, WORLD_HEIGHT - 55)
-    );
-  }
-
-  private movePlayerTo(x: number, y: number) {
-    if (!this.player || !this.destinationMarker) return;
-    this.movementTween?.stop();
-    this.destinationMarker.setPosition(x, y + 32).setVisible(true).setAlpha(1).setScale(1);
-    this.tweens.add({ targets: this.destinationMarker, alpha: 0, scale: 1.8, duration: 420 });
-    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y);
-    setExplorerAvatarFacing(this.avatar, x < this.player.x ? -1 : 1);
-    this.onWorldEvent({ type: "moving", moving: true });
-    this.movementTween = this.tweens.add({
-      targets: this.player,
-      x,
-      y,
-      duration: Phaser.Math.Clamp(distance * 2.1, 220, 1400),
-      ease: "Sine.InOut",
-      onUpdate: () => {
-        if (!this.player) return;
-        this.player.setDepth(this.player.y);
-        this.player.rotation = Math.sin(this.time.now / 75) * 0.025;
-      },
-      onComplete: () => {
-        if (!this.player) return;
-        this.player.rotation = 0;
-        // Facing is deliberately kept (see AcademyAgoraScene).
-        this.onWorldEvent({ type: "moving", moving: false });
-        if (!this.pendingTarget) return;
-        const target = this.pendingTarget;
-        this.pendingTarget = undefined;
-        if (target === "intro-token") this.collectToken();
-        this.onWorldEvent({ type: "interact", target });
-      },
-    });
+  /** The intro token is picked up on arrival, before the interact event. */
+  protected onArrive(target: WorldTarget) {
+    if (target === "intro-token") this.collectToken();
   }
 
   private enableToken() {
@@ -456,7 +355,4 @@ export default class WelcomeHarborScene extends Phaser.Scene {
     this.time.delayedCall(620, () => this.onWorldEvent({ type: "introComplete" }));
   }
 
-  private setAvatarColor(color: string) {
-    setExplorerAvatarColor(this, this.avatar, color);
-  }
 }
