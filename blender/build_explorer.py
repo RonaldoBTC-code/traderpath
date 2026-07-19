@@ -11,7 +11,8 @@
 #
 # Salida: public/assets/sprites/explorer.png
 #
-# Probado con Blender 3.6 LTS y 4.x. Usa Cycles (renderiza headless sin problemas).
+# Probado con Blender 3.6 LTS, 4.x y 5.2 LTS. Usa Cycles (renderiza headless
+# sin problemas).
 # El look (paleta VDD v2.0, contorno navy tipo cartoon) se controla en CONFIG.
 
 import bpy
@@ -20,8 +21,14 @@ import math
 import mathutils
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
-BODY_HEX = "#E5960A"   # ámbar (tp-gold). Para variantes de color, ver nota al final.
+BODY_HEX = "#E5960A"   # ámbar (tp-gold). Color por defecto → explorer.png
 SKIN_HEX = "#FFD4AD"
+
+# Fase 2 · variantes del selector de avatar. El orden IMPORTA: el índice de cada
+# hex es el que termina en explorer_{i}.png, así que debe coincidir 1:1 con
+# AVATAR_COLORS en src/components/world/AcademyWorld.tsx (fuente de verdad).
+# Si allá se reordenan o agregan colores, hay que reflejarlo acá y re-renderizar.
+AVATAR_HEXES = ["#F0C040", "#38BDF8", "#22C55E", "#F97316", "#D946EF"]
 INK_HEX = "#1E2A44"    # navy — contorno Freestyle + ojos + piernas
 BLUSH_HEX = "#F5A97F"
 WHITE_HEX = "#FFFFFF"
@@ -29,7 +36,7 @@ SKY_HEX = "#EAF4FE"    # luz de ambiente diurna (tp-base)
 
 RESOLUTION = (512, 640)
 SAMPLES = 96
-OUTLINE_THICKNESS = 3.0
+OUTLINE_THICKNESS = 4.5
 
 
 # ─── COLOR ───────────────────────────────────────────────────────────────────
@@ -98,54 +105,70 @@ def add_round_cube(name, location, scale, mat, bevel=0.14):
 # El personaje mira hacia +Y (hacia la cámara). Z es arriba. Proporciones
 # cartoon: cabeza grande, cuerpo rechoncho, extremidades cortas. Refleja el
 # arte 2D de characterArt.ts (gorra + mochila + cara con rubor).
-def build_explorer():
-    body_mat = make_material("body", BODY_HEX)
+def build_explorer(body_hex=BODY_HEX):
+    body_mat = make_material("body", body_hex)
     skin_mat = make_material("skin", SKIN_HEX)
     ink_mat = make_material("ink", INK_HEX, roughness=0.7)
     blush_mat = make_material("blush", BLUSH_HEX)
     white_mat = make_material("white", WHITE_HEX, roughness=0.4)
 
     parts = []
-    # Piernas (un poco más largas para que los pies se lean bajo el torso)
-    parts.append(add_round_cube("leg_l", (-0.24, 0, 0.1), (0.15, 0.16, 0.26), ink_mat))
-    parts.append(add_round_cube("leg_r", (0.24, 0, 0.1), (0.15, 0.16, 0.26), ink_mat))
-    # Torso
-    parts.append(add_round_cube("torso", (0, 0, 0.74), (0.6, 0.5, 0.62), body_mat))
-    # Mochila (detrás, en -Y)
-    parts.append(add_round_cube("backpack", (0, -0.5, 0.78), (0.42, 0.22, 0.5), ink_mat))
-    # Brazos
-    parts.append(add_round_cube("arm_l", (-0.66, 0, 0.78), (0.14, 0.16, 0.4), body_mat))
-    parts.append(add_round_cube("arm_r", (0.66, 0, 0.78), (0.14, 0.16, 0.4), body_mat))
-    # Cabeza (más arriba para que el mentón no se hunda en el torso)
-    parts.append(add_sphere("head", (0, 0, 1.7), (0.62, 0.6, 0.62), skin_mat))
+    # Piernas: bajan bastante por debajo del torso (que termina en z=0.12) para
+    # que se lean como piernas y no como dos tacos de pie.
+    parts.append(add_round_cube("leg_l", (-0.24, 0, 0.02), (0.15, 0.16, 0.36), ink_mat))
+    parts.append(add_round_cube("leg_r", (0.24, 0, 0.02), (0.15, 0.16, 0.36), ink_mat))
+    # Pies: asoman hacia +Y (adelante) y apoyan la silueta en el suelo.
+    parts.append(add_round_cube("foot_l", (-0.24, 0.10, -0.30), (0.17, 0.24, 0.09), ink_mat, bevel=0.2))
+    parts.append(add_round_cube("foot_r", (0.24, 0.10, -0.30), (0.17, 0.24, 0.09), ink_mat, bevel=0.2))
+    # Torso: bevel alto = silueta redondeada, menos "caja".
+    parts.append(add_round_cube("torso", (0, 0, 0.70), (0.6, 0.5, 0.58), body_mat, bevel=0.32))
+    # Mochila (detrás, en -Y). Más ancha que el torso a propósito: así siluetea
+    # por los costados y se lee aunque la cámara esté al frente.
+    parts.append(add_round_cube("backpack", (0, -0.50, 0.82), (0.56, 0.26, 0.44), ink_mat, bevel=0.2))
+    # Tirantes: llegan hasta el tope del torso (z=1.28) para que se lean pasando
+    # por encima del hombro. Si terminan antes, parecen dos barras flotando.
+    parts.append(add_round_cube("strap_l", (-0.30, 0.47, 0.92), (0.07, 0.05, 0.38), ink_mat, bevel=0.3))
+    parts.append(add_round_cube("strap_r", (0.30, 0.47, 0.92), (0.07, 0.05, 0.38), ink_mat, bevel=0.3))
+    # Brazos más cortos, rematados en una mano esférica. Retrasados en -Y para
+    # que el brazo cercano a la cámara no se coma el frente del torso en 3/4.
+    parts.append(add_round_cube("arm_l", (-0.66, -0.05, 0.82), (0.13, 0.14, 0.32), body_mat, bevel=0.3))
+    parts.append(add_round_cube("arm_r", (0.66, -0.05, 0.82), (0.13, 0.14, 0.32), body_mat, bevel=0.3))
+    parts.append(add_sphere("hand_l", (-0.70, -0.05, 0.44), (0.15, 0.15, 0.15), skin_mat))
+    parts.append(add_sphere("hand_r", (0.70, -0.05, 0.44), (0.15, 0.15, 0.15), skin_mat))
+    # Cuello: ahora que el mentón despeja el torso, evita que la cabeza flote.
+    parts.append(add_round_cube("neck", (0, 0, 1.24), (0.2, 0.2, 0.12), skin_mat, bevel=0.3))
+    # Cabeza: base en z=1.26, justo sobre el torso (tope 1.28) → mentón visible.
+    parts.append(add_sphere("head", (0, 0, 1.88), (0.62, 0.6, 0.62), skin_mat))
     # Gorra: media esfera aplastada + visera (compacta, que no coma la cara)
-    cap = add_sphere("cap", (0, 0, 2.06), (0.6, 0.58, 0.32), body_mat)
+    cap = add_sphere("cap", (0, 0, 2.24), (0.6, 0.58, 0.32), body_mat)
     parts.append(cap)
-    parts.append(add_round_cube("brim", (0, 0.48, 1.98), (0.38, 0.26, 0.045), body_mat, bevel=0.04))
+    parts.append(add_round_cube("brim", (0, 0.48, 2.16), (0.38, 0.26, 0.045), body_mat, bevel=0.04))
     # Ojos + brillos (en la cara, hacia +Y)
-    parts.append(add_sphere("eye_l", (-0.22, 0.52, 1.7), (0.1, 0.08, 0.12), ink_mat))
-    parts.append(add_sphere("eye_r", (0.22, 0.52, 1.7), (0.1, 0.08, 0.12), ink_mat))
-    parts.append(add_sphere("glint_l", (-0.19, 0.6, 1.76), (0.035, 0.03, 0.035), white_mat))
-    parts.append(add_sphere("glint_r", (0.25, 0.6, 1.76), (0.035, 0.03, 0.035), white_mat))
+    parts.append(add_sphere("eye_l", (-0.22, 0.52, 1.88), (0.1, 0.08, 0.12), ink_mat))
+    parts.append(add_sphere("eye_r", (0.22, 0.52, 1.88), (0.1, 0.08, 0.12), ink_mat))
+    parts.append(add_sphere("glint_l", (-0.19, 0.6, 1.94), (0.035, 0.03, 0.035), white_mat))
+    parts.append(add_sphere("glint_r", (0.25, 0.6, 1.94), (0.035, 0.03, 0.035), white_mat))
     # Rubor
-    parts.append(add_sphere("blush_l", (-0.42, 0.47, 1.56), (0.11, 0.04, 0.08), blush_mat))
-    parts.append(add_sphere("blush_r", (0.42, 0.47, 1.56), (0.11, 0.04, 0.08), blush_mat))
+    parts.append(add_sphere("blush_l", (-0.42, 0.47, 1.74), (0.11, 0.04, 0.08), blush_mat))
+    parts.append(add_sphere("blush_r", (0.42, 0.47, 1.74), (0.11, 0.04, 0.08), blush_mat))
     # Sonrisa: arco de esferitas navy solapadas → trazo continuo
     xs = [i * 0.03 - 0.12 for i in range(9)]
     for i, x in enumerate(xs):
-        z = 1.5 + 1.6 * x * x
+        z = 1.68 + 1.6 * x * x
         parts.append(add_sphere(f"smile_{i}", (x, 0.565, z), (0.034, 0.03, 0.034), ink_mat))
     return parts
 
 
 # ─── CÁMARA / LUCES / MUNDO ──────────────────────────────────────────────────
 def setup_camera():
-    # La cara del personaje apunta a +Y: la cámara vive en +Y (ángulo 3/4).
-    bpy.ops.object.camera_add(location=(1.5, 3.2, 1.9))
+    # La cara del personaje apunta a +Y. La cámara vive en +X/+Y: atan(2.7/2.9)
+    # ≈ 43° de giro horizontal, que es un 3/4 real. Con menos giro (el 25° que
+    # teníamos) la ortográfica se lee frontal y la mochila queda oculta.
+    bpy.ops.object.camera_add(location=(2.7, 2.9, 2.1))
     cam = bpy.context.active_object
     cam.data.type = "ORTHO"
-    cam.data.ortho_scale = 2.85
-    look_at = mathutils.Vector((0.0, 0.0, 0.95))
+    cam.data.ortho_scale = 3.35
+    look_at = mathutils.Vector((0.0, 0.0, 1.05))
     direction = look_at - cam.location
     cam.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
     bpy.context.scene.camera = cam
@@ -198,11 +221,20 @@ def setup_render():
     lineset = fs.linesets[0] if len(fs.linesets) else fs.linesets.new("LineSet")
     if lineset.linestyle is None:
         lineset.linestyle = bpy.data.linestyles.new("LineStyle")
+    # Sin declarar los edge types el contorno casi no se lee: falta sobre todo
+    # material_boundary, que es donde vive el look "border-2" del design system
+    # (los bordes piel/ámbar/navy entre partes).
+    lineset.select_by_edge_types = True
+    lineset.select_silhouette = True
+    lineset.select_border = True
+    lineset.select_crease = True
+    lineset.select_material_boundary = True
+    fs.crease_angle = math.radians(120)
     lineset.linestyle.color = hexrgba(INK_HEX)[:3]
     lineset.linestyle.thickness = OUTLINE_THICKNESS
 
 
-def output_path():
+def output_path(filename):
     # Relativo a este script → repo/public/assets/sprites/. Fallback para cuando
     # se pega en la pestaña Scripting (sin __file__).
     try:
@@ -211,26 +243,39 @@ def output_path():
         base = bpy.path.abspath("//")
     out_dir = os.path.normpath(os.path.join(base, "..", "public", "assets", "sprites"))
     os.makedirs(out_dir, exist_ok=True)
-    return os.path.join(out_dir, "explorer.png")
+    return os.path.join(out_dir, filename)
 
 
-def main():
+def render_variant(body_hex, filename):
+    # Reconstruye la escena entera por variante. Es más lento que sólo cambiar
+    # el Base Color, pero garantiza que cámara, luces y Freestyle sean idénticos
+    # entre assets — que es justamente la convención del pipeline.
     reset_scene()
-    build_explorer()
+    build_explorer(body_hex)
     setup_camera()
     setup_lights()
     setup_world()
     setup_render()
-    path = output_path()
+    path = output_path(filename)
     bpy.context.scene.render.filepath = path
     bpy.ops.render.render(write_still=True)
-    print(f"[TraderPath] Sprite renderizado en: {path}")
+    print(f"[TraderPath] {filename} ({body_hex}) → {path}")
+    return path
+
+
+def main():
+    # Sprite por defecto (tp-gold), el que consume EXPLORER_SPRITE_PATH hoy.
+    render_variant(BODY_HEX, "explorer.png")
+    # Fase 2: una variante por color del selector de avatar.
+    for i, body_hex in enumerate(AVATAR_HEXES):
+        render_variant(body_hex, f"explorer_{i}.png")
+    print(f"[TraderPath] Listo: 1 sprite base + {len(AVATAR_HEXES)} variantes.")
 
 
 main()
 
-# ─── NOTA · VARIANTES DE COLOR (Fase 2) ──────────────────────────────────────
-# El selector de avatar del juego ofrece 5 colores. Para renderizarlos, envolvé
-# la asignación de material del cuerpo/gorra/brazos en un bucle sobre los hex y
-# renderizá a explorer_0.png … explorer_4.png cambiando body_mat.Base Color.
-# Lo dejamos para cuando valides el look del Explorador por defecto.
+# ─── NOTA · CABLEADO EN PHASER (pendiente) ───────────────────────────────────
+# Los PNG ya existen, pero characterArt.ts todavía apunta a un único
+# EXPLORER_SPRITE_PATH = "/assets/sprites/explorer.png". Para que el selector de
+# avatar use las variantes hay que cargar las 5 texturas en preload() y elegir
+# por índice de color. Es un cambio en TS, no en este script.
