@@ -106,9 +106,9 @@ def build_explorer():
     white_mat = make_material("white", WHITE_HEX, roughness=0.4)
 
     parts = []
-    # Piernas
-    parts.append(add_round_cube("leg_l", (-0.24, 0, 0.16), (0.15, 0.16, 0.22), ink_mat))
-    parts.append(add_round_cube("leg_r", (0.24, 0, 0.16), (0.15, 0.16, 0.22), ink_mat))
+    # Piernas (un poco más largas para que los pies se lean bajo el torso)
+    parts.append(add_round_cube("leg_l", (-0.24, 0, 0.1), (0.15, 0.16, 0.26), ink_mat))
+    parts.append(add_round_cube("leg_r", (0.24, 0, 0.1), (0.15, 0.16, 0.26), ink_mat))
     # Torso
     parts.append(add_round_cube("torso", (0, 0, 0.74), (0.6, 0.5, 0.62), body_mat))
     # Mochila (detrás, en -Y)
@@ -116,26 +116,32 @@ def build_explorer():
     # Brazos
     parts.append(add_round_cube("arm_l", (-0.66, 0, 0.78), (0.14, 0.16, 0.4), body_mat))
     parts.append(add_round_cube("arm_r", (0.66, 0, 0.78), (0.14, 0.16, 0.4), body_mat))
-    # Cabeza
-    parts.append(add_sphere("head", (0, 0, 1.62), (0.62, 0.6, 0.62), skin_mat))
-    # Gorra: media esfera aplastada + visera
-    cap = add_sphere("cap", (0, 0, 1.9), (0.66, 0.64, 0.42), body_mat)
+    # Cabeza (más arriba para que el mentón no se hunda en el torso)
+    parts.append(add_sphere("head", (0, 0, 1.7), (0.62, 0.6, 0.62), skin_mat))
+    # Gorra: media esfera aplastada + visera (compacta, que no coma la cara)
+    cap = add_sphere("cap", (0, 0, 2.06), (0.6, 0.58, 0.32), body_mat)
     parts.append(cap)
-    parts.append(add_round_cube("brim", (0, 0.5, 1.78), (0.4, 0.28, 0.05), body_mat, bevel=0.04))
+    parts.append(add_round_cube("brim", (0, 0.48, 1.98), (0.38, 0.26, 0.045), body_mat, bevel=0.04))
     # Ojos + brillos (en la cara, hacia +Y)
-    parts.append(add_sphere("eye_l", (-0.22, 0.52, 1.6), (0.1, 0.08, 0.12), ink_mat))
-    parts.append(add_sphere("eye_r", (0.22, 0.52, 1.6), (0.1, 0.08, 0.12), ink_mat))
-    parts.append(add_sphere("glint_l", (-0.19, 0.6, 1.66), (0.035, 0.03, 0.035), white_mat))
-    parts.append(add_sphere("glint_r", (0.25, 0.6, 1.66), (0.035, 0.03, 0.035), white_mat))
+    parts.append(add_sphere("eye_l", (-0.22, 0.52, 1.7), (0.1, 0.08, 0.12), ink_mat))
+    parts.append(add_sphere("eye_r", (0.22, 0.52, 1.7), (0.1, 0.08, 0.12), ink_mat))
+    parts.append(add_sphere("glint_l", (-0.19, 0.6, 1.76), (0.035, 0.03, 0.035), white_mat))
+    parts.append(add_sphere("glint_r", (0.25, 0.6, 1.76), (0.035, 0.03, 0.035), white_mat))
     # Rubor
-    parts.append(add_sphere("blush_l", (-0.42, 0.46, 1.46), (0.11, 0.04, 0.08), blush_mat))
-    parts.append(add_sphere("blush_r", (0.42, 0.46, 1.46), (0.11, 0.04, 0.08), blush_mat))
+    parts.append(add_sphere("blush_l", (-0.42, 0.47, 1.56), (0.11, 0.04, 0.08), blush_mat))
+    parts.append(add_sphere("blush_r", (0.42, 0.47, 1.56), (0.11, 0.04, 0.08), blush_mat))
+    # Sonrisa: arco de esferitas navy solapadas → trazo continuo
+    xs = [i * 0.03 - 0.12 for i in range(9)]
+    for i, x in enumerate(xs):
+        z = 1.5 + 1.6 * x * x
+        parts.append(add_sphere(f"smile_{i}", (x, 0.565, z), (0.034, 0.03, 0.034), ink_mat))
     return parts
 
 
 # ─── CÁMARA / LUCES / MUNDO ──────────────────────────────────────────────────
 def setup_camera():
-    bpy.ops.object.camera_add(location=(1.6, -3.2, 2.0))
+    # La cara del personaje apunta a +Y: la cámara vive en +Y (ángulo 3/4).
+    bpy.ops.object.camera_add(location=(1.5, 3.2, 1.9))
     cam = bpy.context.active_object
     cam.data.type = "ORTHO"
     cam.data.ortho_scale = 2.85
@@ -146,16 +152,17 @@ def setup_camera():
 
 
 def setup_lights():
-    bpy.ops.object.light_add(type="SUN", location=(2.5, -3.0, 4.5))
+    # Key desde arriba-derecha del lado de la cámara (+Y).
+    bpy.ops.object.light_add(type="SUN", location=(2.5, 3.0, 4.5))
     key = bpy.context.active_object
     key.data.energy = 3.2
     key.data.angle = math.radians(18)  # sombras suaves
-    key.rotation_euler = (math.radians(52), 0, math.radians(35))
+    key.rotation_euler = (math.radians(-48), 0, math.radians(148))
 
-    bpy.ops.object.light_add(type="SUN", location=(-3.0, -1.5, 2.0))
+    bpy.ops.object.light_add(type="SUN", location=(-3.0, 1.5, 2.0))
     fill = bpy.context.active_object
     fill.data.energy = 1.0
-    fill.rotation_euler = (math.radians(70), 0, math.radians(-40))
+    fill.rotation_euler = (math.radians(-65), 0, math.radians(215))
 
 
 def setup_world():
