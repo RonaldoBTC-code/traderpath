@@ -22,14 +22,17 @@ const config: Config = {
           supply: "#DC2626",
           warning: "#D97706",
           info: "#2563EB",
-          // Market cities
+          // Market cities — source of truth: MARKET_CITIES[].accent in
+          // src/lib/game/marketCities.ts. Mirror of globals.css.
           crypto: "#F7931A",
-          forex: "#0096C7",
-          stocks: "#16A34A",
-          commodities: "#CA8A04",
+          forex: "#38BDF8",
+          stocks: "#22C55E",
+          commodities: "#EAB308",
+          // Not aligned on purpose — see the note in globals.css: this is
+          // Don Pánico's dialogue colour, not the indices market colour.
           indices: "#6366F1",
-          futures: "#EA580C",
-          etfs: "#0891B2",
+          futures: "#F97316",
+          etfs: "#D946EF",
         },
       },
       fontFamily: {

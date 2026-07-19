@@ -25,14 +25,20 @@
   --tp-warning: #D97706;
   --tp-info: #2563EB;
 
-  /* Market cities */
+  /* Market cities — source of truth: MARKET_CITIES[].accent in
+     src/lib/game/marketCities.ts. Keep both files and tailwind.config.ts in
+     sync; the Blender city renders are lit from these same hex values. */
   --tp-crypto: #F7931A;
-  --tp-forex: #0096C7;
-  --tp-stocks: #16A34A;
-  --tp-commodities: #CA8A04;
+  --tp-forex: #38BDF8;
+  --tp-stocks: #22C55E;
+  --tp-commodities: #EAB308;
+  /* NOT aligned on purpose. marketCities uses #818CF8 for Observatorio Global,
+     but this token is currently Don Pánico's dialogue colour in
+     CharacterDialogue.tsx — a market token doing double duty as a character
+     token. Aligning it would restyle the character. Needs its own token first. */
   --tp-indices: #6366F1;
-  --tp-futures: #EA580C;
-  --tp-etfs: #0891B2;
+  --tp-futures: #F97316;
+  --tp-etfs: #D946EF;
 
   /* Shadows */
   --tp-shadow-gold: 0 6px 20px rgba(229, 150, 10, 0.22);
