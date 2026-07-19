@@ -23,10 +23,14 @@ export const EXPLORER_SPRITE_PATH = "/assets/sprites/explorer.png";
  * It is duplicated rather than imported so Phaser code pulls in no React
  * modules; the same duplication exists on the Blender side (AVATAR_HEXES).
  *
- * PENDIENTE: explorer.png is its own render in tp-gold (#E5960A) and is NOT one
- * of these five — the selector's first colour is #F0C040. Whether the default
- * avatar should become explorer_0.png is still an open decision, so the base
- * sprite stays as the fallback and nothing here forces the choice.
+ * On the default sprite: explorer.png is its own render in tp-gold (#E5960A)
+ * and is NOT one of these five — the selector's first colour is #F0C040. In
+ * practice it is never seen in AcademyAgoraScene: AcademyWorld runs an effect
+ * on [avatarColor, ready] that emits AVATAR_COLORS[0] as soon as the scene is
+ * ready, so the base texture is replaced by explorer_0 within a frame of
+ * createPlayer. explorer.png therefore serves only as the fallback for scenes
+ * or states where no colour has been emitted yet — it is not the visible
+ * default. Verified in runtime on /world.
  */
 export const EXPLORER_VARIANT_HEXES = [
   "#F0C040",

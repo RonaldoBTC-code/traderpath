@@ -462,7 +462,10 @@ export default class AcademyAgoraScene extends Phaser.Scene {
     const textureKey = explorerTextureKey(this, color);
     if (this.playerSprite && textureKey) {
       this.playerSprite.setTexture(textureKey);
-      // setTexture resets the frame size, so re-apply the display size.
+      // Defensive: Phaser keeps the display size across setTexture (verified in
+      // runtime), and every variant is currently 512x640, so this is a no-op
+      // today. It only earns its keep if a future variant ships at a different
+      // resolution, which would otherwise resize the avatar mid-game.
       this.sizeAvatarSprite(this.playerSprite);
       return;
     }
