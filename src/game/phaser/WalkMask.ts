@@ -13,8 +13,18 @@ import Phaser from "phaser";
  * costado un canvas nuevo por llamada, y el pathfinding hace miles.
  */
 
-/** Lado de la celda del grid de búsqueda, en píxeles de mundo. */
-const CELL = 16;
+/**
+ * Lado de la celda del grid de búsqueda, en píxeles de mundo.
+ *
+ * Era 16 con una prueba de celda que además exigía los cuatro flancos libres.
+ * Esa combinación erosionaba la zona caminable ~5 px por lado y cerraba del
+ * todo los pasos estrechos entre edificios: quedaban puntos pisables encerrados
+ * en bolsillos sin ningún vecino válido, y el jugador no encontraba salida.
+ * A 8 px la rejilla resuelve esos huecos y basta con mirar el centro, porque
+ * dos centros contiguos distan 8 px y un obstáculo de ~14 px no cabe entre
+ * ellos sin bloquear al menos uno.
+ */
+const CELL = 8;
 /**
  * Paso de muestreo al comprobar visibilidad entre dos puntos. Corto a
  * propósito: los árboles miden ~14 px y con pasos más largos la recta les
@@ -37,6 +47,8 @@ export class WalkMask {
     private readonly worldWidth: number,
     private readonly worldHeight: number
   ) {}
+
+  private cachedGrid?: { cols: number; rows: number; passable: Uint8Array };
 
   /**
    * Construye la máscara desde una textura ya cargada. Devuelve undefined si la
@@ -114,6 +126,50 @@ export class WalkMask {
   }
 
   /**
+   * Rejilla de celdas transitables, construida una sola vez.
+   *
+   * La máscara no cambia en toda la vida de la escena, así que no tiene sentido
+   * recalcular ~58.000 celdas en cada clic.
+   */
+  private grid() {
+    if (!this.cachedGrid) {
+      const cols = Math.ceil(this.worldWidth / CELL);
+      const rows = Math.ceil(this.worldHeight / CELL);
+      const passable = new Uint8Array(cols * rows);
+      for (let cy = 0; cy < rows; cy += 1) {
+        for (let cx = 0; cx < cols; cx += 1) {
+          const x = cx * CELL + CELL / 2;
+          const y = cy * CELL + CELL / 2;
+          passable[cy * cols + cx] = this.isWalkable(x, y) ? 1 : 0;
+        }
+      }
+      this.cachedGrid = { cols, rows, passable };
+    }
+    return this.cachedGrid;
+  }
+
+  /** Índice de la celda transitable más cercana a un punto, o -1. */
+  private nearestPassableCell(point: Point): number {
+    const { cols, rows, passable } = this.grid();
+    const cx = Phaser.Math.Clamp(Math.floor(point.x / CELL), 0, cols - 1);
+    const cy = Phaser.Math.Clamp(Math.floor(point.y / CELL), 0, rows - 1);
+    if (passable[cy * cols + cx]) return cy * cols + cx;
+    for (let radius = 1; radius <= 24; radius += 1) {
+      for (let dy = -radius; dy <= radius; dy += 1) {
+        for (let dx = -radius; dx <= radius; dx += 1) {
+          // sólo el borde del anillo
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+          const nx = cx + dx;
+          const ny = cy + dy;
+          if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+          if (passable[ny * cols + nx]) return ny * cols + nx;
+        }
+      }
+    }
+    return -1;
+  }
+
+  /**
    * Ruta desde `from` hasta `to` que no cruza agua.
    *
    * Recorrido en anchura sobre un grid grueso: uniforme, así que BFS ya da el
@@ -135,60 +191,28 @@ export class WalkMask {
       : this.nearestWalkable(from.x, from.y) ?? from;
     if (this.hasLineOfSight(origin, to)) return [to];
 
-    const cols = Math.ceil(this.worldWidth / CELL);
-    const rows = Math.ceil(this.worldHeight / CELL);
+    const { cols, rows, passable } = this.grid();
     const index = (cx: number, cy: number) => cy * cols + cx;
     const centre = (cx: number, cy: number): Point => ({
       x: cx * CELL + CELL / 2,
       y: cy * CELL + CELL / 2,
     });
 
-    // Una celda sólo es transitable si lo son su centro y sus cuatro flancos.
-    // Comprobar sólo el centro dejaba pasar obstáculos más pequeños que la
-    // celda —árboles, rocas— y el camino los atravesaba. De paso, el borde
-    // caminable se retranquea media celda y el jugador no pisa la orilla justa.
-    const buildPassable = (inset: number) => {
-      const grid = new Uint8Array(cols * rows);
-      for (let cy = 0; cy < rows; cy += 1) {
-        for (let cx = 0; cx < cols; cx += 1) {
-          const point = centre(cx, cy);
-          const clear =
-            this.isWalkable(point.x, point.y) &&
-            (inset === 0 ||
-              (this.isWalkable(point.x - inset, point.y) &&
-                this.isWalkable(point.x + inset, point.y) &&
-                this.isWalkable(point.x, point.y - inset) &&
-                this.isWalkable(point.x, point.y + inset)));
-          grid[index(cx, cy)] = clear ? 1 : 0;
-        }
-      }
-      return grid;
-    };
-
-    const startX = Phaser.Math.Clamp(Math.floor(origin.x / CELL), 0, cols - 1);
-    const startY = Phaser.Math.Clamp(Math.floor(origin.y / CELL), 0, rows - 1);
-    const goalX = Phaser.Math.Clamp(Math.floor(to.x / CELL), 0, cols - 1);
-    const goalY = Phaser.Math.Clamp(Math.floor(to.y / CELL), 0, rows - 1);
-
-    // Rejilla conservadora por defecto. Pero exigir los cuatro flancos libres
-    // puede dejar una celda pisable encerrada entre edificios sin ningún vecino
-    // válido: el recorrido no podía salir del origen y el jugador se quedaba
-    // clavado. Si eso pasa, se recalcula sólo con el centro.
-    let passable = buildPassable(CELL * 0.34);
-    const hasExit = NEIGHBOURS.some(([dx, dy]) => {
-      const nx = startX + dx;
-      const ny = startY + dy;
-      if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) return false;
-      return passable[index(nx, ny)] === 1;
-    });
-    if (!hasExit) passable = buildPassable(0);
+    // Se siembra en la celda transitable más próxima al origen, no en la que
+    // lo contiene: el centro de esa celda puede caer sobre un obstáculo aunque
+    // el punto exacto sea pisable, y entonces la búsqueda no arrancaba.
+    const startCell = this.nearestPassableCell(origin);
+    const goalCell = this.nearestPassableCell(to);
+    if (startCell < 0) return [to];
+    const goalX = goalCell >= 0 ? goalCell % cols : Phaser.Math.Clamp(Math.floor(to.x / CELL), 0, cols - 1);
+    const goalY = goalCell >= 0 ? Math.floor(goalCell / cols) : Phaser.Math.Clamp(Math.floor(to.y / CELL), 0, rows - 1);
 
     const parent = new Int32Array(cols * rows).fill(-1);
     const seen = new Uint8Array(cols * rows);
-    const queue: number[] = [index(startX, startY)];
-    seen[index(startX, startY)] = 1;
+    const queue: number[] = [startCell];
+    seen[startCell] = 1;
 
-    let best = index(startX, startY);
+    let best = startCell;
     let bestDistance = Number.POSITIVE_INFINITY;
     let head = 0;
     while (head < queue.length) {
