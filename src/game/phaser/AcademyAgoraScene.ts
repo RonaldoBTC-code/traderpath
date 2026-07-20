@@ -40,8 +40,8 @@ export default class AcademyAgoraScene extends BaseWorldScene {
           path: "/assets/world/overworld_walkmask.png",
         },
         player: {
-          x: 1460,
-          y: 1040,
+          x: 1180,
+          y: 1000,
           shadowColor: 0x1e2a44,
           shadowAlpha: 0.3,
           fallbackColor: 0xe5960a,
@@ -66,7 +66,9 @@ export default class AcademyAgoraScene extends BaseWorldScene {
     // Diorama de blender/build_overworld.py. Sustituye al hero generado por IA:
     // este render y la máscara de caminabilidad salen de la misma cámara y la
     // misma geometría, así que el terreno y la colisión no pueden desalinearse.
-    this.load.image(ACADEMY_MAP_KEY, "/assets/world/overworld.png");
+    // WebP: en PNG este diorama pesaba ~4 MB y el presupuesto de carga inicial
+    // del roadmap es de 8 MB para todo el juego.
+    this.load.image(ACADEMY_MAP_KEY, "/assets/world/overworld.webp");
   }
 
   create() {
@@ -95,15 +97,17 @@ export default class AcademyAgoraScene extends BaseWorldScene {
     const hub = this.add.graphics();
     hub.setDepth(2);
     hub.lineStyle(3, 0xffffff, 0.55);
-    hub.strokeCircle(1460, 820, 132);
+    hub.strokeCircle(1180, 780, 132);
     hub.lineStyle(2, 0xe5960a, 0.4);
-    hub.strokeCircle(1460, 820, 176);
+    hub.strokeCircle(1180, 780, 176);
 
-    this.drawDistrictMarker(1930, 524, 0x33b77a, "Mercado Plaza", "Aprende: oferta y demanda", "M1.1");
-    this.drawDistrictMarker(1032, 1008, 0xe8743b, "Taller de Velas", "Aprende: velas OHLC", "M1.2");
-    this.drawDistrictMarker(744, 788, 0x8b72ff, "Observatorio", "Aprende: tendencias", "M1.3");
-    this.drawDistrictMarker(1610, 392, 0xf7931a, "Ciudad Bitcoin", "Se abre al dominar la isla", "BTC");
-    this.drawDistrictMarker(1460, 820, 0xe5960a, "Academia Ágora", "Tu punto de partida", "TP");
+    this.drawDistrictMarker(2080, 760, 0x33b77a, "Mercado Plaza", "Aprende: oferta y demanda", "M1.1");
+    this.drawDistrictMarker(520, 1080, 0xe8743b, "Taller de Velas", "Aprende: velas OHLC", "M1.2");
+    this.drawDistrictMarker(420, 560, 0x8b72ff, "Observatorio", "Aprende: tendencias", "M1.3");
+    this.drawDistrictMarker(1000, 1240, 0x2563eb, "La Bóveda", "Aprende: gestión de riesgo", "M1.4");
+    this.drawDistrictMarker(1660, 1120, 0xa855f7, "Arena del Desafío", "Pon a prueba lo aprendido", "M1.5");
+    this.drawDistrictMarker(1760, 380, 0xf7931a, "Ciudad Bitcoin", "Se abre al dominar la isla", "BTC");
+    this.drawDistrictMarker(1180, 780, 0xe5960a, "Academia Ágora", "Tu punto de partida", "TP");
 
     // Rótulos anclados al lienzo: con la cámara desplazándose, en coordenadas
     // de mundo se irían de pantalla en cuanto el jugador caminara.
@@ -192,45 +196,56 @@ export default class AcademyAgoraScene extends BaseWorldScene {
     this.hotspots = [
       {
         id: "market-plaza",
-        area: new Phaser.Geom.Rectangle(1780, 390, 380, 320),
-        approach: new Phaser.Math.Vector2(1700, 740),
+        area: new Phaser.Geom.Rectangle(1900, 580, 400, 340),
+        approach: new Phaser.Math.Vector2(1887, 784),
         prompt: "Entrar a Mercado Plaza · Misión 1.1",
       },
       {
         id: "candle-workshop",
-        area: new Phaser.Geom.Rectangle(860, 880, 430, 290),
-        approach: new Phaser.Math.Vector2(1240, 1070),
+        area: new Phaser.Geom.Rectangle(330, 900, 400, 340),
+        approach: new Phaser.Math.Vector2(748, 1077),
         prompt: "Entrar al Taller de Velas · Misión 1.2",
       },
       {
         id: "trend-observatory",
-        area: new Phaser.Geom.Rectangle(580, 630, 400, 300),
-        approach: new Phaser.Math.Vector2(1020, 880),
+        area: new Phaser.Geom.Rectangle(240, 390, 380, 330),
+        approach: new Phaser.Math.Vector2(644, 620),
         prompt: "Entrar al Observatorio · Misión 1.3",
       },
       {
+        id: "risk-vault",
+        area: new Phaser.Geom.Rectangle(830, 1080, 360, 300),
+        approach: new Phaser.Math.Vector2(1120, 1200),
+        prompt: "Entrar a La Bóveda · Misión 1.4",
+      },
+      {
+        id: "challenge-arena",
+        area: new Phaser.Geom.Rectangle(1490, 960, 360, 320),
+        approach: new Phaser.Math.Vector2(1467, 1163),
+        prompt: "Entrar a la Arena del Desafío · Misión 1.5",
+      },
+      {
         id: "bitcoin-portal",
-        area: new Phaser.Geom.Rectangle(1440, 230, 380, 320),
+        area: new Phaser.Geom.Rectangle(1580, 200, 380, 340),
         // Movido de (770,310) a (772,296). Con el hero pintado daba igual —
         // todo el mapa era pisable. En el diorama de Blender ese punto cae en
         // el canal entre la isla central y la de Ciudad Bitcoin; la máscara de
-        // caminabilidad lo marca como agua. (772,296) era el caminable más
-        // cercano, sobre el puente; ×2 en el mundo actual. Ver
-        // blender/build_overworld.py.
-        approach: new Phaser.Math.Vector2(1544, 592),
+        // caminabilidad lo marca como agua: el punto está sobre el puente
+        // norte, que es la única vía a la isla. Ver blender/build_overworld.py.
+        approach: new Phaser.Math.Vector2(1660, 640),
         prompt: "Examinar el portal hacia Ciudad Bitcoin",
       },
       {
         id: "aria",
-        area: new Phaser.Geom.Rectangle(1320, 680, 330, 270),
-        approach: new Phaser.Math.Vector2(1460, 1000),
+        area: new Phaser.Geom.Rectangle(1080, 830, 300, 250),
+        approach: new Phaser.Math.Vector2(1225, 976),
         prompt: "Hablar con ARIA",
       },
     ];
   }
 
   private createAria() {
-    const aria = this.add.container(1460, 880);
+    const aria = this.add.container(1225, 900);
     const shadow = this.add.ellipse(0, 38, 70, 22, 0x1e2a44, 0.18);
     const body = this.add.graphics();
     drawAriaBody(body);

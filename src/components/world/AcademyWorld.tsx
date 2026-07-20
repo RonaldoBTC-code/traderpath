@@ -25,6 +25,8 @@ import {
 import { level1 } from "@/lib/content/level1";
 import { level2 } from "@/lib/content/level2";
 import { level3Crypto } from "@/lib/content/level3-crypto";
+import { level3Forex } from "@/lib/content/level3-forex";
+import { level3Stocks } from "@/lib/content/level3-stocks";
 import { formatCurrency } from "@/lib/utils/format";
 import { useGameStore, type MissionStatus } from "@/store/gameStore";
 import {
@@ -40,7 +42,7 @@ interface GameHandle {
   events: { emit: (event: string, ...args: unknown[]) => boolean };
 }
 
-type MissionId = "m1_1" | "m1_2" | "m1_3";
+type MissionId = "m1_1" | "m1_2" | "m1_3" | "m1_4" | "m1_5";
 type IntroStage = "meet-aria" | "find-token" | "enter-academy";
 type OpenPanel =
   | { type: "aria" }
@@ -135,6 +137,16 @@ const MISSION_META = {
     subtitle: "Lee máximos, mínimos y estructura",
     target: "trend-observatory" as AcademyTarget,
   },
+  m1_4: {
+    title: "La Bóveda",
+    subtitle: "Protege tu capital antes de operar",
+    target: "risk-vault" as AcademyTarget,
+  },
+  m1_5: {
+    title: "Arena del Desafío",
+    subtitle: "Demuestra todo lo aprendido",
+    target: "challenge-arena" as AcademyTarget,
+  },
 };
 
 function isIntroPanel(panel: Exclude<OpenPanel, null>): panel is IntroPanelState {
@@ -203,7 +215,11 @@ export default function AcademyWorld() {
     ? level2
     : currentLevelId === "level_3_crypto"
       ? level3Crypto
-      : level1;
+      : currentLevelId === "level_3_forex"
+        ? level3Forex
+        : currentLevelId === "level_3_stocks"
+          ? level3Stocks
+          : level1;
   const completedInLevel = completedMissions.filter(
     (mission) => mission.levelId === currentLevelId
   ).length;
@@ -285,6 +301,8 @@ export default function AcademyWorld() {
     if (event.target === "market-plaza") setOpenPanel({ type: "mission", missionId: "m1_1" });
     if (event.target === "candle-workshop") setOpenPanel({ type: "mission", missionId: "m1_2" });
     if (event.target === "trend-observatory") setOpenPanel({ type: "mission", missionId: "m1_3" });
+    if (event.target === "risk-vault") setOpenPanel({ type: "mission", missionId: "m1_4" });
+    if (event.target === "challenge-arena") setOpenPanel({ type: "mission", missionId: "m1_5" });
     if (event.target === "bitcoin-portal") setOpenPanel({ type: "portal" });
   }, [applyCapitalChange]);
 
@@ -684,7 +702,7 @@ function PassportDrawer({
   onMission,
   onReplayWelcome,
 }: {
-  level: typeof level1 | typeof level2 | typeof level3Crypto;
+  level: typeof level1 | typeof level2 | typeof level3Crypto | typeof level3Forex | typeof level3Stocks;
   currentLevelId: string;
   currentMissionId: string;
   completed: number;

@@ -126,7 +126,14 @@ export class WalkMask {
    * la cuadrícula.
    */
   findPath(from: Point, to: Point): Point[] {
-    if (this.hasLineOfSight(from, to)) return [to];
+    // Si el origen no es pisable, el recorrido en anchura arranca en una celda
+    // bloqueada, no puede expandirse y la ruta degenera en una recta que cruza
+    // lo que sea. En juego el jugador siempre está en tierra, pero un empujón
+    // o una posición inicial mal puesta no deben poder mandarlo por el mar.
+    const origin = this.isWalkable(from.x, from.y)
+      ? from
+      : this.nearestWalkable(from.x, from.y) ?? from;
+    if (this.hasLineOfSight(origin, to)) return [to];
 
     const cols = Math.ceil(this.worldWidth / CELL);
     const rows = Math.ceil(this.worldHeight / CELL);
@@ -140,25 +147,41 @@ export class WalkMask {
     // Comprobar sólo el centro dejaba pasar obstáculos más pequeños que la
     // celda —árboles, rocas— y el camino los atravesaba. De paso, el borde
     // caminable se retranquea media celda y el jugador no pisa la orilla justa.
-    const passable = new Uint8Array(cols * rows);
-    const inset = CELL * 0.34;
-    for (let cy = 0; cy < rows; cy += 1) {
-      for (let cx = 0; cx < cols; cx += 1) {
-        const point = centre(cx, cy);
-        const clear =
-          this.isWalkable(point.x, point.y) &&
-          this.isWalkable(point.x - inset, point.y) &&
-          this.isWalkable(point.x + inset, point.y) &&
-          this.isWalkable(point.x, point.y - inset) &&
-          this.isWalkable(point.x, point.y + inset);
-        passable[index(cx, cy)] = clear ? 1 : 0;
+    const buildPassable = (inset: number) => {
+      const grid = new Uint8Array(cols * rows);
+      for (let cy = 0; cy < rows; cy += 1) {
+        for (let cx = 0; cx < cols; cx += 1) {
+          const point = centre(cx, cy);
+          const clear =
+            this.isWalkable(point.x, point.y) &&
+            (inset === 0 ||
+              (this.isWalkable(point.x - inset, point.y) &&
+                this.isWalkable(point.x + inset, point.y) &&
+                this.isWalkable(point.x, point.y - inset) &&
+                this.isWalkable(point.x, point.y + inset)));
+          grid[index(cx, cy)] = clear ? 1 : 0;
+        }
       }
-    }
+      return grid;
+    };
 
-    const startX = Phaser.Math.Clamp(Math.floor(from.x / CELL), 0, cols - 1);
-    const startY = Phaser.Math.Clamp(Math.floor(from.y / CELL), 0, rows - 1);
+    const startX = Phaser.Math.Clamp(Math.floor(origin.x / CELL), 0, cols - 1);
+    const startY = Phaser.Math.Clamp(Math.floor(origin.y / CELL), 0, rows - 1);
     const goalX = Phaser.Math.Clamp(Math.floor(to.x / CELL), 0, cols - 1);
     const goalY = Phaser.Math.Clamp(Math.floor(to.y / CELL), 0, rows - 1);
+
+    // Rejilla conservadora por defecto. Pero exigir los cuatro flancos libres
+    // puede dejar una celda pisable encerrada entre edificios sin ningún vecino
+    // válido: el recorrido no podía salir del origen y el jugador se quedaba
+    // clavado. Si eso pasa, se recalcula sólo con el centro.
+    let passable = buildPassable(CELL * 0.34);
+    const hasExit = NEIGHBOURS.some(([dx, dy]) => {
+      const nx = startX + dx;
+      const ny = startY + dy;
+      if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) return false;
+      return passable[index(nx, ny)] === 1;
+    });
+    if (!hasExit) passable = buildPassable(0);
 
     const parent = new Int32Array(cols * rows).fill(-1);
     const seen = new Uint8Array(cols * rows);
@@ -203,11 +226,19 @@ export class WalkMask {
     cells.reverse();
 
     const waypoints = cells.map((node) => centre(node % cols, Math.floor(node / cols)));
-    // El destino real sólo se añade si es pisable; si no, el último centro de
-    // celda ya es lo más cerca que se puede llegar.
-    if (this.isWalkable(to.x, to.y)) waypoints.push(to);
+    // El destino real se añade sólo si es pisable Y si se ve en recta desde la
+    // última celda. Sin esa segunda condición el salto final cortaba esquinas
+    // por encima del agua: entre celdas contiguas siempre hay visibilidad, pero
+    // entre la última celda y el destino puede no haberla.
+    const lastCell = waypoints[waypoints.length - 1];
+    if (
+      this.isWalkable(to.x, to.y) &&
+      (!lastCell || this.hasLineOfSight(lastCell, to))
+    ) {
+      waypoints.push(to);
+    }
 
-    return this.smooth(from, waypoints);
+    return this.smooth(origin, waypoints);
   }
 
   /** Quita waypoints que se puedan saltar en línea recta. */

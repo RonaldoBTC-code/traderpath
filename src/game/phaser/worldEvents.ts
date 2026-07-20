@@ -3,7 +3,11 @@ export type AcademyTarget =
   | "market-plaza"
   | "candle-workshop"
   | "trend-observatory"
-  | "bitcoin-portal";
+  | "bitcoin-portal"
+  // Sitios de M1.4 y M1.5. El mapa sólo tenía lugar para M1.1–M1.3, y
+  // docs/VISUAL_DIRECTION.md §1 dice que el conocimiento vive en lugares.
+  | "risk-vault"
+  | "challenge-arena";
 
 export type WelcomeTarget =
   | "intro-aria"
