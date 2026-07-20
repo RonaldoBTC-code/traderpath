@@ -197,19 +197,19 @@ export default class AcademyAgoraScene extends BaseWorldScene {
       {
         id: "market-plaza",
         area: new Phaser.Geom.Rectangle(1900, 580, 400, 340),
-        approach: new Phaser.Math.Vector2(1887, 784),
+        approach: new Phaser.Math.Vector2(1815, 758),
         prompt: "Entrar a Mercado Plaza · Misión 1.1",
       },
       {
         id: "candle-workshop",
         area: new Phaser.Geom.Rectangle(330, 900, 400, 340),
-        approach: new Phaser.Math.Vector2(748, 1077),
+        approach: new Phaser.Math.Vector2(786, 1011),
         prompt: "Entrar al Taller de Velas · Misión 1.2",
       },
       {
         id: "trend-observatory",
         area: new Phaser.Geom.Rectangle(240, 390, 380, 330),
-        approach: new Phaser.Math.Vector2(644, 620),
+        approach: new Phaser.Math.Vector2(661, 598),
         prompt: "Entrar al Observatorio · Misión 1.3",
       },
       {

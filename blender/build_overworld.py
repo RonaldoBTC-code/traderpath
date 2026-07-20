@@ -100,9 +100,9 @@ BITCOIN_HEX = "#F7931A"        # tp-crypto
 REQUIRED_WALKABLE_PX = {
     "player-start": (1180, 1000),
     "approach:aria": (1225, 976),
-    "approach:market-plaza": (1887, 784),      # sobre el puente
-    "approach:candle-workshop": (748, 1077),
-    "approach:trend-observatory": (644, 620),
+    "approach:market-plaza": (1815, 758),
+    "approach:candle-workshop": (786, 1011),
+    "approach:trend-observatory": (661, 598),
     "approach:bitcoin-portal": (1660, 640),    # sobre el puente
     "approach:risk-vault": (1120, 1200),
     "approach:challenge-arena": (1467, 1163),
@@ -473,6 +473,17 @@ def house(cam, name, px, py, w_px, d_px, height, mat_roof, mats, rot=0.0):
                GRASS_TOP + height, mat_roof)
 
 
+def skyline(cam, name, px, py, blocks, mats, mat_roof):
+    """Manzana de edificios alrededor de un centro.
+
+    `blocks` es una lista de (dx, dy, ancho, fondo, altura). La altura varía a
+    propósito: con todos los edificios a la misma cota el conjunto se leía como
+    una aldea plana en vez de un núcleo urbano.
+    """
+    for i, (dx, dy, w, d, h) in enumerate(blocks):
+        house(cam, f"{name}_blk_{i}", px + dx, py + dy, w, d, h, mat_roof, mats)
+
+
 def add_academia(cam, px, py, mats):
     """Academia Ágora — capital académica. Rotonda con columnata sobre plaza.
 
@@ -512,6 +523,14 @@ def add_academia(cam, px, py, mats):
     for i, (dx, dy) in enumerate(((-96, -34), (104, -40))):
         disc_px(cam, f"academia_obelisk_{i}", px + dx, py + dy, 13,
                 GRASS_TOP, 1.5, mats["stone"], verts=6)
+    # Nada al sur del pin: por ahí sale el jugador y ahí está ARIA. Dos bloques
+    # a ±70 px encerraron la plaza y la búsqueda no encontraba salida desde el
+    # punto de partida.
+    skyline(cam, "academia", px, py, [
+        (-268, 96, 84, 60, 1.9), (262, 104, 88, 62, 2.2), (-232, -66, 76, 56, 1.5),
+        (238, -78, 80, 58, 1.7), (-300, 268, 92, 64, 1.3), (312, 262, 86, 60, 1.6),
+        (-340, 40, 72, 54, 1.1), (346, 36, 74, 56, 1.2),
+    ], mats, mats["roof_alt"])
 
 
 def add_mercado(cam, px, py, mats):
@@ -542,6 +561,11 @@ def add_mercado(cam, px, py, mats):
     for i, (dx, dy) in enumerate(((-170, 74), (66, 168), (176, 60))):
         box_px(cam, f"mercado_crate_{i}", px + dx, py + dy, 26, 22, 0.34,
                GRASS_TOP, mats["crate"])
+    skyline(cam, "mercado", px, py, [
+        (-238, -40, 84, 60, 2.0), (232, -58, 80, 58, 2.3), (-206, 130, 78, 56, 1.4),
+        (214, 138, 82, 58, 1.6), (-40, 244, 88, 62, 1.2), (128, 232, 76, 54, 1.5),
+        (280, 40, 70, 52, 1.8),
+    ], mats, mats["mercado"])
 
 
 def add_taller(cam, px, py, mats):
@@ -577,6 +601,10 @@ def add_taller(cam, px, py, mats):
     box_px(cam, "taller_wick2", cx + 74, cy + 30, 7, 7, 3.0, GRASS_TOP, mats["ink"])
     box_px(cam, "taller_candle2", cx + 74, cy + 30, 42, 34, 1.3, GRASS_TOP + 0.8,
            mats["supply"])
+    skyline(cam, "taller", px, py, [
+        (-236, -30, 80, 58, 1.7), (-208, 118, 76, 56, 1.3), (-92, 216, 84, 60, 1.5),
+        (96, 222, 78, 56, 1.2), (222, 128, 74, 54, 1.6), (-282, 76, 68, 50, 1.1),
+    ], mats, mats["roof_alt"])
 
 
 def add_observatorio(cam, px, py, mats):
@@ -609,6 +637,10 @@ def add_observatorio(cam, px, py, mats):
     # Antena parabólica: lee el cielo, igual que el distrito lee la tendencia.
     dome_px(cam, "obs_dish", px + 128, py - 26, 40, GRASS_TOP + 0.9,
             mats["cream"], squash=0.34)
+    skyline(cam, "obs", px, py, [
+        (-232, -18, 78, 56, 1.6), (236, -34, 74, 54, 1.9), (-186, 168, 80, 58, 1.2),
+        (196, 176, 76, 56, 1.4), (24, 254, 84, 60, 1.1),
+    ], mats, mats["observatorio"])
 
 
 def add_boveda(cam, px, py, mats):
@@ -637,6 +669,10 @@ def add_boveda(cam, px, py, mats):
     for i, (dx, dy) in enumerate(((-140, 66), (128, 92))):
         house(cam, f"boveda_house_{i}", px + dx, py + dy, 78, 58, 1.0,
               mats["vault"], mats)
+    skyline(cam, "boveda", px, py, [
+        (-216, -46, 74, 54, 1.5), (206, -58, 78, 56, 1.7), (-166, 150, 72, 52, 1.1),
+        (176, 156, 70, 52, 1.3),
+    ], mats, mats["vault"])
 
 
 def add_arena(cam, px, py, mats):
@@ -751,18 +787,41 @@ def add_ciudad_bitcoin(cam, px, py, mats):
         disc_px(cam, f"btc_steam_{i}", vx + dx, vy + dy, r, GRASS_TOP + 0.3, 0.5,
                 mats["steam"], verts=14)
 
+    # Torres del anillo exterior. Es la ciudad con más material documentado y
+    # tiene que verse como la más imponente del mapa: aquí está el salto de
+    # aldea a skyline.
+    for i, (angle_deg, dist, w, h) in enumerate((
+        (18, 258, 62, 3.4), (52, 268, 56, 2.6), (86, 250, 66, 4.0),
+        (124, 262, 58, 2.9), (158, 256, 60, 3.6), (196, 268, 54, 2.4),
+        (232, 252, 64, 3.1), (268, 262, 58, 2.7), (306, 256, 60, 3.8),
+        (342, 264, 56, 2.5),
+    )):
+        angle = math.radians(angle_deg)
+        tx = px + dist * math.cos(angle)
+        ty = py + 96 + dist * math.sin(angle) * 0.82
+        box_px(cam, f"btc_tower_{i}", tx, ty, w, w * 0.82, h, GRASS_TOP,
+               mats["cream"])
+        pyramid_px(cam, f"btc_tower_top_{i}", tx, ty, w * 1.14, w * 0.94, h * 0.34,
+                   GRASS_TOP + h, mats["bitcoin"] if i % 2 == 0 else mats["btc_block"])
+
 # ─── VEGETACIÓN Y ROCAS ──────────────────────────────────────────────────────
 def add_tree(cam, px, py, mats, scale=1.0):
+    """Árbol de copa ancha.
+
+    Antes la copa medía 13 px sobre un tronco de 3,4: a la escala del mapa se
+    leían como alfileres clavados en la hierba. Copa más ancha y baja, tronco
+    más corto y grueso.
+    """
     step_x, step_y = pixel_scale(cam)
-    disc_px(cam, f"trunk_{px}_{py}", px, py, 3.4 * scale, GRASS_TOP, 0.55 * scale,
+    disc_px(cam, f"trunk_{px}_{py}", px, py, 5.5 * scale, GRASS_TOP, 0.4 * scale,
             mats["trunk"], verts=8)
     base = px_to_world(cam, px, py)
     bpy.ops.mesh.primitive_ico_sphere_add(
         subdivisions=2, radius=1.0,
-        location=(base.x, base.y, GRASS_TOP + 0.95 * scale))
+        location=(base.x, base.y, GRASS_TOP + 0.78 * scale))
     leaves = bpy.context.active_object
     leaves.name = f"leaves_{px}_{py}"
-    leaves.scale = (13 * scale * step_x, 13 * scale * step_y, 11 * scale * step_x)
+    leaves.scale = (24 * scale * step_x, 24 * scale * step_y, 15 * scale * step_x)
     _finish(leaves, mats["leaf"], False, True)
 
 
