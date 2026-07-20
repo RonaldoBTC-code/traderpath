@@ -24,13 +24,29 @@
 
 import bpy
 import os
+import sys
 import math
 import mathutils
 
+# `blender -b --python build_overworld.py -- --mask-only` salta el render
+# de belleza (6+ min) y saca sólo la máscara (~25 s). Es el bucle rápido
+# para ajustar el trazado: la validación de puntos obligatorios sólo
+# necesita la máscara.
+MASK_ONLY = "--mask-only" in sys.argv
+
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
-RESOLUTION = (1280, 720)   # 1:1 con WORLD_WIDTH/WORLD_HEIGHT de BaseWorldScene
+# 1:1 con el mundo de AcademyAgoraScene (ACADEMY_WORLD_WIDTH/HEIGHT). Todo en
+# este archivo se autora en estas coordenadas.
+RESOLUTION = (2560, 1440)
+# La máscara no necesita el detalle del diorama: WalkMask escala mundo→píxel,
+# así que a media resolución sigue siendo exacta y pesa la cuarta parte.
+MASK_RESOLUTION = (1280, 720)
 SAMPLES = 96
-OUTLINE_THICKNESS = 2.2
+OUTLINE_THICKNESS = 3.4
+# El diorama sale en WebP: en PNG, 2560×1440 rondaba los 4 MB y el presupuesto
+# de carga inicial del roadmap es de 8 MB para TODO. La máscara sigue en PNG,
+# que debe ser sin pérdida.
+DIORAMA_QUALITY = 92
 
 # Paleta. Los acentos de distrito son los de MARKET_CITIES[].accent y los
 # marcadores de AcademyAgoraScene; el resto sale de VDD v2.0 (globals.css).
@@ -51,15 +67,26 @@ LEAF_HEX = "#3E8C63"
 CRATE_HEX = "#B98A55"
 LAVA_HEX = "#FF7A18"
 DEMAND_HEX = "#16A34A"     # tp-demand, para la vela alcista del Taller
-BTC_BLOCK_HEX = "#5D6E8C"  # tp-text-muted, monolitos de la Plaza del Bloque
+SUPPLY_HEX = "#DC2626"     # tp-supply
+BTC_BLOCK_HEX = "#5D6E8C"  # tp-text-muted, monolitos
+TILE_HEX = "#C6D2E0"       # calzada
+ROOF_ALT_HEX = "#E4B063"   # tejado secundario, para romper la monotonía
+ASH_HEX = "#B9A48F"        # tierra volcánica: cálida, no gris
+STEAM_HEX = "#CFEFF5"      # vapor geotérmico (referencia Conchagua)
+VAULT_HEX = "#2563EB"      # tp-info, La Bóveda (M1.4)
+ARENA_HEX = "#A855F7"      # Arena del Desafío (M1.5)
 
-# Distritos, en píxeles de Phaser. Deben coincidir con drawDistrictMarker() y
+# Distritos, en píxeles del diorama. Deben coincidir con drawDistrictMarker() y
 # con los hotspots de AcademyAgoraScene.createHotspots().
-ACADEMIA_PX = (730, 410)
-MERCADO_PX = (965, 262)
-TALLER_PX = (516, 504)
-OBSERVATORIO_PX = (372, 394)
-BITCOIN_PX = (805, 196)
+ACADEMIA_PX = (1180, 780)
+MERCADO_PX = (2080, 760)
+TALLER_PX = (520, 1080)
+OBSERVATORIO_PX = (420, 560)
+BITCOIN_PX = (1760, 380)
+# Sitios nuevos: el mapa sólo tenía lugar para M1.1–M1.3, y VISUAL_DIRECTION.md
+# §1 dice que el conocimiento vive en lugares.
+BOVEDA_PX = (1000, 1240)        # M1.4 · gestión de riesgo
+ARENA_PX = (1660, 1120)         # M1.5 · desafío final
 
 ACADEMIA_HEX = "#E5960A"       # tp-gold
 MERCADO_HEX = "#33B77A"
@@ -71,12 +98,14 @@ BITCOIN_HEX = "#F7931A"        # tp-crypto
 # de cada hotspot. Al final el script verifica que la máscara los marque
 # caminables y aborta si alguno quedó en el agua.
 REQUIRED_WALKABLE_PX = {
-    "player-start": (730, 520),
-    "approach:market-plaza": (850, 370),
-    "approach:candle-workshop": (620, 535),
-    "approach:trend-observatory": (510, 440),
-    "approach:bitcoin-portal": (772, 296),
-    "approach:aria": (730, 500),
+    "player-start": (1180, 1000),
+    "approach:aria": (1225, 976),
+    "approach:market-plaza": (1887, 784),      # sobre el puente
+    "approach:candle-workshop": (748, 1077),
+    "approach:trend-observatory": (644, 620),
+    "approach:bitcoin-portal": (1660, 640),    # sobre el puente
+    "approach:risk-vault": (1120, 1200),
+    "approach:challenge-arena": (1467, 1163),
 }
 
 # `approach` heredados del hero pintado que, con terreno real, caen en agua y
@@ -87,31 +116,34 @@ PENDING_APPROACH_MOVES: set[str] = set()
 # Tierra firme, como lóbulos circulares EN PANTALLA (px_x, px_y, radio_px).
 # Las tres masas están separadas a propósito: la única unión son los puentes,
 # que es lo que obliga al jugador a rodear en vez de cruzar el agua.
+# Crecidas ~1.35x respecto del simple x2: con ciudades de verdad encima, los
+# lóbulos proporcionales dejaban los edificios colgando sobre el agua.
 MAIN_LOBES = [
-    (700, 455, 132),   # meseta de la Academia (hub) y costa sur de salida
-    (590, 505, 118),
-    (505, 500, 115),   # Taller de Velas
-    (430, 450, 100),
-    (380, 395, 100),   # Observatorio
+    (1180, 820, 380),    # meseta de la Academia (hub)
+    (1420, 950, 330),    # brazo este, hacia la Arena
+    (1660, 1120, 290),   # Arena del Desafío
+    (980, 1060, 330),    # sur, hacia La Bóveda
+    (1000, 1240, 270),   # La Bóveda
+    (700, 1080, 300),    # Taller de Velas
+    (520, 900, 300),
+    (440, 620, 300),     # Observatorio
+    (760, 660, 300),     # istmo norte
 ]
 MERCADO_LOBES = [
-    (985, 265, 110),   # Mercado Plaza
-    (1050, 330, 78),
+    (2160, 620, 320),    # Mercado Plaza
+    (2340, 860, 200),
 ]
 BITCOIN_LOBES = [
-    (800, 180, 105),   # Ciudad Bitcoin
-    (735, 135, 72),
+    (1800, 360, 330),    # Ciudad Bitcoin
+    (1560, 250, 210),
 ]
 
 # Puentes (px_x1, px_y1, px_x2, px_y2, ancho_px). Cada uno arranca sobre la
 # masa central y aterriza en su isla; los `approach` de Mercado y Bitcoin caen
 # justo encima del tablero, así que entrar exige pisar el puente.
 BRIDGES = [
-    (795, 420, 920, 300, 82),   # central → Mercado Plaza (cubre 850,370)
-    # Trazado para que su eje pase por (772,296), el approach de bitcoin-portal:
-    # a y=296 la línea da x=771. Antes se resolvía con un embarcadero suelto en
-    # medio del canal, que se leía como una losa flotante.
-    (740, 350, 800, 246, 90),   # central → Ciudad Bitcoin
+    (1700, 880, 2000, 750, 180),   # central → Mercado Plaza (cubre 1900,800)
+    (1560, 740, 1720, 560, 190),   # central → Ciudad Bitcoin (cubre 1660,620)
 ]
 
 DOCKS: list = []
@@ -405,108 +437,319 @@ def add_path(cam, px1, py1, px2, py2, width_px, mat):
 
 
 # ─── ARQUITECTURA POR DISTRITO ───────────────────────────────────────────────
-# Cada distrito tiene que reconocerse por su silueta, no por su color. A esta
-# escala un edificio mide ~70 px: se lee la forma, nada más.
+# Son ciudades, no edificios sueltos: cada una es un núcleo con varias
+# construcciones, calzada y un landmark dominante que le da identidad. A esta
+# escala manda la silueta del conjunto, no el detalle de cada casa.
+#
+# Regla de composición: el landmark va SOBRE el pin del distrito, desplazado
+# hacia arriba en pantalla, y el pin queda sobre plaza libre. Antes el pin y
+# ARIA caían encima del edificio.
+
+def street(cam, px1, py1, px2, py2, width_px, mat):
+    """Calzada urbana. Va sobre terreno ya caminable, no toca la máscara."""
+    step_x, _ = pixel_scale(cam)
+    a = px_to_world(cam, px1, py1)
+    b = px_to_world(cam, px2, py2)
+    mid = (a + b) / 2.0
+    delta = b - a
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(mid.x, mid.y, GRASS_TOP + 0.014))
+    road = bpy.context.active_object
+    road.name = f"street_{px1}_{py1}"
+    road.scale = (delta.length, width_px * step_x, 0.03)
+    road.rotation_euler = (0.0, 0.0, math.atan2(delta.y, delta.x))
+    return _finish(road, mat, True, False, False)
+
+
+def house(cam, name, px, py, w_px, d_px, height, mat_roof, mats, rot=0.0):
+    """Casa urbana: muro claro y tejado de acento. La unidad de las ciudades.
+
+    El tejado es casi tan alto como el muro a propósito. Con la proporción
+    anterior (0.42) la pirámide, vista desde una cámara casi cenital, se
+    proyectaba como un rombo plano: las ciudades parecían naipes de colores
+    tirados sobre la hierba en vez de casas.
+    """
+    box_px(cam, name, px, py, w_px, d_px, height, GRASS_TOP, mats["cream"], rot=rot)
+    pyramid_px(cam, f"{name}_roof", px, py, w_px * 1.16, d_px * 1.16, height * 0.95,
+               GRASS_TOP + height, mat_roof)
+
 
 def add_academia(cam, px, py, mats):
-    """Templo circular: basamento escalonado, columnata y techo cónico dorado.
+    """Academia Ágora — capital académica. Rotonda con columnata sobre plaza.
 
-    Es el hub y el punto de partida, así que se lleva la silueta más noble.
-    Redondo a propósito: destaca entre los demás, que son rectos.
+    Es el hub y el punto de partida: se lleva la silueta más noble y la única
+    planta circular. La rotonda va al norte del pin para que el pin y ARIA
+    queden sobre la plaza libre.
     """
-    disc_px(cam, "academia_base2", px, py, 40, GRASS_TOP, 0.14, mats["stone"])
-    disc_px(cam, "academia_base1", px, py, 33, GRASS_TOP + 0.14, 0.14, mats["stone"])
-    columns = 10
-    for i in range(columns):
-        angle = 2 * math.pi * i / columns
-        cx = px + 25 * math.cos(angle)
-        cy = py + 25 * math.sin(angle) * 0.85
-        disc_px(cam, f"academia_col_{i}", cx, cy, 4.0, GRASS_TOP + 0.28, 1.0,
+    disc_px(cam, "academia_plaza", px, py + 40, 190, GRASS_TOP, 0.05, mats["tile"],
+            walkable=True)
+    for angle_deg, dist in ((200, 250), (340, 250), (90, 235)):
+        angle = math.radians(angle_deg)
+        street(cam, px, py + 40, px + dist * math.cos(angle),
+               py + 40 + dist * math.sin(angle) * 0.8, 46, mats["path"])
+
+    lx, ly = px, py - 90
+    disc_px(cam, "academia_base2", lx, ly, 108, GRASS_TOP, 0.22, mats["stone"])
+    disc_px(cam, "academia_base1", lx, ly, 90, GRASS_TOP + 0.22, 0.2, mats["stone"])
+    for i in range(14):
+        angle = 2 * math.pi * i / 14
+        disc_px(cam, f"academia_col_{i}", lx + 68 * math.cos(angle),
+                ly + 68 * math.sin(angle) * 0.85, 9, GRASS_TOP + 0.42, 1.5,
                 mats["cream"], verts=10)
-    disc_px(cam, "academia_arq", px, py, 30, GRASS_TOP + 1.28, 0.14, mats["cream"])
-    pyramid_px(cam, "academia_roof", px, py, 72, 72, 0.8, GRASS_TOP + 1.42,
-               mats["academia"], verts=12)
-    disc_px(cam, "academia_finial", px, py, 3.5, GRASS_TOP + 2.22, 0.26,
+    disc_px(cam, "academia_arq", lx, ly, 80, GRASS_TOP + 1.92, 0.18, mats["cream"])
+    pyramid_px(cam, "academia_roof", lx, ly, 196, 196, 1.15, GRASS_TOP + 2.10,
+               mats["academia"], verts=14)
+    disc_px(cam, "academia_finial", lx, ly, 9, GRASS_TOP + 3.25, 0.4,
             mats["academia"], verts=8)
+
+    # Ala académica alrededor de la plaza.
+    for i, (dx, dy, w, d, rot) in enumerate((
+        (-186, 26, 108, 74, 0.0), (188, 16, 100, 72, 0.0),
+        (-140, 132, 92, 66, 0.12), (150, 140, 96, 68, -0.12),
+        (-16, 178, 120, 70, 0.0),
+    )):
+        house(cam, f"academia_wing_{i}", px + dx, py + dy, w, d, 1.25,
+              mats["academia"], mats, rot)
+    for i, (dx, dy) in enumerate(((-96, -34), (104, -40))):
+        disc_px(cam, f"academia_obelisk_{i}", px + dx, py + dy, 13,
+                GRASS_TOP, 1.5, mats["stone"], verts=6)
 
 
 def add_mercado(cam, px, py, mats):
-    """Puestos de mercado: cuatro toldos a dos aguas alrededor de una placita."""
-    disc_px(cam, "mercado_plaza", px, py, 46, GRASS_TOP, 0.06, mats["stone"])
-    stalls = [(-26, -12), (24, -14), (-22, 16), (26, 14)]
-    for i, (dx, dy) in enumerate(stalls):
-        sx, sy = px + dx, py + dy
-        box_px(cam, f"mercado_stall_{i}", sx, sy, 30, 24, 0.75, GRASS_TOP + 0.06,
-               mats["cream"])
-        pyramid_px(cam, f"mercado_awn_{i}", sx, sy, 40, 32, 0.5, GRASS_TOP + 0.81,
-                   mats["mercado"])
-    for i, (dx, dy) in enumerate([(-2, -30), (6, 28)]):
-        box_px(cam, f"mercado_crate_{i}", px + dx, py + dy, 12, 10, 0.3,
-               GRASS_TOP + 0.06, mats["crate"])
+    """Mercado Plaza — villa de mercado: lonja con campanario y puestos."""
+    disc_px(cam, "mercado_plaza", px, py + 34, 168, GRASS_TOP, 0.05, mats["tile"],
+            walkable=True)
+    street(cam, px, py + 34, px - 210, py + 150, 44, mats["path"])
+    street(cam, px, py + 34, px + 180, py + 130, 44, mats["path"])
+
+    lx, ly = px + 4, py - 96
+    box_px(cam, "mercado_hall", lx, ly, 210, 130, 1.5, GRASS_TOP, mats["cream"])
+    pyramid_px(cam, "mercado_hall_roof", lx, ly, 232, 148, 1.9, GRASS_TOP + 1.5,
+               mats["mercado"])
+    box_px(cam, "mercado_tower", lx + 118, ly + 18, 46, 42, 2.6, GRASS_TOP, mats["cream"])
+    pyramid_px(cam, "mercado_tower_roof", lx + 118, ly + 18, 58, 54, 1.5,
+               GRASS_TOP + 2.6, mats["mercado"])
+    disc_px(cam, "mercado_clock", lx + 118, ly + 6, 15, GRASS_TOP + 2.2, 0.1,
+            mats["academia"], verts=14)
+
+    # Puestos con toldo alrededor de la plaza.
+    for i, (dx, dy) in enumerate((
+        (-124, 6), (-96, 96), (10, 116), (116, 82), (140, -10), (-40, 150),
+    )):
+        box_px(cam, f"mercado_stall_{i}", px + dx, py + dy, 60, 46, 0.72,
+               GRASS_TOP, mats["cream"])
+        pyramid_px(cam, f"mercado_awn_{i}", px + dx, py + dy, 82, 62, 0.9,
+                   GRASS_TOP + 0.72, mats["mercado"] if i % 2 == 0 else mats["roof_alt"])
+    for i, (dx, dy) in enumerate(((-170, 74), (66, 168), (176, 60))):
+        box_px(cam, f"mercado_crate_{i}", px + dx, py + dy, 26, 22, 0.34,
+               GRASS_TOP, mats["crate"])
 
 
 def add_taller(cam, px, py, mats):
-    """Taller con chimenea + una vela japonesa gigante como enseña.
+    """Taller de Velas — villa artesana con una vela japonesa gigante.
 
-    La vela es el recurso que hace el distrito reconocible de un vistazo: es
-    literalmente lo que se enseña ahí (m1_2, velas OHLC).
+    La vela es la enseña que hace el distrito reconocible de un vistazo: es
+    literalmente lo que se enseña ahí (m1_2, velas OHLC). Ahora domina el
+    conjunto en vez de ser un adorno al lado del taller.
     """
-    box_px(cam, "taller_body", px, py, 62, 46, 1.15, GRASS_TOP, mats["cream"])
-    pyramid_px(cam, "taller_roof", px, py, 74, 56, 0.85, GRASS_TOP + 1.15,
+    disc_px(cam, "taller_plaza", px, py + 26, 140, GRASS_TOP, 0.05, mats["tile"],
+            walkable=True)
+    street(cam, px, py + 26, px + 230, py - 26, 44, mats["path"])
+    street(cam, px, py + 26, px - 150, py + 120, 40, mats["path"])
+
+    lx, ly = px - 30, py - 86
+    box_px(cam, "taller_body", lx, ly, 168, 108, 1.4, GRASS_TOP, mats["cream"])
+    pyramid_px(cam, "taller_roof", lx, ly, 190, 126, 1.8, GRASS_TOP + 1.4,
                mats["taller"])
-    box_px(cam, "taller_chimney", px + 22, py - 12, 11, 10, 0.9, GRASS_TOP + 1.2,
+    box_px(cam, "taller_chimney", lx + 62, ly - 22, 28, 26, 1.5, GRASS_TOP + 1.0,
            mats["stone"])
-    # Vela alcista: mecha, cuerpo verde, mecha superior.
-    cx, cy = px + 52, py + 4
-    box_px(cam, "taller_wick", cx, cy, 3.5, 3.5, 2.15, GRASS_TOP, mats["ink"])
-    box_px(cam, "taller_candle", cx, cy, 20, 16, 1.05, GRASS_TOP + 0.55,
+    for i, (dx, dy, w, d) in enumerate((
+        (-160, 34, 84, 62), (150, 46, 90, 64), (-88, 140, 78, 58), (86, 148, 82, 60),
+    )):
+        house(cam, f"taller_house_{i}", px + dx, py + dy, w, d, 1.1,
+              mats["roof_alt"] if i % 2 else mats["taller"], mats)
+
+    # Vela alcista gigante: mecha, cuerpo verde, mecha superior.
+    cx, cy = px + 132, py - 24
+    box_px(cam, "taller_wick", cx, cy, 9, 9, 4.6, GRASS_TOP, mats["ink"])
+    box_px(cam, "taller_candle", cx, cy, 58, 46, 2.3, GRASS_TOP + 1.15,
            mats["demand"])
+    # Vela bajista pequeña al lado: el par enseña la lectura alcista/bajista.
+    box_px(cam, "taller_wick2", cx + 74, cy + 30, 7, 7, 3.0, GRASS_TOP, mats["ink"])
+    box_px(cam, "taller_candle2", cx + 74, cy + 30, 42, 34, 1.3, GRASS_TOP + 0.8,
+           mats["supply"])
 
 
 def add_observatorio(cam, px, py, mats):
-    """Torre cilíndrica con cúpula y telescopio asomando."""
-    disc_px(cam, "obs_base", px, py, 26, GRASS_TOP, 0.12, mats["stone"])
-    disc_px(cam, "obs_tower", px, py, 20, GRASS_TOP + 0.12, 1.15, mats["cream"],
-            verts=20)
-    dome_px(cam, "obs_dome", px, py, 21, GRASS_TOP + 1.27, mats["observatorio"])
-    step_x, step_y = pixel_scale(cam)
-    center = px_to_world(cam, px + 4, py - 6)
+    """Observatorio — campus en terrazas con cúpula y telescopio."""
+    disc_px(cam, "obs_terrace2", px, py + 20, 172, GRASS_TOP, 0.16, mats["stone"],
+            walkable=True)
+    disc_px(cam, "obs_terrace1", px, py - 10, 128, GRASS_TOP + 0.16, 0.16,
+            mats["stone"], walkable=True)
+    street(cam, px, py + 40, px + 230, py + 130, 42, mats["path"])
+
+    lx, ly = px, py - 66
+    disc_px(cam, "obs_tower", lx, ly, 62, GRASS_TOP + 0.32, 1.9, mats["cream"], verts=22)
+    dome_px(cam, "obs_dome", lx, ly, 66, GRASS_TOP + 2.22, mats["observatorio"])
+    step_x, _ = pixel_scale(cam)
+    centre = px_to_world(cam, lx + 12, ly - 16)
     bpy.ops.mesh.primitive_cylinder_add(
         vertices=16, radius=1.0, depth=1.0,
-        location=(center.x, center.y, GRASS_TOP + 1.95))
+        location=(centre.x, centre.y, GRASS_TOP + 3.0))
     tube = bpy.context.active_object
     tube.name = "obs_telescope"
-    tube.scale = (5.5 * step_x, 5.5 * step_x, 1.5)
-    tube.rotation_euler = (math.radians(52), 0.0, math.radians(-28))
+    tube.scale = (13 * step_x, 13 * step_x, 2.4)
+    tube.rotation_euler = (math.radians(54), 0.0, math.radians(-28))
     _finish(tube, mats["ink"], False, True)
+
+    for i, (dx, dy, w, d) in enumerate((
+        (-150, 78, 86, 62), (146, 86, 90, 64), (-56, 150, 78, 58),
+    )):
+        house(cam, f"obs_house_{i}", px + dx, py + dy, w, d, 1.1,
+              mats["observatorio"], mats)
+    # Antena parabólica: lee el cielo, igual que el distrito lee la tendencia.
+    dome_px(cam, "obs_dish", px + 128, py - 26, 40, GRASS_TOP + 0.9,
+            mats["cream"], squash=0.34)
+
+
+def add_boveda(cam, px, py, mats):
+    """La Bóveda (M1.4) — gestión de riesgo.
+
+    Fortaleza compacta con puerta de cámara acorazada y un faro al lado: el
+    faro es el stop loss, la señal que avisa antes de que sea tarde.
+    """
+    disc_px(cam, "boveda_plaza", px, py + 30, 130, GRASS_TOP, 0.05, mats["tile"],
+            walkable=True)
+    street(cam, px, py + 30, px + 210, py - 90, 42, mats["path"])
+
+    lx, ly = px, py - 70
+    box_px(cam, "boveda_body", lx, ly, 170, 112, 1.5, GRASS_TOP, mats["stone"])
+    pyramid_px(cam, "boveda_roof", lx, ly, 188, 128, 1.35, GRASS_TOP + 1.5, mats["vault"])
+    disc_px(cam, "boveda_door", lx, ly + 54, 38, GRASS_TOP + 0.2, 1.0,
+            mats["vault"], verts=18)
+    disc_px(cam, "boveda_dial", lx, ly + 54, 16, GRASS_TOP + 1.2, 0.14,
+            mats["academia"], verts=12)
+    # Faro-señal.
+    disc_px(cam, "boveda_light_base", lx + 118, ly + 12, 34, GRASS_TOP, 0.2, mats["stone"])
+    disc_px(cam, "boveda_light", lx + 118, ly + 12, 24, GRASS_TOP + 0.2, 2.6,
+            mats["cream"], verts=14)
+    disc_px(cam, "boveda_lamp", lx + 118, ly + 12, 20, GRASS_TOP + 2.8, 0.42,
+            mats["supply"], verts=12)
+    for i, (dx, dy) in enumerate(((-140, 66), (128, 92))):
+        house(cam, f"boveda_house_{i}", px + dx, py + dy, 78, 58, 1.0,
+              mats["vault"], mats)
+
+
+def add_arena(cam, px, py, mats):
+    """Arena del Desafío (M1.5) — evaluación final.
+
+    Anfiteatro: gradas concéntricas y pista abierta. Es el único sitio del mapa
+    sin techo, porque aquí no se aprende, se demuestra.
+    """
+    disc_px(cam, "arena_ring3", px, py, 176, GRASS_TOP, 0.28, mats["stone"])
+    disc_px(cam, "arena_ring2", px, py, 142, GRASS_TOP + 0.28, 0.28, mats["arena"])
+    disc_px(cam, "arena_ring1", px, py, 108, GRASS_TOP + 0.56, 0.26, mats["stone"])
+    disc_px(cam, "arena_floor", px, py, 78, GRASS_TOP + 0.2, 0.1, mats["tile"],
+            walkable=True)
+    for i in range(10):
+        angle = 2 * math.pi * i / 10
+        disc_px(cam, f"arena_post_{i}", px + 150 * math.cos(angle),
+                py + 150 * math.sin(angle) * 0.85, 11, GRASS_TOP + 0.28, 1.5,
+                mats["arena"], verts=8)
+    street(cam, px, py + 150, px - 190, py + 60, 44, mats["path"])
+    # Estandarte de Marco, el mentor que pone la prueba.
+    box_px(cam, "arena_banner_pole", px, py - 116, 10, 10, 3.2, GRASS_TOP, mats["ink"])
+    box_px(cam, "arena_banner", px + 30, py - 116, 54, 8, 1.2, GRASS_TOP + 1.8,
+           mats["academia"])
 
 
 def add_ciudad_bitcoin(cam, px, py, mats):
-    """Volcán + Plaza del Bloque.
+    """Ciudad Bitcoin — planta circular al pie del volcán.
 
-    marketCities.ts fija para crypto: acento #F7931A, landmark "Plaza del
-    Bloque", referencia Conchagua (El Salvador). De ahí el volcán y los
-    monolitos cúbicos al pie.
+    Sigue lo documentado: WORLD_3D_ROADMAP.md ("planta circular al pie de un
+    volcán, plaza del bloque y puerto Lightning"), la referencia de Conchagua
+    con energía geotérmica, y las cinco zonas de BITCOIN_CURRICULUM.md —
+    Plaza Genesis, Taller de Bloques, Casa de Custodia, Puente Lightning y
+    Mercado BTC — repartidas como barrios alrededor de la plaza central.
     """
-    disc_px(cam, "btc_cone_base", px, py - 4, 52, GRASS_TOP, 0.4, mats["rock"])
-    step_x, step_y = pixel_scale(cam)
-    center = px_to_world(cam, px, py - 4)
-    bpy.ops.mesh.primitive_cone_add(vertices=9, radius1=0.5, radius2=0.15, depth=2.5,
-                                    location=(center.x, center.y, GRASS_TOP + 1.65))
+    # Anillo urbano y calzada circular.
+    disc_px(cam, "btc_ring", px, py + 96, 250, GRASS_TOP, 0.05, mats["ash"],
+            walkable=True)
+    disc_px(cam, "btc_ring_road", px, py + 96, 208, GRASS_TOP + 0.05, 0.04,
+            mats["tile"], walkable=True)
+    disc_px(cam, "btc_inner", px, py + 96, 166, GRASS_TOP + 0.09, 0.04, mats["ash"],
+            walkable=True)
+
+    # Plaza Genesis: centro exacto, con el monolito del bloque fundacional.
+    disc_px(cam, "btc_genesis", px, py + 96, 104, GRASS_TOP + 0.13, 0.05,
+            mats["tile"], walkable=True)
+    box_px(cam, "btc_genesis_block", px, py + 74, 54, 46, 2.2, GRASS_TOP + 0.18,
+           mats["bitcoin"])
+    disc_px(cam, "btc_genesis_seal", px, py + 74, 20, GRASS_TOP + 2.38, 0.12,
+            mats["cream"], verts=16)
+    for i in range(8):
+        angle = 2 * math.pi * i / 8
+        disc_px(cam, f"btc_genesis_post_{i}", px + 92 * math.cos(angle),
+                py + 96 + 92 * math.sin(angle) * 0.85, 9, GRASS_TOP + 0.13, 0.8,
+                mats["btc_block"], verts=6)
+
+    # Cuatro barrios alrededor de la plaza, uno por zona del currículo.
+    # Taller de Bloques — noroeste: cubos apilados, la cadena.
+    bx, by = px - 172, py + 40
+    box_px(cam, "btc_blocks_hall", bx, by, 128, 88, 1.3, GRASS_TOP, mats["cream"])
+    pyramid_px(cam, "btc_blocks_roof", bx, by, 146, 102, 1.3, GRASS_TOP + 1.3,
+               mats["bitcoin"])
+    for i in range(4):
+        box_px(cam, f"btc_chain_{i}", bx - 30 + i * 34, by + 74, 30, 26,
+               0.5 + 0.22 * (i % 3), GRASS_TOP, mats["btc_block"])
+
+    # Casa de Custodia — noreste: cámara con puerta blindada.
+    cx, cy = px + 176, py + 44
+    box_px(cam, "btc_custody", cx, cy, 122, 86, 1.5, GRASS_TOP, mats["stone"])
+    pyramid_px(cam, "btc_custody_roof", cx, cy, 140, 100, 1.3, GRASS_TOP + 1.5,
+               mats["vault"])
+    disc_px(cam, "btc_custody_door", cx, cy + 42, 28, GRASS_TOP + 0.2, 0.9,
+            mats["vault"], verts=16)
+
+    # Mercado BTC — sureste: puestos con toldo naranja y tablero de precio.
+    mx, my = px + 150, py + 214
+    for i, (dx, dy) in enumerate(((-52, 0), (14, 22), (74, -6))):
+        box_px(cam, f"btc_market_{i}", mx + dx, my + dy, 54, 42, 0.7, GRASS_TOP,
+               mats["cream"])
+        pyramid_px(cam, f"btc_market_awn_{i}", mx + dx, my + dy, 74, 58, 0.85,
+                   GRASS_TOP + 0.7, mats["bitcoin"])
+    box_px(cam, "btc_ticker_pole", mx - 108, my - 8, 10, 10, 2.4, GRASS_TOP, mats["ink"])
+    box_px(cam, "btc_ticker", mx - 108, my - 8, 76, 12, 0.7, GRASS_TOP + 2.1,
+           mats["ink"])
+
+    # Puente Lightning — suroeste, saliendo al agua: el puerto documentado.
+    lx, ly = px - 150, py + 218
+    box_px(cam, "btc_lightning_hall", lx, ly, 116, 80, 1.2, GRASS_TOP, mats["cream"])
+    pyramid_px(cam, "btc_lightning_roof", lx, ly, 134, 94, 1.25, GRASS_TOP + 1.2,
+               mats["academia"])
+    step_x, _ = pixel_scale(cam)
+    for i in range(3):
+        box_px(cam, f"btc_pier_{i}", lx - 60 - i * 54, ly + 88 + i * 30, 62, 26,
+               0.16, GRASS_TOP - 0.16, mats["bridge"], rot=math.radians(-22))
+    # Rayo: la marca del puerto.
+    box_px(cam, "btc_bolt_a", lx + 8, ly - 62, 14, 12, 1.5, GRASS_TOP + 0.2,
+           mats["academia"], rot=math.radians(22))
+    box_px(cam, "btc_bolt_b", lx - 6, ly - 88, 14, 12, 1.2, GRASS_TOP + 1.5,
+           mats["academia"], rot=math.radians(-22))
+
+    # Volcán al norte, con fumarolas geotérmicas: la energía de Conchagua.
+    vx, vy = px + 6, py - 190
+    disc_px(cam, "btc_cone_base", vx, vy, 190, GRASS_TOP, 0.5, mats["ash"])
+    centre = px_to_world(cam, vx, vy)
+    bpy.ops.mesh.primitive_cone_add(vertices=9, radius1=0.5, radius2=0.15, depth=4.4,
+                                    location=(centre.x, centre.y, GRASS_TOP + 2.6))
     cone = bpy.context.active_object
     cone.name = "btc_cone"
-    cone.scale = (86 * step_x, 86 * step_y, 1.0)
-    # Facetado a propósito: sombreado suave lo convertía en una bola gris.
+    cone.scale = (300 * step_x, 300 * pixel_scale(cam)[1], 1.0)
     _finish(cone, mats["rock"], False, smooth=False)
-    disc_px(cam, "btc_crater", px, py - 4, 12, GRASS_TOP + 2.88, 0.1,
-            mats["lava"], verts=9)
-    # Plaza del Bloque: monolitos cúbicos al pie, en el lado que da a la cámara.
-    for i, (dx, dy) in enumerate([(-46, 46), (-18, 56), (16, 54), (44, 42)]):
-        box_px(cam, f"btc_block_{i}", px + dx, py + dy, 17, 15, 0.55 + 0.14 * (i % 3),
-               GRASS_TOP, mats["btc_block"])
-    box_px(cam, "btc_monolith", px - 2, py + 70, 13, 12, 1.35, GRASS_TOP,
-           mats["bitcoin"])
-
+    disc_px(cam, "btc_crater", vx, vy, 40, GRASS_TOP + 4.72, 0.14, mats["lava"], verts=9)
+    for i, (dx, dy, r) in enumerate(((-150, 96, 26), (140, 110, 22), (-24, 150, 18))):
+        disc_px(cam, f"btc_steam_{i}", vx + dx, vy + dy, r, GRASS_TOP + 0.3, 0.5,
+                mats["steam"], verts=14)
 
 # ─── VEGETACIÓN Y ROCAS ──────────────────────────────────────────────────────
 def add_tree(cam, px, py, mats, scale=1.0):
@@ -571,13 +814,22 @@ def build_overworld(cam):
         "observatorio": make_material("observatorio", OBSERVATORIO_HEX),
         "bitcoin": make_material("bitcoin", BITCOIN_HEX),
         "btc_block": make_material("btc_block", BTC_BLOCK_HEX),
+        "supply": make_material("supply", SUPPLY_HEX),
+        "tile": make_material("tile", TILE_HEX),
+        "roof_alt": make_material("roof_alt", ROOF_ALT_HEX),
+        "ash": make_material("ash", ASH_HEX),
+        "steam": make_material("steam", STEAM_HEX, roughness=0.9),
+        "vault": make_material("vault", VAULT_HEX),
+        "arena": make_material("arena", ARENA_HEX),
     }
 
     add_sea(cam, mats["sea"])
 
     for group, lobes in (("main", MAIN_LOBES), ("mercado", MERCADO_LOBES),
                          ("bitcoin", BITCOIN_LOBES)):
-        ground = mats["rock"] if group == "bitcoin" else mats["grass"]
+        # La isla de Bitcoin era toda roca gris y se leía apagada. Tierra
+        # volcánica cálida, que además contrasta mejor con el naranja cripto.
+        ground = mats["ash"] if group == "bitcoin" else mats["grass"]
         add_island_group(cam, group, lobes, mats, ground)
 
     for index, (x1, y1, x2, y2, width) in enumerate(BRIDGES):
@@ -585,37 +837,40 @@ def build_overworld(cam):
     for index, (px, py, w_px, d_px, rot) in enumerate(DOCKS):
         add_dock(cam, f"dock_{index}", px, py, w_px, d_px, rot, mats["bridge"])
 
-    # Senderos: la Academia como centro del que salen las rutas.
-    for x1, y1, x2, y2 in (
-        (730, 455, 620, 520),    # → Taller
-        (620, 520, 470, 470),    # → Observatorio
-        (470, 470, 400, 410),
-        (730, 455, 795, 420),    # → puente de Mercado
-        (730, 455, 738, 355),    # → puente de Bitcoin
+    # Red de caminos: la Academia como plaza central de la que sale todo.
+    for x1, y1, x2, y2, width in (
+        (1180, 880, 900, 1010, 54),     # → Taller
+        (900, 1010, 640, 1030, 50),
+        (900, 1010, 700, 780, 48),      # → Observatorio
+        (700, 780, 500, 620, 46),
+        (1180, 880, 1400, 940, 54),     # → puente de Mercado
+        (1400, 940, 1690, 880, 54),
+        (1220, 840, 1540, 700, 54),     # → puente de Bitcoin
+        (1050, 1010, 1010, 1180, 48),   # → La Bóveda
+        (1400, 960, 1620, 1080, 48),    # → Arena del Desafío
     ):
-        add_path(cam, x1, y1, x2, y2, 26, mats["path"])
-    add_path(cam, 935, 300, 985, 268, 24, mats["path"])
+        add_path(cam, x1, y1, x2, y2, width, mats["path"])
+    add_path(cam, 2020, 740, 2090, 700, 48, mats["path"])
 
-    add_academia(cam, ACADEMIA_PX[0], ACADEMIA_PX[1] - 6, mats)
-    add_mercado(cam, MERCADO_PX[0] + 12, MERCADO_PX[1] - 6, mats)
-    # Desplazado a la izquierda del pin: un edificio se proyecta ~23 px hacia
-    # arriba en pantalla por unidad de altura y tapaba el approach del
-    # Observatorio en (510,440).
-    add_taller(cam, TALLER_PX[0] - 58, TALLER_PX[1] + 4, mats)
-    add_observatorio(cam, OBSERVATORIO_PX[0], OBSERVATORIO_PX[1] - 4, mats)
-    add_ciudad_bitcoin(cam, BITCOIN_PX[0], BITCOIN_PX[1] - 10, mats)
+    add_academia(cam, ACADEMIA_PX[0], ACADEMIA_PX[1], mats)
+    add_mercado(cam, MERCADO_PX[0], MERCADO_PX[1], mats)
+    add_taller(cam, TALLER_PX[0], TALLER_PX[1], mats)
+    add_observatorio(cam, OBSERVATORIO_PX[0], OBSERVATORIO_PX[1], mats)
+    add_boveda(cam, BOVEDA_PX[0], BOVEDA_PX[1], mats)
+    add_arena(cam, ARENA_PX[0], ARENA_PX[1], mats)
+    add_ciudad_bitcoin(cam, BITCOIN_PX[0], BITCOIN_PX[1], mats)
 
     for px, py, scale in [
-        (648, 578, 1.0), (596, 592, 0.8), (786, 540, 0.95), (818, 500, 0.8),
-        (330, 442, 0.9), (322, 372, 0.8), (452, 344, 0.85), (426, 556, 0.9),
-        (500, 578, 0.75), (1046, 250, 0.85), (1074, 344, 0.8), (940, 320, 0.7),
-        (896, 232, 0.75),
+        (1330, 1150, 1.5), (1560, 950, 1.3), (1300, 640, 1.2), (860, 880, 1.4),
+        (620, 780, 1.2), (300, 780, 1.3), (820, 1250, 1.4), (1180, 1120, 1.15),
+        (2280, 420, 1.3), (2380, 700, 1.2), (1960, 300, 1.1), (1500, 1200, 1.0),
+        (1760, 950, 1.1), (420, 1000, 1.2),
     ]:
         add_tree(cam, px, py, mats, scale)
 
     for px, py, size in [
-        (676, 470, 7), (556, 452, 6), (392, 486, 6.5), (1082, 286, 6),
-        (742, 230, 5.5), (868, 214, 5),
+        (1480, 860, 13), (860, 1180, 11), (560, 720, 12), (2320, 520, 11),
+        (1640, 130, 10), (1960, 180, 9),
     ]:
         add_rock(cam, px, py, size, mats["rock"])
 
@@ -623,15 +878,17 @@ def build_overworld(cam):
     # vacío azul enorme a la izquierda. Rellenan la composición sin tocar la
     # máscara, porque no son caminables.
     for name, px, py, radius, palm in [
-        ("w1", 150, 470, 34, True),
-        ("w2", 96, 372, 22, False),
-        ("s1", 372, 648, 28, True),
-        ("s2", 560, 676, 20, False),
-        ("n1", 300, 176, 26, True),
-        ("n2", 452, 120, 18, False),
-        ("e1", 1196, 214, 24, True),
-        ("e2", 1150, 520, 30, True),
-        ("e3", 992, 592, 21, False),
+        ("w1", 130, 1080, 60, True),
+        ("w2", 180, 300, 44, False),
+        ("s1", 620, 1360, 56, True),
+        ("s2", 1240, 1390, 40, False),
+        ("n1", 940, 260, 52, True),
+        ("n2", 1180, 180, 36, False),
+        ("e1", 2460, 320, 48, True),
+        ("e2", 2420, 1160, 60, True),
+        ("e3", 1980, 1320, 42, False),
+        ("n3", 2380, 160, 40, True),
+        ("s3", 300, 1300, 46, False),
     ]:
         add_islet(cam, name, px, py, radius, mats, palm)
 
@@ -664,16 +921,18 @@ def setup_world():
 
 
 # ─── RENDER ──────────────────────────────────────────────────────────────────
-def setup_render(freestyle=True):
+def setup_render(freestyle=True, resolution=None, image_format="WEBP"):
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
     scene.cycles.samples = SAMPLES
     scene.cycles.use_denoising = True
     scene.render.film_transparent = False
-    scene.render.resolution_x, scene.render.resolution_y = RESOLUTION
+    scene.render.resolution_x, scene.render.resolution_y = resolution or RESOLUTION
     scene.render.resolution_percentage = 100
-    scene.render.image_settings.file_format = "PNG"
+    scene.render.image_settings.file_format = image_format
     scene.render.image_settings.color_mode = "RGBA"
+    if image_format == "WEBP":
+        scene.render.image_settings.quality = DIORAMA_QUALITY
     try:
         scene.view_settings.view_transform = "Standard"
     except TypeError:
@@ -755,20 +1014,30 @@ def render_walkmask():
     scene.world.node_tree.nodes.get("Background").inputs["Strength"].default_value = 0.0
     scene.cycles.samples = 16
     scene.cycles.use_denoising = False
-    setup_render(freestyle=False)   # el contorno arruinaría los bordes binarios
+    # El contorno arruinaría los bordes binarios, y PNG porque la máscara debe
+    # ser sin pérdida: un artefacto de compresión aquí es una celda de terreno
+    # que cambia de estado.
+    setup_render(freestyle=False, resolution=MASK_RESOLUTION, image_format="PNG")
     return render_to("overworld_walkmask.png")
 
 
 def _sample(pixels, width, height, px, py):
-    ix = min(max(int(px), 0), width - 1)
-    iy = min(max(int(height - 1 - py), 0), height - 1)   # Blender: origen abajo
+    """Muestrea la máscara con coordenadas de AUTORÍA (las de RESOLUTION).
+
+    La máscara se renderiza más pequeña que el diorama, así que hay que escalar;
+    es la misma conversión que hace WalkMask en el juego.
+    """
+    mx = px * width / RESOLUTION[0]
+    my = py * height / RESOLUTION[1]
+    ix = min(max(int(mx), 0), width - 1)
+    iy = min(max(int(height - 1 - my), 0), height - 1)   # Blender: origen abajo
     return pixels[(iy * width + ix) * 4]
 
 
-def _nearest_walkable(pixels, width, height, px, py, max_radius=140):
+def _nearest_walkable(pixels, width, height, px, py, max_radius=300):
     """Píxel caminable más cercano, para sugerir a dónde mover un `approach`."""
     best = None
-    for radius in range(6, max_radius, 4):
+    for radius in range(12, max_radius, 8):
         for step in range(0, 360, 10):
             angle = math.radians(step)
             cx = px + radius * math.cos(angle)
@@ -776,7 +1045,7 @@ def _nearest_walkable(pixels, width, height, px, py, max_radius=140):
             if _sample(pixels, width, height, cx, cy) > 0.9:
                 # exige margen: que sus vecinos también sean caminables
                 if all(_sample(pixels, width, height, cx + dx, cy + dy) > 0.9
-                       for dx, dy in ((-14, 0), (14, 0), (0, -14), (0, 14))):
+                       for dx, dy in ((-28, 0), (28, 0), (0, -28), (0, 28))):
                     best = (int(cx), int(cy), radius)
                     return best
     return best
@@ -826,8 +1095,9 @@ def main():
     build_overworld(cam)
     setup_lights()
     setup_world()
-    setup_render()
-    render_to("overworld.png")
+    if not MASK_ONLY:
+        setup_render()
+        render_to("overworld.webp")
     mask_path = render_walkmask()
     verify_required_points(mask_path)
     print("[TraderPath] Diorama y máscara listos.")
