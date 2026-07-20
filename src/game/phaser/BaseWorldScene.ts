@@ -230,7 +230,7 @@ export abstract class BaseWorldScene extends Phaser.Scene {
     }
     this.pendingTarget = undefined;
     const target = this.resolveDestination(point.x, point.y);
-    if (target) this.movePlayerTo(target.x, target.y);
+    this.movePlayerTo(target.x, target.y);
   }
 
   /**
@@ -241,15 +241,16 @@ export abstract class BaseWorldScene extends Phaser.Scene {
    * being broken. Without a mask we keep the old rectangular clamp, which is
    * exactly right for the flat interiors.
    */
-  private resolveDestination(x: number, y: number): { x: number; y: number } | undefined {
-    if (this.walkMask) {
-      return this.walkMask.nearestWalkable(x, y);
-    }
+  private resolveDestination(x: number, y: number): { x: number; y: number } {
     const { minX, maxX, minY, maxY } = this.worldConfig.walkArea;
-    return {
+    const clamped = {
       x: Phaser.Math.Clamp(x, minX, maxX),
       y: Phaser.Math.Clamp(y, minY, maxY),
     };
+    if (!this.walkMask) return clamped;
+    // Si la máscara no encontrara nada pisable, se recurre al rectángulo en vez
+    // de descartar el clic: quedarse sin respuesta se lee como juego roto.
+    return this.walkMask.nearestWalkable(x, y) ?? clamped;
   }
 
   protected movePlayerTo(x: number, y: number) {

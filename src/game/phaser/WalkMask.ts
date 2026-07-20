@@ -33,6 +33,8 @@ const CELL = 8;
 const LOS_STEP = 3;
 /** Umbral: la máscara es binaria, pero los bordes salen antialiaseados. */
 const WALKABLE_THRESHOLD = 128;
+/** Alcance al buscar celda transitable, en píxeles de mundo (no en celdas). */
+const NEAREST_CELL_RADIUS_PX = 384;
 
 export interface Point {
   x: number;
@@ -49,6 +51,9 @@ export class WalkMask {
   ) {}
 
   private cachedGrid?: { cols: number; rows: number; passable: Uint8Array };
+  /** Búferes del recorrido en anchura, reutilizados entre llamadas. */
+  private parent?: Int32Array;
+  private seen?: Uint8Array;
 
   /**
    * Construye la máscara desde una textura ya cargada. Devuelve undefined si la
@@ -154,13 +159,21 @@ export class WalkMask {
     const cx = Phaser.Math.Clamp(Math.floor(point.x / CELL), 0, cols - 1);
     const cy = Phaser.Math.Clamp(Math.floor(point.y / CELL), 0, rows - 1);
     if (passable[cy * cols + cx]) return cy * cols + cx;
-    for (let radius = 1; radius <= 24; radius += 1) {
-      for (let dy = -radius; dy <= radius; dy += 1) {
-        for (let dx = -radius; dx <= radius; dx += 1) {
-          // sólo el borde del anillo
-          if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
-          const nx = cx + dx;
-          const ny = cy + dy;
+    // Recorre sólo el perímetro de cada anillo. Barrer el cuadrado entero y
+    // descartar el interior costaba O(r²) por anillo para mirar O(r) celdas.
+    // El radio se expresa en píxeles para que no dependa del tamaño de celda:
+    // al bajar CELL de 16 a 8 el alcance se habría reducido a la mitad sin que
+    // nada lo dijera.
+    const maxRadius = Math.ceil(NEAREST_CELL_RADIUS_PX / CELL);
+    for (let radius = 1; radius <= maxRadius; radius += 1) {
+      for (let offset = -radius; offset <= radius; offset += 1) {
+        const candidates: Array<[number, number]> = [
+          [cx + offset, cy - radius],
+          [cx + offset, cy + radius],
+          [cx - radius, cy + offset],
+          [cx + radius, cy + offset],
+        ];
+        for (const [nx, ny] of candidates) {
           if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
           if (passable[ny * cols + nx]) return ny * cols + nx;
         }
@@ -203,12 +216,22 @@ export class WalkMask {
     // el punto exacto sea pisable, y entonces la búsqueda no arrancaba.
     const startCell = this.nearestPassableCell(origin);
     const goalCell = this.nearestPassableCell(to);
-    if (startCell < 0) return [to];
+    // Sin celda de salida no hay ruta posible: quedarse quieto. Devolver [to]
+    // era exactamente la recta sin validar que este módulo existe para evitar.
+    if (startCell < 0) return [origin];
     const goalX = goalCell >= 0 ? goalCell % cols : Phaser.Math.Clamp(Math.floor(to.x / CELL), 0, cols - 1);
     const goalY = goalCell >= 0 ? Math.floor(goalCell / cols) : Phaser.Math.Clamp(Math.floor(to.y / CELL), 0, rows - 1);
 
-    const parent = new Int32Array(cols * rows).fill(-1);
-    const seen = new Uint8Array(cols * rows);
+    // Los búferes se reutilizan entre llamadas: con celdas de 8 px son ~58.000
+    // entradas, y reservarlos en cada clic eran ~290 KB de basura por clic.
+    if (!this.parent || this.parent.length !== cols * rows) {
+      this.parent = new Int32Array(cols * rows);
+      this.seen = new Uint8Array(cols * rows);
+    }
+    const parent = this.parent;
+    const seen = this.seen!;
+    parent.fill(-1);
+    seen.fill(0);
     const queue: number[] = [startCell];
     seen[startCell] = 1;
 
