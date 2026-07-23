@@ -117,6 +117,17 @@ body {
   100% { transform: scale(1); opacity: 1; }
 }
 
+/* Minimapa: entra escalando desde su esquina (el botón que lo abre). El bloque
+   global de prefers-reduced-motion de arriba lo neutraliza a 0.01ms. */
+@keyframes minimap-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.minimap-panel {
+  animation: minimap-in 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }

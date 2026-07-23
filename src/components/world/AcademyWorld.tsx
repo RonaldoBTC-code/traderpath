@@ -14,7 +14,9 @@ import {
   Map,
   MapPin,
   MessageCircle,
+  Minus,
   Palette,
+  Plus,
   RotateCcw,
   Smartphone,
   Sparkles,
@@ -33,9 +35,11 @@ import {
   ACADEMY_GAME_EVENTS,
   type AcademyTarget,
   type AcademyWorldEvent,
+  type MinimapDestination,
   type WorldRoom,
 } from "@/game/phaser/worldEvents";
 import { WORLD_ROOMS, isReturnableRoom } from "@/game/phaser/worldRooms";
+import Minimap, { type MinimapDestinationView } from "@/components/world/Minimap";
 
 interface GameHandle {
   destroy: (removeCanvas?: boolean, noReturn?: boolean) => void;
@@ -44,6 +48,19 @@ interface GameHandle {
 
 type MissionId = "m1_1" | "m1_2" | "m1_3" | "m1_4" | "m1_5";
 type IntroStage = "meet-aria" | "find-token" | "enter-academy";
+
+/** Dimensiones del mundo y sus destinos; llega una vez al cargar la sala. */
+type WorldInfo = { width: number; height: number; destinations: MinimapDestination[] };
+/** Estado vivo de la cámara para el minimapa. Se guarda en un ref, sin re-render. */
+type CameraState = {
+  playerX: number;
+  playerY: number;
+  viewX: number;
+  viewY: number;
+  viewWidth: number;
+  viewHeight: number;
+  zoom: number;
+};
 type OpenPanel =
   | { type: "aria" }
   | { type: "mission"; missionId: MissionId }
@@ -149,6 +166,25 @@ const MISSION_META = {
   },
 };
 
+/**
+ * Metadatos de cada destino del minimapa, por target. Los acentos coinciden con
+ * los colores de los marcadores de AcademyAgoraScene (una identidad por lugar).
+ * Las entradas con `mission` toman su estado de getMissionStatus; Ciudad Bitcoin
+ * se abre al completar la misión jefe.
+ */
+const DESTINATION_META: Record<
+  AcademyTarget,
+  { label: string; accent: string; mission?: MissionId }
+> = {
+  "market-plaza": { label: "Mercado Plaza", accent: "#33b77a", mission: "m1_1" },
+  "candle-workshop": { label: "Taller de Velas", accent: "#e8743b", mission: "m1_2" },
+  "trend-observatory": { label: "Observatorio", accent: "#8b72ff", mission: "m1_3" },
+  "risk-vault": { label: "La Bóveda", accent: "#2563eb", mission: "m1_4" },
+  "challenge-arena": { label: "Arena del Desafío", accent: "#a855f7", mission: "m1_5" },
+  "bitcoin-portal": { label: "Ciudad Bitcoin", accent: "#f7931a" },
+  aria: { label: "ARIA", accent: "#2563eb" },
+};
+
 function isIntroPanel(panel: Exclude<OpenPanel, null>): panel is IntroPanelState {
   return panel.type === "intro-welcome"
     || panel.type === "intro-reward"
@@ -181,6 +217,10 @@ export default function AcademyWorld() {
   const [introStage, setIntroStage] = useState<IntroStage>("meet-aria");
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
   const [mapOpen, setMapOpen] = useState(false);
+  // Datos del minimapa. worldInfo cambia una vez; el estado de cámara va en un
+  // ref y lo lee el minimapa con su propio rAF, sin re-renderizar este árbol.
+  const [worldInfo, setWorldInfo] = useState<WorldInfo | null>(null);
+  const cameraRef = useRef<CameraState | null>(null);
   const [passportOpen, setPassportOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
@@ -208,9 +248,41 @@ export default function AcademyWorld() {
   const candleUpperWickVisited = !!worldFlags["candle-upper-wick"];
   const candleLowerWickVisited = !!worldFlags["candle-lower-wick"];
 
-  const statusM11 = getMissionStatus("level_1", "m1_1");
-  const statusM12 = getMissionStatus("level_1", "m1_2");
-  const statusM13 = getMissionStatus("level_1", "m1_3");
+  // Objetivo actual = primera misión disponible en orden; si la isla está
+  // dominada, el portal a Ciudad Bitcoin. Sólo ese destino late en el minimapa.
+  const missionOrder: MissionId[] = ["m1_1", "m1_2", "m1_3", "m1_4", "m1_5"];
+  const currentObjectiveMission = missionOrder.find(
+    (m) => getMissionStatus("level_1", m) === "available"
+  );
+  const islandMastered = getMissionStatus("level_1", "m1_5") === "completed";
+  const currentObjectiveTarget: AcademyTarget | null = currentObjectiveMission
+    ? MISSION_META[currentObjectiveMission].target
+    : islandMastered
+      ? "bitcoin-portal"
+      : null;
+
+  const minimapDestinations: MinimapDestinationView[] = worldInfo
+    ? worldInfo.destinations.map((d) => {
+        const meta = DESTINATION_META[d.id];
+        const status: MinimapDestinationView["status"] = meta.mission
+          ? getMissionStatus("level_1", meta.mission)
+          : d.id === "bitcoin-portal"
+            ? islandMastered
+              ? "available"
+              : "locked"
+            : "available";
+        return {
+          id: d.id,
+          x: d.x,
+          y: d.y,
+          label: meta.label,
+          accent: meta.accent,
+          status,
+          isObjective: d.id === currentObjectiveTarget,
+        };
+      })
+    : [];
+
   const currentLevel = currentLevelId === "level_2"
     ? level2
     : currentLevelId === "level_3_crypto"
@@ -265,6 +337,25 @@ export default function AcademyWorld() {
       setRoom("academy-agora");
       return;
     }
+    if (event.type === "world") {
+      setWorldInfo({ width: event.width, height: event.height, destinations: event.destinations });
+      return;
+    }
+    if (event.type === "camera") {
+      // Ref, no estado: el minimapa lo lee en su propio bucle de animación.
+      cameraRef.current = {
+        playerX: event.playerX,
+        playerY: event.playerY,
+        viewX: event.viewX,
+        viewY: event.viewY,
+        viewWidth: event.viewWidth,
+        viewHeight: event.viewHeight,
+        zoom: event.zoom,
+      };
+      return;
+    }
+    // A partir de aquí sólo quedan eventos de interacción con un target.
+    if (event.type !== "interact") return;
 
     // Lesson stations: record progress and open the matching panel.
     if (isFlagStationTarget(event.target)) {
@@ -363,6 +454,16 @@ export default function AcademyWorld() {
   const focusTarget = (target: AcademyTarget) => {
     setMapOpen(false);
     gameRef.current?.events.emit(ACADEMY_GAME_EVENTS.focusTarget, target);
+  };
+
+  // Viajar a un punto libre del minimapa; la escena lo resuelve contra la
+  // máscara. El minimapa queda abierto para ver moverse el punto del jugador.
+  const travelTo = (worldX: number, worldY: number) => {
+    gameRef.current?.events.emit(ACADEMY_GAME_EVENTS.travelTo, worldX, worldY);
+  };
+
+  const stepZoom = (direction: number) => {
+    gameRef.current?.events.emit(ACADEMY_GAME_EVENTS.zoomStep, direction);
   };
 
   const chooseAvatarColor = (color: string) => {
@@ -563,28 +664,40 @@ export default function AcademyWorld() {
         </button>
       </div>
 
-      {mapOpen && room === "academy-agora" && (
-        <div className="absolute bottom-20 left-3 z-30 w-[min(370px,calc(100%-24px))] rounded-3xl border border-tp-border bg-[rgba(255,255,255,.96)] p-4 shadow-2xl backdrop-blur-xl sm:left-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[9px] uppercase tracking-[0.18em] text-tp-info">Mapa ilustrado</p>
-              <p className="font-display text-sm font-bold">Distritos de aprendizaje</p>
-            </div>
-            <IconButton label="Cerrar mapa" onClick={() => setMapOpen(false)} />
-          </div>
-          <div className="mt-3 space-y-2">
-            <MapDestination meta={MISSION_META.m1_1} status={statusM11} onClick={() => focusTarget("market-plaza")} />
-            <MapDestination meta={MISSION_META.m1_2} status={statusM12} onClick={() => focusTarget("candle-workshop")} />
-            <MapDestination meta={MISSION_META.m1_3} status={statusM13} onClick={() => focusTarget("trend-observatory")} />
-            <button type="button" onClick={() => focusTarget("bitcoin-portal")} className="flex w-full items-center gap-3 rounded-2xl border border-tp-crypto/15 bg-orange-400/5 p-3 text-left transition hover:border-tp-crypto/30 hover:bg-orange-400/10">
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-orange-400/10 font-data font-bold text-tp-crypto">₿</span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-xs font-semibold">Portal Bitcoin</span>
-                <span className="block truncate text-[9px] text-tp-text-muted/80">Ciudad especializada · bloqueada</span>
-              </span>
-              <LockKeyhole size={13} className="text-tp-text-muted/80" />
-            </button>
-          </div>
+      {room === "academy-agora" && (
+        <div className="absolute right-3 bottom-[84px] z-20 flex flex-col overflow-hidden rounded-2xl border border-tp-border bg-[rgba(255,255,255,.86)] shadow-xl backdrop-blur-md sm:right-5">
+          <button
+            type="button"
+            onClick={() => stepZoom(1)}
+            className="grid h-9 w-9 place-items-center text-tp-text transition hover:text-tp-gold active:scale-90"
+            aria-label="Acercar"
+          >
+            <Plus size={16} />
+          </button>
+          <span className="mx-auto h-px w-5 bg-tp-border" />
+          <button
+            type="button"
+            onClick={() => stepZoom(-1)}
+            className="grid h-9 w-9 place-items-center text-tp-text transition hover:text-tp-gold active:scale-90"
+            aria-label="Alejar"
+          >
+            <Minus size={16} />
+          </button>
+        </div>
+      )}
+
+      {mapOpen && room === "academy-agora" && worldInfo && (
+        <div className="absolute bottom-20 left-3 z-30 sm:left-5">
+          <Minimap
+            worldWidth={worldInfo.width}
+            worldHeight={worldInfo.height}
+            image="/assets/world/overworld_minimap.webp"
+            destinations={minimapDestinations}
+            cameraRef={cameraRef}
+            onFocus={focusTarget}
+            onTravel={travelTo}
+            onClose={() => setMapOpen(false)}
+          />
         </div>
       )}
 
@@ -666,28 +779,6 @@ export default function AcademyWorld() {
           )
       )}
     </section>
-  );
-}
-
-function MapDestination({
-  meta,
-  status,
-  onClick,
-}: {
-  meta: (typeof MISSION_META)[keyof typeof MISSION_META];
-  status: MissionStatus;
-  onClick: () => void;
-}) {
-  return (
-    <button type="button" onClick={onClick} className="flex w-full items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-3 text-left transition hover:border-tp-gold/25 hover:bg-white/[0.05]">
-      <span className={`grid h-10 w-10 place-items-center rounded-xl ${status === "completed" ? "bg-tp-demand/10 text-tp-demand" : status === "available" ? "bg-tp-gold/10 text-tp-gold" : "bg-tp-base/60 text-tp-text-muted/80"}`}>
-        {status === "completed" ? <Check size={15} /> : status === "available" ? <Compass size={15} /> : <LockKeyhole size={13} />}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-xs font-semibold">{meta.title}</span>
-        <span className="block truncate text-[9px] text-tp-text-muted/80">{meta.subtitle}</span>
-      </span>
-    </button>
   );
 }
 

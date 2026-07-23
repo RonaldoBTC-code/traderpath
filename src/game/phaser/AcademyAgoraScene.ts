@@ -20,6 +20,32 @@ const ACADEMY_MASK_KEY = "academy-agora-walkmask";
 const ACADEMY_WORLD_WIDTH = 2560;
 const ACADEMY_WORLD_HEIGHT = 1440;
 
+/**
+ * Distritos de la isla, fuente única de sus coordenadas. Alimenta a la vez los
+ * marcadores dibujados en el mundo y los destinos del minimapa: así el pin del
+ * minimapa no puede desalinearse del marcador. Las entradas con `target` son
+ * lugares a los que se viaja; la del hub (Academia Ágora) no lo tiene.
+ */
+interface District {
+  x: number;
+  y: number;
+  color: number;
+  title: string;
+  subtitle: string;
+  tag: string;
+  target?: AcademyTarget;
+}
+
+const DISTRICTS: District[] = [
+  { target: "market-plaza", x: 2080, y: 760, color: 0x33b77a, title: "Mercado Plaza", subtitle: "Aprende: oferta y demanda", tag: "M1.1" },
+  { target: "candle-workshop", x: 520, y: 1080, color: 0xe8743b, title: "Taller de Velas", subtitle: "Aprende: velas OHLC", tag: "M1.2" },
+  { target: "trend-observatory", x: 420, y: 560, color: 0x8b72ff, title: "Observatorio", subtitle: "Aprende: tendencias", tag: "M1.3" },
+  { target: "risk-vault", x: 1000, y: 1240, color: 0x2563eb, title: "La Bóveda", subtitle: "Aprende: gestión de riesgo", tag: "M1.4" },
+  { target: "challenge-arena", x: 1660, y: 1120, color: 0xa855f7, title: "Arena del Desafío", subtitle: "Pon a prueba lo aprendido", tag: "M1.5" },
+  { target: "bitcoin-portal", x: 1760, y: 380, color: 0xf7931a, title: "Ciudad Bitcoin", subtitle: "Se abre al dominar la isla", tag: "BTC" },
+  { x: 1180, y: 780, color: 0xe5960a, title: "Academia Ágora", subtitle: "Tu punto de partida", tag: "TP" },
+];
+
 export default class AcademyAgoraScene extends BaseWorldScene {
   constructor(onWorldEvent: AcademyWorldEventHandler) {
     super(
@@ -80,6 +106,18 @@ export default class AcademyAgoraScene extends BaseWorldScene {
     this.registerGameEvent(ACADEMY_GAME_EVENTS.focusTarget, this.focusTarget);
 
     this.onWorldEvent({ type: "ready", room: "academy-agora" });
+    // Destinos para el minimapa: mismas coordenadas que los marcadores.
+    this.onWorldEvent({
+      type: "world",
+      room: "academy-agora",
+      width: ACADEMY_WORLD_WIDTH,
+      height: ACADEMY_WORLD_HEIGHT,
+      destinations: DISTRICTS.filter((d) => d.target).map((d) => ({
+        id: d.target as AcademyTarget,
+        x: d.x,
+        y: d.y,
+      })),
+    });
     this.onWorldEvent({ type: "prompt", message: "Haz clic en el suelo para caminar" });
   }
 
@@ -101,13 +139,9 @@ export default class AcademyAgoraScene extends BaseWorldScene {
     hub.lineStyle(2, 0xe5960a, 0.4);
     hub.strokeCircle(1180, 780, 176);
 
-    this.drawDistrictMarker(2080, 760, 0x33b77a, "Mercado Plaza", "Aprende: oferta y demanda", "M1.1");
-    this.drawDistrictMarker(520, 1080, 0xe8743b, "Taller de Velas", "Aprende: velas OHLC", "M1.2");
-    this.drawDistrictMarker(420, 560, 0x8b72ff, "Observatorio", "Aprende: tendencias", "M1.3");
-    this.drawDistrictMarker(1000, 1240, 0x2563eb, "La Bóveda", "Aprende: gestión de riesgo", "M1.4");
-    this.drawDistrictMarker(1660, 1120, 0xa855f7, "Arena del Desafío", "Pon a prueba lo aprendido", "M1.5");
-    this.drawDistrictMarker(1760, 380, 0xf7931a, "Ciudad Bitcoin", "Se abre al dominar la isla", "BTC");
-    this.drawDistrictMarker(1180, 780, 0xe5960a, "Academia Ágora", "Tu punto de partida", "TP");
+    for (const d of DISTRICTS) {
+      this.drawDistrictMarker(d.x, d.y, d.color, d.title, d.subtitle, d.tag);
+    }
 
     // Rótulos anclados al lienzo: con la cámara desplazándose, en coordenadas
     // de mundo se irían de pantalla en cuanto el jugador caminara.
