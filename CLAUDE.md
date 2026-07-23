@@ -1,7 +1,7 @@
 # CLAUDE.md — TraderPath
 
 Instrucciones operativas para Claude Code en este repositorio.
-Verificado contra el código real el 16 jul 2026 (commit `70a63a7`).
+Verificado contra el código real el 18 jul 2026 (commit `2d32845`).
 
 ---
 
@@ -45,23 +45,26 @@ Sin estas variables el build compila pero el runtime de auth rompe.
 src/
 ├── app/
 │   ├── (auth)/login|register/page.tsx   Auth con Supabase
-│   ├── (game)/layout.tsx                Header HUD (client component, SIN guard de auth)
+│   ├── (game)/layout.tsx                Header HUD (client component; la protección real vive en el middleware, no aquí)
 │   ├── (game)/dashboard/page.tsx        Lista misiones del nivel actual
-│   ├── (game)/mission/[id]/page.tsx     ⚠️ Motor universal de misiones (507 líneas)
+│   ├── (game)/mission/[id]/page.tsx     ⚠️ Motor universal de misiones (crece con cada nivel 3 nuevo)
 │   ├── (game)/world/page.tsx            Mundo explorable (dashboard redirige aquí)
 │   ├── auth/callback/route.ts           OAuth callback
 │   └── globals.css                      Design tokens VDD v2.0
-├── components/game/                     10 mini-juegos + QuizEngine + MissionTutorial
+├── components/game/                     20 mini-juegos + QuizEngine + MissionTutorial
 ├── components/narrative/                CharacterDialogue + 6 retratos SVG cartoon
 ├── components/world/AcademyWorld.tsx    Shell React del mundo (HUD, paneles, salas)
 ├── game/phaser/                         4 escenas Phaser + characterArt.ts compartido
 ├── lib/content/level1.ts                Tipos raíz + 5 misiones N1
 ├── lib/content/level2.ts                5 misiones N2 + los 7 mercados
-├── lib/content/level3-crypto.ts         5 misiones N3 Crypto
+├── lib/content/level3-crypto.ts         6 misiones N3 Crypto (m3c_0..m3c_5)
+├── lib/content/level3-forex.ts          5 misiones N3 Forex (m3f_1..m3f_5)
+├── lib/content/level3-stocks.ts         5 misiones N3 Stocks (m3s_1..m3s_5)
+├── lib/content/level3Registry.ts        Mapa mercado → config N3, usado por gameStore (extender aquí, no en gameStore.ts)
 ├── lib/supabase/                        Clientes browser/server/middleware
 ├── store/gameStore.ts                   Zustand + persist (localStorage)
 ├── types/game.ts                        Tipos de las tablas de Supabase (NO los del contenido)
-└── middleware.ts                        Refresca sesión — no protege rutas
+└── middleware.ts + lib/supabase/middleware.ts   Protege /world, /dashboard, /mission, /simulator en producción
 supabase/migrations/001_initial.sql      6 tablas + RLS + 2 funciones + 2 triggers
 ```
 
@@ -191,33 +194,20 @@ Rangos por XP: Novato 0 · Aprendiz 1 000 · Analista 2 500 · Estratega 5 000 �
 ## 9. Estado real y prioridades
 
 ### Funciona (verificado)
-15 misiones (5+5+5) · 10 mini-juegos · QuizEngine con aleatorización Fisher-Yates · MissionTutorial · progresión XP/capital/rango · persistencia localStorage · registro y login Supabase · schema SQL completo con RLS · design system · 6 personajes · `tsc` limpio · build de producción limpio.
+25 misiones (5+5+5+5+5: Nivel 1, Nivel 2, Nivel 3 Crypto `m3c_0..m3c_5`, Nivel 3 Forex `m3f_1..m3f_5`, Nivel 3 Stocks `m3s_1..m3s_5`) · 20 mini-juegos, incluidos los 5 de Nivel 3 Crypto, los 5 de Nivel 3 Forex (`session_clock`, `pip_lot_calculator`, `correlation_matrix`, `news_impact_planner`, `trade_plan_wizard`) y los 5 de Nivel 3 Stocks (`sector_map`, `earnings_reaction`, `corporate_action_planner`, `sector_beta_gauge`, `stock_trade_plan_wizard`), todos registrados en el motor, no placeholders · QuizEngine con aleatorización Fisher-Yates (baraja también el ORDEN de las preguntas, no solo las opciones — no asumir el mismo orden entre intentos) y estado de fallo con retry (`Repasar e intentar de nuevo`) · MissionTutorial · progresión XP/capital/rango · persistencia localStorage + sincronización bidireccional con Supabase (`GameProgressSync.tsx`, reintentos incluidos) · registro sin inserts duplicados · rutas del juego (`/world`, `/dashboard`, `/mission`, `/simulator`) protegidas server-side en `lib/supabase/middleware.ts` (accesibles sin auth solo en `NODE_ENV=development`) · simulador de trading con `lightweight-charts` (`TradingChart.tsx`), panel de órdenes SL/TP y checklist de 7 pasos (`OrderPanel.tsx`), diario de operaciones · schema SQL completo con RLS · design system VDD v2.0 · 6 personajes · `tsc` limpio · world state consolidado en `gameStore` + `worldRooms.ts` (registro de salas) · registro de niveles 3 por mercado en `lib/content/level3Registry.ts` (`getLevelConfig`/`getNextLevelId`/`isLevelUnlocked` generalizados — añadir el 4º mercado solo toca ese archivo).
 
 ### Bugs conocidos, por severidad
 
-**🔴 CRÍTICO — softlock al elegir cualquier mercado que no sea crypto.**
-`MarketPreview` deja elegir los 7 mercados, pero solo existe `level_3_crypto`. Si el jugador elige forex (o cualquier otro):
-`getNextLevelId()` lo manda igual a `level_3_crypto` (fallback "Default to crypto for MVP"), pero `isLevelUnlocked()` exige `specialization === "crypto"` y devuelve `false`. Resultado: puntero en un nivel cuyas misiones están todas 🔒 para siempre. **6 de 7 rutas terminan en un juego imposible de continuar.**
-Arreglo mínimo: marcar los 6 mercados restantes como "próximamente" y no seleccionables. Arreglo real: crear los niveles 3 faltantes.
+Los 5 bugs documentados anteriormente (softlock de mercados, inserts duplicados en registro, rutas sin proteger, quiz boss congelado, mini-juegos Nivel 3 placeholder) **ya están arreglados** — ver arriba. Sin bugs críticos/altos conocidos al 18 jul 2026.
 
-**🟠 ALTO — el registro inserta filas que el trigger ya creó.**
-`handle_new_user()` (migración, línea 353) ya crea `profiles` + `player_progress` al insertarse el usuario en `auth.users`. `register/page.tsx` (líneas 33 y 36) los inserta *otra vez* → violación de PK en `profiles.id` y de `UNIQUE(user_id)` en `player_progress`. El usuario ve un error aunque el alta haya funcionado. Además el insert manual usa `mission_id: "M1"` y el trigger `'m1_1'`. Borra los inserts manuales del register.
-
-**🟠 ALTO — las rutas del juego no están protegidas.**
-`middleware.ts` solo refresca la sesión; `(game)/layout.tsx` es un client component sin guard. `/dashboard` y `/mission/*` son accesibles sin sesión. La auth hoy es decorativa.
-
-**🟡 MEDIO — el quiz boss congela al fallar.** Ver §4.
-**🟡 MEDIO — `mission_id TEXT NOT NULL DEFAULT 'M1'`** en el schema, formato inconsistente con `m1_1`.
+**🟡 MEDIO — `mission_id TEXT NOT NULL DEFAULT 'M1'`** en el schema, formato inconsistente con `m1_1`. No verificado si sigue así — revisar `supabase/migrations/001_initial.sql` antes de asumir.
 
 ### Cola de trabajo sugerida
 
-1. Softlock de mercados (§bug crítico) — es lo único que hace el juego injugable.
-2. Limpiar el registro y proteger rutas.
-3. Los 5 mini-juegos del Nivel 3 Crypto, hoy placeholders: `pair_calculator`, `dominance_gauge`, `cycle_mapper`, `timeframe_switcher`, `fear_greed_slider`. La `config` de cada uno ya está escrita en `level3-crypto.ts` — solo falta el componente y su rama en el motor.
-4. Sincronización con Supabase: escribir en `completed_missions` y `player_progress`, hidratar desde `get_full_player_state()` al login, localStorage como caché y DB como fuente de verdad.
-5. Simulador de trading con Lightweight Charts (ya es dependencia, aún sin usar): velas, panel de órdenes con SL/TP, checklist de 7 pasos, diario obligatorio post-operación.
-6. Niveles 3 restantes (forex, stocks, commodities, indices, futures, etfs) y Nivel 4.
-7. Media/baja: WorldMap visual, escenas educativas, sprites SVG, animaciones Framer Motion, sistema de logros, responsive completo, ciudades con identidad visual, deploy.
+1. Niveles 3 restantes: **crypto, forex y stocks ya están construidos**; faltan commodities, indices, futures, etfs (siguen marcados "próximamente" en `MarketPreview`) y el Nivel 4. Al añadir el próximo mercado, seguir el patrón de `level3-stocks.ts` + registrarlo en `lib/content/level3Registry.ts` (una sola línea) + añadir sus componentes de mini-juego + extender `mission/[id]/page.tsx` (resolución de misión, `levelId`, `getLevelLabel`, ramas de minigame, tutoriales) + `AcademyWorld.tsx` (ternario `currentLevel`) + `MarketPreview.tsx` (`AVAILABLE_MARKETS`).
+2. Media/baja: WorldMap visual, escenas educativas, sprites SVG, animaciones Framer Motion, sistema de logros, responsive completo, ciudades con identidad visual, deploy (resolver conflicto Netlify vs Vercel, ver §10).
+3. Revisar `mission_id` inconsistente en el schema (🟡 arriba).
+4. Hay un `.kiro/specs/traderpath-mvp/requirements.md` con requisitos formales (incluye Requirement 11: Pre-Operation Checklist) — no confirmado si está sincronizado con el código actual, revisar si se retoma el flujo de specs de Kiro.
 
 ---
 
