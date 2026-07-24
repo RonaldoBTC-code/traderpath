@@ -13,7 +13,7 @@ interface Props {
 
 // Only markets with a playable level 3 can be selected. Widen this set as
 // level3-* content files are wired into gameStore (getLevelConfig / isLevelUnlocked).
-const AVAILABLE_MARKETS = new Set(["crypto"]);
+const AVAILABLE_MARKETS = new Set(["crypto", "forex", "stocks"]);
 
 export default function MarketPreview({ onComplete }: Props) {
   const [visitedMarkets, setVisitedMarkets] = useState<Set<string>>(new Set());
@@ -96,7 +96,7 @@ export default function MarketPreview({ onComplete }: Props) {
       {allVisited ? (
         <section className="rounded-2xl border border-tp-gold/30 bg-[linear-gradient(135deg,rgba(240,192,64,.10),rgba(19,24,39,.9))] p-4">
           <p className="flex items-center gap-2 font-display text-sm font-bold text-tp-gold"><Map size={15} /> Elige tu primer destino</p>
-          <p className="mt-1 text-xs text-tp-text-muted">Esta elección define la próxima ciudad educativa. Por ahora solo la ruta cripto está abierta: las demás ciudades se inaugurarán en próximas actualizaciones.</p>
+          <p className="mt-1 text-xs text-tp-text-muted">Esta elección define la próxima ciudad educativa. Por ahora las rutas cripto, forex y acciones están abiertas: las demás ciudades se inaugurarán en próximas actualizaciones.</p>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
             {marketOptions.map((option) => {
               const optionCity = getMarketCity(option.id);

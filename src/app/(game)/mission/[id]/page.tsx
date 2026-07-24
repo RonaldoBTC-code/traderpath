@@ -5,6 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { getMissionById } from "@/lib/content/level1";
 import { getLevel2MissionById } from "@/lib/content/level2";
 import { getLevel3CryptoMissionById } from "@/lib/content/level3-crypto";
+import { getLevel3ForexMissionById } from "@/lib/content/level3-forex";
+import { getLevel3StocksMissionById } from "@/lib/content/level3-stocks";
 import CharacterDialogue from "@/components/narrative/CharacterDialogue";
 import QuizEngine from "@/components/game/QuizEngine";
 import MatchTermMinigame from "@/components/game/MatchTermMinigame";
@@ -22,6 +24,16 @@ import CycleMapper, { type CycleEvent } from "@/components/game/CycleMapper";
 import TimeframeSwitcher from "@/components/game/TimeframeSwitcher";
 import CryptoIntegratedAnalysis, { type CryptoScenario } from "@/components/game/CryptoIntegratedAnalysis";
 import BitcoinOriginGame from "@/components/game/BitcoinOriginGame";
+import SessionClock, { type SessionScenario } from "@/components/game/SessionClock";
+import PipLotCalculator, { type PipLotScenario } from "@/components/game/PipLotCalculator";
+import CorrelationMatrix, { type CorrelationScenario } from "@/components/game/CorrelationMatrix";
+import NewsImpactPlanner, { type NewsScenario } from "@/components/game/NewsImpactPlanner";
+import ForexTradePlanWizard, { type ForexScenario } from "@/components/game/ForexTradePlanWizard";
+import SectorMap, { type SectorScenario } from "@/components/game/SectorMap";
+import EarningsReaction, { type EarningsScenario } from "@/components/game/EarningsReaction";
+import CorporateActionPlanner, { type CorporateActionScenario } from "@/components/game/CorporateActionPlanner";
+import SectorBetaGauge, { type SectorBetaScenario } from "@/components/game/SectorBetaGauge";
+import StockTradePlanWizard, { type StockScenario } from "@/components/game/StockTradePlanWizard";
 import MissionMarketChart from "@/components/game/MissionMarketChart";
 import { useHasMounted } from "@/hooks/useHasMounted";
 import MissionTutorial, { type TutorialContent } from "@/components/game/MissionTutorial";
@@ -286,6 +298,154 @@ function getMissionTutorial(missionId: string): TutorialContent {
       commonMistakes: ["Saltarse la fase del ciclo e ir directo al gráfico.", "Operar altcoins cuando BTC está en price discovery.", "No respetar el 2% porque 'el setup es muy bueno'."],
       hint: "Sigue la secuencia: ciclo → dominance → zona → señal → riesgo. Si falta un paso, no operes.",
     },
+    m3f_1: {
+      title: "Las Cuatro Sesiones de Forex",
+      learningObjective: "Ubicar las sesiones de Sídney, Tokio, Londres y Nueva York en horario UTC e identificar el overlap de mayor liquidez.",
+      conceptExplanation: "Forex opera 24 horas, 5 días a la semana, repartido en cuatro sesiones regionales que se relevan. El overlap Londres-Nueva York (~13:00-17:00 UTC) concentra el mayor volumen del día. Fuera de los overlaps grandes, la liquidez baja y el spread puede ensancharse, especialmente cerca del rollover diario (~21:00-22:00 UTC).",
+      practicalExample: "Son las 14:00 UTC: Londres y Nueva York están activas al mismo tiempo. Es un buen momento para operar con spreads ajustados. A las 23:00 UTC, ninguna sesión grande está en pleno funcionamiento — mejor esperar.",
+      stepByStepInstructions: [
+        "Observa la hora UTC del escenario.",
+        "Identifica qué sesiones están activas en ese momento.",
+        "¿Dos sesiones grandes se solapan? → Máxima liquidez.",
+        "¿Solo una sesión activa? → Liquidez normal.",
+        "¿Ninguna sesión grande activa? → Liquidez baja, mejor esperar.",
+        "¿Cerca de las 21:00-22:00 UTC? → Cuidado con el rollover.",
+      ],
+      commonMistakes: ["Asumir que forex opera igual que crypto, sin sesiones.", "Ignorar el ensanchamiento de spread en horarios de baja liquidez."],
+      hint: "El overlap Londres-Nueva York es tu referencia de máxima liquidez. El resto del día, ajusta tus expectativas.",
+    },
+    m3f_2: {
+      title: "Pips, Lotes y Apalancamiento",
+      learningObjective: "Calcular el tamaño de posición correcto en lotes usando la distancia del Stop Loss en pips y el valor del pip por lote.",
+      conceptExplanation: "Un pip es la unidad mínima de movimiento en forex (0.0001 para la mayoría de pares, 0.01 para pares con yen). Un lote estándar son 100,000 unidades; mini lote, 10,000; micro lote, 1,000. El apalancamiento define el margen necesario para abrir una posición, no cuánto deberías arriesgar.",
+      practicalExample: "Capital $3,000, riesgo 2% ($60). Stop Loss a 20 pips, valor del pip por lote $10. Lotes = $60 ÷ (20 × $10) = 0.3 lotes.",
+      stepByStepInstructions: [
+        "Calcula el riesgo máximo: capital × % de riesgo.",
+        "Multiplica los pips de distancia del SL por el valor del pip por lote.",
+        "Divide el riesgo máximo entre ese resultado.",
+        "Ingresa el número de lotes.",
+      ],
+      commonMistakes: ["Confundir el apalancamiento disponible con el tamaño de posición recomendado.", "Olvidar que los pares con yen usan un pip distinto (0.01, no 0.0001)."],
+      hint: "Fórmula clave: lotes = riesgo máximo ÷ (SL en pips × valor del pip por lote).",
+    },
+    m3f_3: {
+      title: "Correlación entre Pares",
+      learningObjective: "Leer un coeficiente de correlación entre dos pares y detectar sobre-exposición oculta.",
+      conceptExplanation: "El coeficiente de correlación va de -1 a +1. Cerca de +1, los pares se mueven juntos — abrir ambos en la misma dirección duplica una sola apuesta. Cerca de -1, se mueven en direcciones opuestas — pueden compensarse entre sí. Cerca de 0, son prácticamente independientes.",
+      practicalExample: "EUR/USD y GBP/USD suelen tener correlación positiva fuerte (~+0.85): abrir ambos largos no diversifica, concentra riesgo. EUR/USD y USD/CHF suelen tener correlación negativa fuerte (~-0.90): tienden a compensarse.",
+      stepByStepInstructions: [
+        "Observa el coeficiente de correlación entre los dos pares.",
+        "¿Cerca de +1? → Misma dirección, fuerte.",
+        "¿Cerca de -1? → Dirección opuesta, fuerte.",
+        "¿Entre -0.3 y +0.3? → Prácticamente independientes.",
+        "¿En un punto intermedio? → Relación moderada, no determinante.",
+      ],
+      commonMistakes: ["Pensar que operar varios pares siempre diversifica el riesgo.", "Tratar la correlación como una ley fija en vez de una tendencia estadística."],
+      hint: "Antes de abrir una nueva posición, pregúntate qué correlación tiene con lo que ya tienes abierto.",
+    },
+    m3f_4: {
+      title: "Calendario Económico y Noticias",
+      learningObjective: "Decidir la acción más prudente según el nivel de impacto de un evento económico y su cercanía en el tiempo.",
+      conceptExplanation: "Eventos como NFP, IPC o decisiones de tasas de interés suelen ensanchar el spread y aumentar el slippage antes y durante su publicación. Sin una posición abierta, lo prudente es evitar entrar justo antes. Con una posición y Stop Loss ajustado, conviene ampliar el SL o cerrar antes del evento.",
+      practicalExample: "Faltan 3 minutos para el NFP y no tienes posición abierta → evita abrir una nueva. Tienes EUR/USD largo con SL ajustado y se acerca una decisión de tasas de la Fed → considera ampliar el SL o cerrar antes.",
+      stepByStepInstructions: [
+        "Observa el nivel de impacto del evento (bajo, medio, alto).",
+        "Observa cuánto falta o cuánto pasó desde la publicación.",
+        "¿Sin posición y evento de alto impacto cercano? → Evitar entrar.",
+        "¿Evento recién publicado? → Esperar confirmación.",
+        "¿Con posición abierta y SL ajustado? → Proteger la posición.",
+        "¿Evento de bajo/medio impacto y lejano? → Operar con normalidad.",
+      ],
+      commonMistakes: ["Abrir posiciones nuevas justo antes de un evento de alto impacto.", "Dejar un Stop Loss muy ajustado sin revisar el calendario económico."],
+      hint: "El calendario no predice la dirección — predice cuándo el mercado puede volverse errático.",
+    },
+    m3f_5: {
+      title: "Plan de Trading Integrado — Forex",
+      learningObjective: "Combinar contexto de sesión, riesgo de correlación y noticias, y gestión de riesgo en pips y lotes en un plan de trading completo.",
+      conceptExplanation: "Un plan forex completo integra: 1) Contexto de sesión (¿hay liquidez suficiente?), 2) Riesgo de correlación y noticias (¿ya tienes exposición relacionada?), 3) Elección del par correcto, 4) Entrada + SL + TP con ratio mínimo, 5) Tamaño de posición en lotes al riesgo máximo permitido.",
+      practicalExample: "Overlap Londres-NY activo + ya tienes EUR/USD largo + NFP en 12 minutos → reduce el riesgo total antes de sumar exposición, prioriza un par no correlacionado positivamente con tu posición existente, y calcula el tamaño en lotes respetando el 2% de riesgo.",
+      stepByStepInstructions: [
+        "Evalúa si el contexto de sesión ofrece suficiente liquidez.",
+        "Evalúa el riesgo de correlación y noticias con tus posiciones existentes.",
+        "Elige el par que no duplica el riesgo ya asumido.",
+        "Traza entrada + SL + TP con ratio mínimo indicado.",
+        "Calcula el tamaño de posición en lotes al riesgo máximo permitido.",
+      ],
+      commonMistakes: ["Ignorar una posición correlacionada ya abierta al elegir el nuevo par.", "Operar con el tamaño de lote incorrecto por no convertir pips a valor monetario."],
+      hint: "Sigue la secuencia: sesión → correlación/noticias → par → entrada/SL/TP → tamaño. Si falta un paso, no operes.",
+    },
+    m3s_1: {
+      title: "Market Cap y Sectores",
+      learningObjective: "Clasificar empresas por capitalización de mercado (large/mid/small cap) y entender el rol de los sectores y los índices como canastas diversificadas.",
+      conceptExplanation: "Capitalización de mercado = precio por acción × acciones en circulación. Large cap (sobre $10,000M) suele tener más liquidez y menor volatilidad relativa. Small cap (bajo $2,000M) suele tener mayor volatilidad y menor liquidez. Un índice como el S&P 500 diluye el riesgo de una sola empresa entre cientos de ellas.",
+      practicalExample: "AAPL tiene una capitalización de casi $2,900,000 millones — claramente large cap, con alta liquidez. Una empresa con $1,400 millones de capitalización es small cap: más volátil, menos líquida.",
+      stepByStepInstructions: [
+        "Observa el ticker, el sector y la capitalización de mercado en miles de millones (B).",
+        "Compara la cifra contra los umbrales: large cap ≥ $10,000M, mid cap entre $2,000M y $10,000M, small cap < $2,000M.",
+        "Elige la clasificación correcta.",
+        "Lee la explicación aunque hayas acertado.",
+      ],
+      commonMistakes: ["Confundir el precio por acción con la capitalización total.", "Asumir que una acción con precio bajo es necesariamente small cap (el precio nominal no determina el tamaño de la empresa)."],
+      hint: "Capitalización = precio × acciones en circulación, no el precio por acción solo.",
+    },
+    m3s_2: {
+      title: "Temporada de Resultados",
+      learningObjective: "Interpretar EPS, ingresos y guidance frente a las expectativas de analistas, y reconocer el riesgo de gap al mantener una posición durante un reporte pendiente.",
+      conceptExplanation: "Lo que mueve el precio no es si la empresa ganó dinero, sino si sorprendió (beat/miss/inline) respecto a lo que el mercado ya esperaba. La guía a futuro (guidance) pesa tanto como el resultado del trimestre. Mantener una posición con un reporte pendiente expone a un gap de apertura que ningún Stop Loss puede prevenir.",
+      practicalExample: "AAPL reporta EPS de $2.40 contra $2.10 esperado (beat) y eleva su guía → reacción alcista fuerte esperada. NVDA reporta en 2 días → mejor evitar abrir una posición nueva hasta que se publique.",
+      stepByStepInstructions: [
+        "Observa si el reporte ya se publicó o está pendiente.",
+        "Si está pendiente, la decisión prudente es evitar entrar antes.",
+        "Si ya se publicó, compara EPS (beat/miss/inline) y guidance (raised/lowered/maintained).",
+        "Beat + guía elevada → reacción alcista fuerte. Miss → reacción bajista. El resto → mixta, con cautela.",
+      ],
+      commonMistakes: ["Abrir una posición nueva justo antes de un reporte pendiente.", "Suponer que un buen EPS garantiza una reacción alcista sin revisar la guía."],
+      hint: "Lo que mueve el precio es la sorpresa respecto a lo esperado, no el resultado en sí mismo.",
+    },
+    m3s_3: {
+      title: "Dividendos y Acciones Corporativas",
+      learningObjective: "Interpretar la fecha ex-dividendo, los splits de acciones y las recompras, distinguiendo un ajuste técnico de una ganancia o pérdida real.",
+      conceptExplanation: "Para cobrar un dividendo debes poseer la acción antes de la fecha ex-dividendo. El precio suele ajustarse a la baja ese día, aproximadamente por el monto del dividendo — no es una pérdida real. Un split cambia el número de acciones y el precio nominal, pero no el valor total de la posición. Una recompra reduce las acciones en circulación y es una señal moderadamente positiva, sin garantía.",
+      practicalExample: "Un split 2:1 convierte 10 acciones de $150 ($1,500 total) en 20 acciones de $75 ($1,500 total) — el valor no cambió. Un ajuste ex-dividendo de $0.75 en el precio de apertura no es una señal bajista: es el reflejo del dividendo pagado.",
+      stepByStepInstructions: [
+        "Lee la situación descrita: ¿split, fecha ex-dividendo, o recompra?",
+        "Si es un split, recuerda que el valor total no cambia — no es un descuento real.",
+        "Si es sobre la fecha ex-dividendo, determina si el jugador aún puede calificar para el pago o ya no.",
+        "Si es una recompra, recuerda que es una señal positiva, pero no una garantía.",
+      ],
+      commonMistakes: ["Pensar que un split hace la acción 'más barata' en términos reales.", "Confundir un ajuste técnico ex-dividendo con una señal bajista real."],
+      hint: "Pregúntate: ¿este evento cambia el valor total de la empresa, o solo la forma en que se representa?",
+    },
+    m3s_4: {
+      title: "Rotación Sectorial y Beta",
+      learningObjective: "Interpretar el beta como volatilidad relativa al mercado y decidir la exposición sectorial según la fase del ciclo económico.",
+      conceptExplanation: "El beta mide cuánto se mueve una acción o sector respecto al mercado general: beta > 1 amplifica los movimientos, beta < 1 los amortigua. Los sectores cíclicos (tecnología, consumo discrecional, industriales) suelen liderar en expansión. Los defensivos (utilities, consumo básico, salud) suelen sostenerse mejor en contracción.",
+      practicalExample: "Tecnología con beta 1.4 en expansión → sobreponderar. Utilities con beta 0.5 en contracción → preferir sectores defensivos. Salud con beta 0.7 en contexto incierto → exposición neutral.",
+      stepByStepInstructions: [
+        "Observa el sector, su beta y el contexto del ciclo económico.",
+        "¿Contexto de expansión + beta alto? → Sobreponderar.",
+        "¿Contexto de contracción + beta alto? → Subponderar.",
+        "¿Contracción + beta bajo? → Preferir defensivos.",
+        "¿Contexto incierto o beta moderado? → Exposición neutral.",
+      ],
+      commonMistakes: ["Perseguir siempre el sector de mayor beta sin importar el contexto económico.", "Ignorar la fase del ciclo económico al decidir exposición sectorial."],
+      hint: "Combina siempre el beta (amplitud del movimiento) con el contexto del ciclo (dirección esperada), nunca uno solo.",
+    },
+    m3s_5: {
+      title: "Plan de Trading Integrado — Stocks",
+      learningObjective: "Combinar contexto sectorial, riesgo de concentración y earnings, y gestión de riesgo en acciones en un plan de trading completo.",
+      conceptExplanation: "Un plan de acciones completo integra: 1) Contexto sectorial (¿el sector tiene viento a favor?), 2) Riesgo de concentración y earnings (¿ya tienes exposición al sector? ¿hay un reporte cercano?), 3) Elección de la acción correcta, 4) Entrada + SL + TP con ratio mínimo, 5) Tamaño de posición en acciones al riesgo máximo permitido.",
+      practicalExample: "Expansión con tecnología liderando + ya tienes MSFT (tecnología) + AAPL reporta en 3 días → reduce el riesgo total, prioriza NVDA (mismo sector, sin earnings inminentes) sobre AAPL, y calcula el tamaño en acciones respetando el 2% de riesgo.",
+      stepByStepInstructions: [
+        "Evalúa si el contexto sectorial favorece mantener exposición.",
+        "Evalúa el riesgo de concentración y earnings con tus posiciones existentes.",
+        "Elige la acción que no duplica el riesgo ya asumido.",
+        "Traza entrada + SL + TP con ratio mínimo indicado.",
+        "Calcula el tamaño de posición en acciones al riesgo máximo permitido.",
+      ],
+      commonMistakes: ["Ignorar una posición correlacionada por sector ya abierta al elegir la nueva acción.", "Sumar el riesgo de un reporte de earnings inminente sin ajustar el plan."],
+      hint: "Sigue la secuencia: sector → concentración/earnings → acción → entrada/SL/TP → tamaño. Si falta un paso, no operes.",
+    },
   };
 
   return tutorials[missionId] || {
@@ -302,6 +462,8 @@ function getLevelLabel(levelId: string): string {
   if (levelId === "level_1") return "Nivel 1";
   if (levelId === "level_2") return "Nivel 2";
   if (levelId === "level_3_crypto") return "Nivel 3 — Crypto";
+  if (levelId === "level_3_forex") return "Nivel 3 — Forex";
+  if (levelId === "level_3_stocks") return "Nivel 3 — Stocks";
   return "Nivel";
 }
 
@@ -314,8 +476,12 @@ export default function MissionPage() {
   const { isMissionCompleted, isMissionUnlocked, completeMission } = useGameStore();
 
   // Find mission in all levels
-  const mission = getMissionById(missionId) || getLevel2MissionById(missionId) || getLevel3CryptoMissionById(missionId);
-  const levelId = missionId.startsWith("m1_") ? "level_1" : missionId.startsWith("m2_") ? "level_2" : "level_3_crypto";
+  const mission = getMissionById(missionId) || getLevel2MissionById(missionId) || getLevel3CryptoMissionById(missionId) || getLevel3ForexMissionById(missionId) || getLevel3StocksMissionById(missionId);
+  const levelId = missionId.startsWith("m1_") ? "level_1"
+    : missionId.startsWith("m2_") ? "level_2"
+    : missionId.startsWith("m3f_") ? "level_3_forex"
+    : missionId.startsWith("m3s_") ? "level_3_stocks"
+    : "level_3_crypto";
 
   const [phase, setPhase] = useState<Phase>("intro");
   const [dialogueIndex, setDialogueIndex] = useState(0);
@@ -550,6 +716,75 @@ export default function MissionPage() {
               />
             ) : mission.minigame.type === "bitcoin_origin" ? (
               <BitcoinOriginGame onComplete={handleMinigameComplete} />
+            ) : mission.minigame.type === "session_clock" && mission.minigame.config?.scenarios ? (
+              <SessionClock
+                scenarios={mission.minigame.config.scenarios as SessionScenario[]}
+                requiredCorrect={mission.minigame.config.requiredCorrect as number}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "pip_lot_calculator" && mission.minigame.config?.scenarios ? (
+              <PipLotCalculator
+                capital={mission.minigame.config.capital as number}
+                riskPct={mission.minigame.config.riskPct as number}
+                scenarios={mission.minigame.config.scenarios as PipLotScenario[]}
+                tolerance={mission.minigame.config.tolerance as number}
+                passingScore={mission.minigame.passingScore}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "correlation_matrix" && mission.minigame.config?.scenarios ? (
+              <CorrelationMatrix
+                scenarios={mission.minigame.config.scenarios as CorrelationScenario[]}
+                requiredCorrect={mission.minigame.config.requiredCorrect as number}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "news_impact_planner" && mission.minigame.config?.scenarios ? (
+              <NewsImpactPlanner
+                scenarios={mission.minigame.config.scenarios as NewsScenario[]}
+                requiredCorrect={mission.minigame.config.requiredCorrect as number}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "trade_plan_wizard" && mission.minigame.config?.scenario ? (
+              <ForexTradePlanWizard
+                scenario={mission.minigame.config.scenario as ForexScenario}
+                capital={mission.minigame.config.capital as number}
+                minRR={mission.minigame.config.minRR as number}
+                maxRisk={mission.minigame.config.maxRisk as number}
+                passingSteps={mission.minigame.config.passingSteps as number}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "sector_map" && mission.minigame.config?.scenarios ? (
+              <SectorMap
+                scenarios={mission.minigame.config.scenarios as SectorScenario[]}
+                requiredCorrect={mission.minigame.config.requiredCorrect as number}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "earnings_reaction" && mission.minigame.config?.scenarios ? (
+              <EarningsReaction
+                scenarios={mission.minigame.config.scenarios as EarningsScenario[]}
+                requiredCorrect={mission.minigame.config.requiredCorrect as number}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "corporate_action_planner" && mission.minigame.config?.scenarios ? (
+              <CorporateActionPlanner
+                scenarios={mission.minigame.config.scenarios as CorporateActionScenario[]}
+                requiredCorrect={mission.minigame.config.requiredCorrect as number}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "sector_beta_gauge" && mission.minigame.config?.scenarios ? (
+              <SectorBetaGauge
+                scenarios={mission.minigame.config.scenarios as SectorBetaScenario[]}
+                requiredCorrect={mission.minigame.config.requiredCorrect as number}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "stock_trade_plan_wizard" && mission.minigame.config?.scenario ? (
+              <StockTradePlanWizard
+                scenario={mission.minigame.config.scenario as StockScenario}
+                capital={mission.minigame.config.capital as number}
+                minRR={mission.minigame.config.minRR as number}
+                maxRisk={mission.minigame.config.maxRisk as number}
+                passingSteps={mission.minigame.config.passingSteps as number}
+                onComplete={handleMinigameComplete}
+              />
             ) : (
               <div className="space-y-3">
                 <div className="bg-tp-base border border-tp-border rounded-sm p-4">

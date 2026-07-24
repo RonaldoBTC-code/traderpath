@@ -2,7 +2,12 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { level1 } from "@/lib/content/level1";
 import { level2 } from "@/lib/content/level2";
-import { level3Crypto } from "@/lib/content/level3-crypto";
+import {
+  LEVEL3_REGISTRY,
+  LEVEL3_MISSION_PREFIX,
+  getLevel3ConfigByLevelId,
+  type Level3ConfigLike,
+} from "@/lib/content/level3Registry";
 import { RANKS } from "@/lib/game/constants";
 
 // ─── TYPES ──────────────────────────────────────────────────
@@ -51,7 +56,7 @@ interface GameState extends GameProgressSnapshot {
   isMissionCompleted: (levelId: string, missionId: string) => boolean;
   isMissionUnlocked: (levelId: string, missionId: string) => boolean;
   getCurrentMission: () => { levelId: string; missionId: string };
-  getCurrentLevel: () => typeof level1 | typeof level2 | typeof level3Crypto;
+  getCurrentLevel: () => typeof level1 | typeof level2 | Level3ConfigLike;
   getMissionStatus: (levelId: string, missionId: string) => MissionStatus;
   calculateRank: (totalXp: number) => string;
   setMarketSpecialization: (market: string) => void;
@@ -80,8 +85,7 @@ function calculateRankFromXP(xp: number): string {
 function getLevelConfig(levelId: string) {
   if (levelId === "level_1") return level1;
   if (levelId === "level_2") return level2;
-  if (levelId === "level_3_crypto") return level3Crypto;
-  return level1;
+  return getLevel3ConfigByLevelId(levelId) ?? level1;
 }
 
 /** Get ordered missions for a level */
@@ -101,12 +105,12 @@ function getNextMission(levelId: string, missionId: string) {
 function getNextLevelId(levelId: string, specialization: string | null): string | null {
   if (levelId === "level_1") return "level_2";
   if (levelId === "level_2") {
-    // After level 2, go to specialization
-    if (specialization === "crypto") return "level_3_crypto";
-    // Default to crypto for MVP
+    // After level 2, route to the chosen specialization's level 3
+    if (specialization && LEVEL3_REGISTRY[specialization]) return `level_3_${specialization}`;
+    // No specialization recorded (shouldn't happen post m2_5) — MVP fallback.
     return "level_3_crypto";
   }
-  if (levelId === "level_3_crypto") return null; // Future: level_4
+  if (levelId.startsWith("level_3_")) return null; // Future: level_4
   return null;
 }
 
@@ -119,8 +123,9 @@ function isLevelUnlocked(levelId: string, completedMissions: CompletedMissionEnt
       completedMissions.some((c) => c.levelId === "level_1" && c.missionId === m.id)
     );
   }
-  if (levelId === "level_3_crypto") {
-    if (specialization !== "crypto") return false;
+  if (levelId.startsWith("level_3_")) {
+    const market = levelId.slice("level_3_".length);
+    if (specialization !== market || !LEVEL3_REGISTRY[market]) return false;
     const l2Missions = getLevelMissions("level_2");
     return l2Missions.every((m) =>
       completedMissions.some((c) => c.levelId === "level_2" && c.missionId === m.id)
@@ -310,7 +315,7 @@ export const useGameStore = create<GameState>()(
           completedMissions: filteredMissions,
           // Reset to first mission of new level 3
           currentLevelId: `level_3_${newMarket}`,
-          currentMissionId: `m3${newMarket.charAt(0)}_1`,
+          currentMissionId: `m3${LEVEL3_MISSION_PREFIX[newMarket] ?? newMarket.charAt(0)}_1`,
         });
       },
 
