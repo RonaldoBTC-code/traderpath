@@ -224,6 +224,7 @@ export const level1: LevelConfig = {
         description: "Mueve los clientes y las manzanas. Observa el precio. Descubre qué lo mueve.",
         instructions: "Cambia cuántos clientes llegan y cuántas manzanas tienes: el precio sale solo de esos dos números. Resuelve los dos retos y responde qué viste.",
         config: {
+          scene: { image: "/assets/missions/m1_1-apple-stall.webp", alt: "Puesto de manzanas en la plaza del mercado" },
           basePrice: 1,
           clients: { min: 2, max: 24, start: 8 },
           apples: { min: 2, max: 24, start: 8 },

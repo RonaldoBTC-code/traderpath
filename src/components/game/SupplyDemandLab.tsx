@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 // ── Laboratorio de Oferta y Demanda ────────────────────────────────
 // Minijuego de DESCUBRIMIENTO: el jugador mueve dos controles —clientes
@@ -33,6 +33,13 @@ export interface SupplyDemandLabConfig {
   apples: { min: number; max: number; start: number };
   challenges: SupplyDemandChallenge[];
   question: { prompt: string; options: SupplyDemandQuestionOption[] };
+  /**
+   * Arte de escena, opcional. Ronaldo dibuja el puesto en Blender y lo exporta
+   * a la ruta indicada; si el archivo no existe, el laboratorio cae con gracia a
+   * su versión abstracta (los puntos) y la misión sigue jugable. El arte es
+   * puramente decorativo: la mecánica (precio, deslizadores) vive aparte.
+   */
+  scene?: { image?: string; alt?: string };
 }
 
 interface Props {
@@ -63,6 +70,22 @@ export default function SupplyDemandLab({ config, onComplete }: Props) {
   const [solved, setSolved] = useState(false);
   const [wrongTries, setWrongTries] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
+
+  // Precarga del arte de escena: solo se muestra cuando el archivo existe de
+  // verdad, así un PNG/WebP faltante nunca deja un icono roto ni rompe la misión.
+  const sceneImage = config.scene?.image;
+  const [sceneOk, setSceneOk] = useState(false);
+  useEffect(() => {
+    if (!sceneImage) return;
+    const img = new window.Image();
+    img.onload = () => setSceneOk(true);
+    img.onerror = () => setSceneOk(false);
+    img.src = sceneImage;
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [sceneImage]);
 
   const price = useMemo(() => (config.basePrice * clients) / apples, [config.basePrice, clients, apples]);
   const baseline = config.basePrice; // cada reto arranca equilibrado en este precio
@@ -125,8 +148,16 @@ export default function SupplyDemandLab({ config, onComplete }: Props) {
 
   return (
     <div className="space-y-5">
-      {/* El puesto: precio (héroe) + cuántos de cada lado */}
+      {/* El puesto: arte de escena (opcional) + precio (héroe) + cuántos de cada lado */}
       <div className="rounded-2xl border-2 border-tp-border bg-tp-surface p-5">
+        {sceneImage && sceneOk && (
+          <div
+            role="img"
+            aria-label={config.scene?.alt ?? "Escena de la misión"}
+            className="mb-4 rounded-xl border-2 border-tp-border bg-tp-base bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${sceneImage})`, backgroundSize: "contain", aspectRatio: "16 / 9" }}
+          />
+        )}
         <div className="text-center">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-tp-text-muted">Precio por manzana</p>
           <p className={`font-data text-5xl font-bold tabular-nums transition-colors duration-150 ease-out ${priceColor}`}>
