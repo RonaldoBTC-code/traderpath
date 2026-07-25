@@ -10,6 +10,7 @@ import { getLevel3StocksMissionById } from "@/lib/content/level3-stocks";
 import CharacterDialogue from "@/components/narrative/CharacterDialogue";
 import QuizEngine from "@/components/game/QuizEngine";
 import MatchTermMinigame from "@/components/game/MatchTermMinigame";
+import SupplyDemandLab, { type SupplyDemandLabConfig } from "@/components/game/SupplyDemandLab";
 import ChartTapGame from "@/components/game/ChartTapGame";
 import RiskCalculator from "@/components/game/RiskCalculator";
 import CandlestickBuilder from "@/components/game/CandlestickBuilder";
@@ -47,19 +48,19 @@ type Phase = "intro" | "tutorial" | "minigame" | "quiz" | "outro" | "complete";
 function getMissionTutorial(missionId: string): TutorialContent {
   const tutorials: Record<string, TutorialContent> = {
     m1_1: {
-      title: "Oferta, Demanda y Precio",
-      learningObjective: "Entender que el precio es el acuerdo entre compradores y vendedores, y que se mueve por oferta y demanda.",
-      conceptExplanation: "Un mercado financiero es un lugar donde compradores y vendedores intercambian activos. El precio sube cuando hay más compradores que vendedores (demanda > oferta) y baja cuando hay más vendedores que compradores (oferta > demanda).",
-      practicalExample: "Si 100 personas quieren comprar Bitcoin pero solo 10 quieren venderlo, el precio sube porque los compradores compiten. Si 100 quieren vender y solo 10 quieren comprar, el precio baja.",
+      title: "Tu Puesto de Manzanas",
+      learningObjective: "Descubrir, moviendo tú mismo los controles, qué hace que el precio suba o baje.",
+      conceptExplanation: "Hoy tienes un puesto de manzanas. Puedes cambiar dos cosas: cuántos clientes llegan y cuántas manzanas tienes. El precio sale solo de esos dos números — nadie te va a dar la regla por adelantado, la vas a ver tú.",
+      practicalExample: "Prueba y observa: sube los clientes y mira el precio. Después sube las manzanas y mira otra vez. ¿Notas hacia dónde se mueve cada vez?",
       stepByStepInstructions: [
-        "Lee cada término de la columna izquierda.",
-        "Busca su definición correcta en la columna derecha.",
-        "Haz clic en el término primero, luego en su definición.",
-        "Si es correcto, la pareja se marca en verde.",
-        "Si es incorrecto, se marca en rojo y puedes intentar de nuevo.",
+        "Mueve el control de clientes y observa el precio.",
+        "Mueve el control de manzanas y observa el precio.",
+        "Resuelve el primer reto: sube el precio sin tocar las manzanas.",
+        "Resuelve el segundo: baja el precio sin tocar los clientes.",
+        "Responde qué fue lo que hizo subir el precio.",
       ],
-      commonMistakes: ["Confundir 'liquidez' con 'demanda' — la liquidez es la facilidad de comprar/vender, no la presión compradora."],
-      hint: "Piensa en un mercado de frutas: oferta es cuántas hay disponibles, demanda es cuántas personas las quieren.",
+      commonMistakes: ["Creer que el precio lo escribes tú — en el puesto el precio nace solo de cuántos quieren contra cuánto hay."],
+      hint: "Fíjate en cuál es mayor: ¿los clientes o las manzanas?",
     },
     m1_2: {
       title: "Construir Velas Japonesas",
@@ -638,6 +639,11 @@ export default function MissionPage() {
             {mission.minigame.type === "match_term" && mission.minigame.config?.pairs ? (
               <MatchTermMinigame
                 pairs={mission.minigame.config.pairs as { term: string; definition: string }[]}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "supply_demand_lab" && mission.minigame.config?.challenges ? (
+              <SupplyDemandLab
+                config={mission.minigame.config as unknown as SupplyDemandLabConfig}
                 onComplete={handleMinigameComplete}
               />
             ) : mission.minigame.type === "chart_tap" && mission.minigame.config?.charts ? (
