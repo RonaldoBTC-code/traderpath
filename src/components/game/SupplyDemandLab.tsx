@@ -3,16 +3,19 @@
 import { useEffect, useMemo, useState } from "react";
 
 // ── Laboratorio de Oferta y Demanda ────────────────────────────────
-// Minijuego de DESCUBRIMIENTO: el jugador mueve dos controles —clientes
-// (demanda) y manzanas (oferta)— y el precio emerge en vivo de ambos. La regla
-// nunca se enuncia en pantalla; se induce jugando. Dos retos guían la
-// manipulación (subir sin tocar la oferta; bajar sin tocar la demanda) y una
-// pregunta final pide nombrar lo observado.
+// Minijuego de DESCUBRIMIENTO donde la ESCENA es la visualización: el
+// deslizador de clientes hace aparecer figuras de cliente una a una frente al
+// puesto; el de manzanas, manzanas en el mostrador. El precio se escribe en vivo
+// sobre un cartel dentro de la escena (verde si sube, rojo si baja respecto al
+// inicio). La regla nunca se enuncia — se induce jugando.
+//
+// Cada pieza (puesto, cliente, manzana, cartel) tiene un slot de arte opcional:
+// si el WebP de Blender existe, se usa; si no, se dibuja una forma provisional.
+// Un asset faltante nunca rompe la misión.
 
 export interface SupplyDemandChallenge {
   id: string;
   prompt: string;
-  /** Control que queda bloqueado durante el reto. */
   lock: "apples" | "clients";
   compare: "gte" | "lte";
   target: number;
@@ -34,12 +37,17 @@ export interface SupplyDemandLabConfig {
   challenges: SupplyDemandChallenge[];
   question: { prompt: string; options: SupplyDemandQuestionOption[] };
   /**
-   * Arte de escena, opcional. Ronaldo dibuja el puesto en Blender y lo exporta
-   * a la ruta indicada; si el archivo no existe, el laboratorio cae con gracia a
-   * su versión abstracta (los puntos) y la misión sigue jugable. El arte es
-   * puramente decorativo: la mecánica (precio, deslizadores) vive aparte.
+   * Arte de escena por piezas, todo opcional. Ronaldo las dibuja en Blender y
+   * las exporta a `public/assets/missions/`. Cada pieza faltante cae con gracia
+   * a su forma provisional; la mecánica no depende del arte.
    */
-  scene?: { image?: string; alt?: string };
+  scene?: {
+    alt?: string;
+    stall?: { image?: string };
+    client?: { image?: string };
+    apple?: { image?: string };
+    sign?: { image?: string };
+  };
 }
 
 interface Props {
@@ -47,17 +55,63 @@ interface Props {
   onComplete: (score: number) => void;
 }
 
-/** Fila de puntos que hace visible cuántos hay de cada lado. */
-function DotRow({ count, max, className, label }: { count: number; max: number; className: string; label: string }) {
+/** true solo cuando la imagen existe y cargó — evita iconos rotos. */
+function useImageReady(url?: string): boolean {
+  const [ok, setOk] = useState(false);
+  useEffect(() => {
+    if (!url) {
+      setOk(false);
+      return;
+    }
+    const img = new window.Image();
+    img.onload = () => setOk(true);
+    img.onerror = () => setOk(false);
+    img.src = url;
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [url]);
+  return ok;
+}
+
+const POP = "bounce-in 200ms cubic-bezier(0.23,1,0.32,1)";
+
+/** Figura de cliente: arte si existe, si no una silueta simple. Entra con pop. */
+function ClientFigure({ url, ready }: { url?: string; ready: boolean }) {
+  const art = !!url && ready;
   return (
-    <div className="flex items-center gap-2">
-      <span className="w-16 shrink-0 text-[10px] font-semibold uppercase tracking-widest text-tp-text-muted">{label}</span>
-      <div className="flex flex-wrap gap-1" aria-hidden>
-        {Array.from({ length: Math.min(count, max) }).map((_, i) => (
-          <span key={i} className={`h-2.5 w-2.5 rounded-full ${className}`} />
-        ))}
-      </div>
-      <span className="ml-auto font-data text-xs text-tp-text-muted">{count}</span>
+    <div
+      aria-hidden
+      className="h-10 w-6 shrink-0 bg-bottom bg-no-repeat"
+      style={{ animation: POP, ...(art ? { backgroundImage: `url(${url})`, backgroundSize: "contain" } : {}) }}
+    >
+      {!art && (
+        <svg viewBox="0 0 24 40" className="h-full w-full text-tp-info">
+          <circle cx="12" cy="8" r="6" fill="currentColor" />
+          <path d="M3 40 C3 23 21 23 21 40 Z" fill="currentColor" />
+        </svg>
+      )}
+    </div>
+  );
+}
+
+/** Manzana: arte si existe, si no un círculo con tallo y hoja. Entra con pop. */
+function AppleFigure({ url, ready }: { url?: string; ready: boolean }) {
+  const art = !!url && ready;
+  return (
+    <div
+      aria-hidden
+      className="h-5 w-5 shrink-0 bg-center bg-no-repeat"
+      style={{ animation: POP, ...(art ? { backgroundImage: `url(${url})`, backgroundSize: "contain" } : {}) }}
+    >
+      {!art && (
+        <svg viewBox="0 0 24 24" className="h-full w-full">
+          <circle cx="12" cy="14" r="9" fill="#e5960a" />
+          <rect x="11" y="4" width="2" height="5" rx="1" fill="#7a5230" />
+          <path d="M13 6 q4 -2.5 5.5 0.4 q-4 1.6 -5.5 -0.4 Z" fill="#16a34a" />
+        </svg>
+      )}
     </div>
   );
 }
@@ -71,28 +125,21 @@ export default function SupplyDemandLab({ config, onComplete }: Props) {
   const [wrongTries, setWrongTries] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
 
-  // Precarga del arte de escena: solo se muestra cuando el archivo existe de
-  // verdad, así un PNG/WebP faltante nunca deja un icono roto ni rompe la misión.
-  const sceneImage = config.scene?.image;
-  const [sceneOk, setSceneOk] = useState(false);
-  useEffect(() => {
-    if (!sceneImage) return;
-    const img = new window.Image();
-    img.onload = () => setSceneOk(true);
-    img.onerror = () => setSceneOk(false);
-    img.src = sceneImage;
-    return () => {
-      img.onload = null;
-      img.onerror = null;
-    };
-  }, [sceneImage]);
+  const stallOk = useImageReady(config.scene?.stall?.image);
+  const clientOk = useImageReady(config.scene?.client?.image);
+  const appleOk = useImageReady(config.scene?.apple?.image);
+  const signOk = useImageReady(config.scene?.sign?.image);
+  const stallImg = config.scene?.stall?.image;
+  const clientImg = config.scene?.client?.image;
+  const appleImg = config.scene?.apple?.image;
+  const signImg = config.scene?.sign?.image;
 
   const price = useMemo(() => (config.basePrice * clients) / apples, [config.basePrice, clients, apples]);
   const baseline = config.basePrice; // cada reto arranca equilibrado en este precio
   const challenge = config.challenges[stage];
 
-  // Color del precio relativo al equilibrio de partida: verde si lo encareció,
-  // rojo si lo abarató. Siempre refleja el estado real — nunca miente.
+  // Color del precio relativo al equilibrio de partida: siempre refleja el
+  // estado real — nunca miente.
   const dir = price > baseline + 0.001 ? "up" : price < baseline - 0.001 ? "down" : "flat";
   const priceColor = dir === "up" ? "text-tp-demand" : dir === "down" ? "text-tp-supply" : "text-tp-text";
 
@@ -120,7 +167,7 @@ export default function SupplyDemandLab({ config, onComplete }: Props) {
   const advance = () => {
     if (stage < config.challenges.length - 1) {
       setStage((s) => s + 1);
-      setClients(config.clients.start); // volver al equilibrio para el siguiente reto
+      setClients(config.clients.start);
       setApples(config.apples.start);
       setSolved(false);
     } else {
@@ -129,44 +176,75 @@ export default function SupplyDemandLab({ config, onComplete }: Props) {
   };
 
   const pickAnswer = (opt: SupplyDemandQuestionOption) => {
-    if (picked && config.question.options.find((o) => o.id === picked)?.correct) return; // ya acertó
+    if (picked && config.question.options.find((o) => o.id === picked)?.correct) return;
     setPicked(opt.id);
     if (!opt.correct) setWrongTries((w) => w + 1);
   };
 
   const pickedOption = config.question.options.find((o) => o.id === picked) ?? null;
   const answeredCorrectly = pickedOption?.correct ?? false;
+  const finish = () => onComplete(Math.max(40, 100 - wrongTries * 15));
 
-  const finish = () => {
-    const score = Math.max(40, 100 - wrongTries * 15);
-    onComplete(score);
-  };
-
-  const targetLabel = challenge
-    ? `${challenge.compare === "gte" ? "≥" : "≤"} $${challenge.target.toFixed(2)}`
-    : "";
+  const targetLabel = challenge ? `${challenge.compare === "gte" ? "≥" : "≤"} $${challenge.target.toFixed(2)}` : "";
 
   return (
     <div className="space-y-5">
-      {/* El puesto: arte de escena (opcional) + precio (héroe) + cuántos de cada lado */}
-      <div className="rounded-2xl border-2 border-tp-border bg-tp-surface p-5">
-        {sceneImage && sceneOk && (
+      {/* La escena ES la visualización: puesto + clientes + manzanas + cartel */}
+      <div
+        role="img"
+        aria-label={`Puesto de manzanas: ${clients} clientes frente al puesto y ${apples} manzanas en el mostrador. Precio ${price.toFixed(2)} dólares por manzana.`}
+        className="relative w-full overflow-hidden rounded-2xl border-2 border-tp-border"
+        style={{
+          aspectRatio: "4 / 3",
+          ...(stallOk && stallImg
+            ? { backgroundImage: `url(${stallImg})`, backgroundSize: "cover", backgroundPosition: "center" }
+            : { background: "linear-gradient(#eaf4fe, #f1f8ff)" }),
+        }}
+      >
+        {/* Mostrador provisional (solo si no hay arte de puesto) */}
+        {!stallOk && (
           <div
-            role="img"
-            aria-label={config.scene?.alt ?? "Escena de la misión"}
-            className="mb-4 rounded-xl border-2 border-tp-border bg-tp-base bg-center bg-no-repeat"
-            style={{ backgroundImage: `url(${sceneImage})`, backgroundSize: "contain", aspectRatio: "16 / 9" }}
+            className="absolute left-0 right-0 border-t-2 border-tp-border bg-tp-surface"
+            style={{ top: "52%", height: "7%" }}
           />
         )}
-        <div className="text-center">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-tp-text-muted">Precio por manzana</p>
-          <p className={`font-data text-5xl font-bold tabular-nums transition-colors duration-150 ease-out ${priceColor}`}>
-            ${price.toFixed(2)}
-          </p>
+
+        {/* Cartel con el precio, dentro de la escena */}
+        <div className="absolute" style={{ top: "5%", left: "50%", transform: "translateX(-50%)", width: "46%" }}>
+          <div
+            className={`grid place-items-center rounded-lg ${signOk ? "" : "border-2 border-tp-border bg-tp-surface shadow-sm"}`}
+            style={{
+              aspectRatio: "5 / 2",
+              ...(signOk && signImg ? { backgroundImage: `url(${signImg})`, backgroundSize: "contain", backgroundRepeat: "no-repeat", backgroundPosition: "center" } : {}),
+            }}
+          >
+            <span
+              className={`font-data font-bold tabular-nums transition-colors duration-150 ease-out ${priceColor}`}
+              style={{ fontSize: "clamp(14px, 5vw, 26px)" }}
+            >
+              ${price.toFixed(2)}
+            </span>
+          </div>
         </div>
-        <div className="mt-4 space-y-2">
-          <DotRow count={clients} max={config.clients.max} className="bg-tp-info" label="Clientes" />
-          <DotRow count={apples} max={config.apples.max} className="bg-tp-gold" label="Manzanas" />
+
+        {/* Manzanas en el mostrador */}
+        <div
+          className="absolute flex flex-wrap content-end items-end justify-center gap-1"
+          style={{ left: "6%", right: "6%", top: "26%", height: "26%" }}
+        >
+          {Array.from({ length: apples }).map((_, i) => (
+            <AppleFigure key={i} url={appleImg} ready={appleOk} />
+          ))}
+        </div>
+
+        {/* Clientes frente al puesto */}
+        <div
+          className="absolute flex flex-wrap content-end items-end justify-center gap-1.5"
+          style={{ left: "5%", right: "5%", top: "60%", bottom: "3%" }}
+        >
+          {Array.from({ length: clients }).map((_, i) => (
+            <ClientFigure key={i} url={clientImg} ready={clientOk} />
+          ))}
         </div>
       </div>
 
@@ -238,7 +316,7 @@ export default function SupplyDemandLab({ config, onComplete }: Props) {
               </button>
             </div>
           ) : (
-            <p className="mt-3 text-xs text-tp-text-muted">Mueve el control que no está bloqueado y observa el precio.</p>
+            <p className="mt-3 text-xs text-tp-text-muted">Mueve el control que no está bloqueado y mira el cartel del precio.</p>
           )}
         </div>
       )}
@@ -251,7 +329,6 @@ export default function SupplyDemandLab({ config, onComplete }: Props) {
           <div className="mt-3 space-y-2">
             {config.question.options.map((opt) => {
               const isPicked = picked === opt.id;
-              const showState = isPicked;
               return (
                 <button
                   key={opt.id}
@@ -259,9 +336,9 @@ export default function SupplyDemandLab({ config, onComplete }: Props) {
                   onClick={() => pickAnswer(opt)}
                   disabled={answeredCorrectly}
                   className={`w-full rounded-xl border-2 px-4 py-3 text-left text-sm transition-colors duration-150 ease-out active:scale-[0.99] ${
-                    showState && opt.correct
+                    isPicked && opt.correct
                       ? "border-tp-demand bg-tp-demand/10"
-                      : showState && !opt.correct
+                      : isPicked && !opt.correct
                         ? "border-tp-supply bg-tp-supply/10"
                         : "border-tp-border bg-tp-base hover:border-tp-gold/50"
                   }`}
