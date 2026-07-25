@@ -11,6 +11,7 @@ import CharacterDialogue from "@/components/narrative/CharacterDialogue";
 import QuizEngine from "@/components/game/QuizEngine";
 import MatchTermMinigame from "@/components/game/MatchTermMinigame";
 import SupplyDemandLab, { type SupplyDemandLabConfig } from "@/components/game/SupplyDemandLab";
+import GaugeLab, { type GaugeLabConfig } from "@/components/game/GaugeLab";
 import ChartTapGame from "@/components/game/ChartTapGame";
 import RiskCalculator from "@/components/game/RiskCalculator";
 import CandlestickBuilder from "@/components/game/CandlestickBuilder";
@@ -96,19 +97,19 @@ function getMissionTutorial(missionId: string): TutorialContent {
       hint: "Ignora las velas individuales. Mira la dirección general: ¿el gráfico sube, baja, o va de lado?",
     },
     m1_4: {
-      title: "Cálculo de Riesgo",
-      learningObjective: "Calcular cuántas unidades de un activo puedes comprar sin arriesgar más del 2% de tu capital.",
-      conceptExplanation: "La regla del 2% dice: nunca arriesgues más del 2% de tu capital total en una sola operación. El riesgo por unidad = precio de entrada - stop loss. Unidades = (capital × 0.02) ÷ riesgo por unidad.",
-      practicalExample: "Capital: $1,000. Entrada: $100. Stop Loss: $95. Riesgo por unidad = $5. Máximo riesgo = $1,000 × 0.02 = $20. Unidades = $20 ÷ $5 = 4 unidades.",
+      title: "El Medidor de Riesgo",
+      learningObjective: "Descubrir, moviendo tú los controles, qué hace que arriesgues más o menos de tu capital.",
+      conceptExplanation: "Tienes un capital fijo y dos mandos: el tamaño de la posición (unidades) y la distancia del Stop Loss. Un medidor te muestra en vivo cuánto de tu capital pones en riesgo. Nadie te da la regla: la vas a ver en el medidor.",
+      practicalExample: "Prueba: sube las unidades y mira el medidor. Vuelve a bajarlas y aleja el stop. ¿Cuál de los dos, o ambos, lo hacen subir?",
       stepByStepInstructions: [
-        "Identifica tu capital total.",
-        "Calcula el 2% de tu capital (capital × 0.02).",
-        "Calcula el riesgo por unidad (entrada - stop loss).",
-        "Divide: unidades = (2% del capital) ÷ (riesgo por unidad).",
-        "Redondea hacia abajo para no superar el riesgo.",
+        "Mueve el tamaño de la posición y observa el medidor.",
+        "Mueve la distancia del Stop Loss y observa el medidor.",
+        "Reto 1: baja el riesgo al 2% o menos sin tocar el stop.",
+        "Reto 2: baja el riesgo al 2% o menos sin tocar las unidades.",
+        "Responde qué hace subir el riesgo.",
       ],
-      commonMistakes: ["Dividir al revés (riesgo ÷ capital)", "Olvidar redondear hacia abajo", "Usar más del 2% 'porque el análisis es bueno'"],
-      hint: "Fórmula: Unidades = (Capital × 0.02) ÷ (Entrada - StopLoss)",
+      commonMistakes: ["Creer que el riesgo solo depende de una de las dos cosas — depende de ambas a la vez."],
+      hint: "El riesgo sube si aumentas las unidades O si alejas el stop. ¿Por qué será?",
     },
     m1_5: {
       title: "Análisis Integrado",
@@ -644,6 +645,11 @@ export default function MissionPage() {
             ) : mission.minigame.type === "supply_demand_lab" && mission.minigame.config?.challenges ? (
               <SupplyDemandLab
                 config={mission.minigame.config as unknown as SupplyDemandLabConfig}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "gauge_lab" && mission.minigame.config?.challenges ? (
+              <GaugeLab
+                config={mission.minigame.config as unknown as GaugeLabConfig}
                 onComplete={handleMinigameComplete}
               />
             ) : mission.minigame.type === "chart_tap" && mission.minigame.config?.charts ? (
