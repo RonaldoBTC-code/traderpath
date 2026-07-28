@@ -27,7 +27,12 @@ export interface LevelLabInput {
 }
 
 export interface LevelLabConfig {
-  region: "line" | "band";
+  /** "band"/"line" dibujan una región del precio; "meter" un termómetro horizontal. */
+  region: "line" | "band" | "meter";
+  /** Etiqueta de la cabecera de la escena (default "Región del precio"). */
+  regionLabel?: string;
+  /** Marca de umbral sobre el medidor, en unidades de fuerza (solo modo "meter"). */
+  thresholdAt?: number;
   /** Nombre fijo del rol (zonas). Si hay `reversal`, el rol se alterna. */
   roleName?: string;
   reversal?: { before: string; after: string; toggleLabel: string };
@@ -66,6 +71,10 @@ export default function LevelLab({ config, onComplete }: Props) {
   const word = [...config.strengthWords].reverse().find((w) => strength >= w.min);
   const wordColor = word?.tone === "bad" ? "text-tp-supply" : "text-tp-demand";
   const opacity = 0.18 + 0.62 * Math.min(Math.max(strength / config.maxStrength, 0), 1);
+  const fillFrac = Math.min(Math.max(strength / config.maxStrength, 0), 1);
+  const meterColor = word ? (word.tone === "bad" ? "#dc2626" : "#16a34a") : roleColor;
+  const regionLabel = config.regionLabel ?? "Región del precio";
+  const headline = role ? `${role}${word ? ` · ${word.text}` : ""}` : word?.text ?? "";
 
   const flow = useLabFlow(config.challenges, config.question);
 
@@ -102,7 +111,7 @@ export default function LevelLab({ config, onComplete }: Props) {
       {/* Escena: la región del precio y su fuerza */}
       <div
         role="img"
-        aria-label={`${role}${word ? `, ${word.text}` : ""}`}
+        aria-label={`${regionLabel}: ${headline}`}
         className="overflow-hidden rounded-2xl border-2 border-tp-border p-4"
         style={
           backdropOk && backdropImg
@@ -111,33 +120,51 @@ export default function LevelLab({ config, onComplete }: Props) {
         }
       >
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-tp-text-muted">Región del precio</p>
-          <p className={`font-display text-base font-bold transition-colors duration-150 ease-out ${wordColor}`}>
-            {role}
-            {word ? ` · ${word.text}` : ""}
-          </p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-tp-text-muted">{regionLabel}</p>
+          <p className={`font-display text-base font-bold transition-colors duration-150 ease-out ${wordColor}`}>{headline}</p>
         </div>
-        <div className="relative h-28 rounded-xl border border-tp-border bg-white/40">
-          {/* la banda / línea */}
-          <div
-            className="absolute left-0 right-0 transition-[opacity] duration-150 ease-out"
-            style={{
-              top: config.region === "band" ? "42%" : "49%",
-              height: config.region === "band" ? "16%" : "3px",
-              backgroundColor: roleColor,
-              opacity,
-            }}
-          />
-          {/* marcas de toque */}
-          {Array.from({ length: Math.min(ticks, 6) }).map((_, i) => (
+        {config.region === "meter" ? (
+          <div>
+            <div className="relative h-6 overflow-hidden rounded-full border-2 border-tp-border bg-tp-surface">
+              <div
+                className="h-full w-full origin-left"
+                style={{ transform: `scaleX(${fillFrac})`, transition: "transform 150ms ease-out", backgroundColor: meterColor }}
+              />
+              {config.thresholdAt != null && (
+                <div
+                  className="absolute bottom-0 top-0 w-[2px] bg-tp-text"
+                  style={{ left: `${Math.min(Math.max(config.thresholdAt / config.maxStrength, 0), 1) * 100}%` }}
+                  aria-hidden
+                />
+              )}
+            </div>
+            {config.thresholdAt != null && (
+              <p className="mt-1 text-right font-data text-[10px] text-tp-text-muted">línea = umbral</p>
+            )}
+          </div>
+        ) : (
+          <div className="relative h-28 rounded-xl border border-tp-border bg-white/40">
+            {/* la banda / línea */}
             <div
-              key={i}
-              aria-hidden
-              className="absolute w-[3px] rounded"
-              style={{ left: `${12 + i * 13}%`, top: "38%", height: "24%", backgroundColor: roleColor, animation: "bounce-in 200ms cubic-bezier(0.23,1,0.32,1)" }}
+              className="absolute left-0 right-0 transition-[opacity] duration-150 ease-out"
+              style={{
+                top: config.region === "band" ? "42%" : "49%",
+                height: config.region === "band" ? "16%" : "3px",
+                backgroundColor: roleColor,
+                opacity,
+              }}
             />
-          ))}
-        </div>
+            {/* marcas de toque */}
+            {Array.from({ length: Math.min(ticks, 6) }).map((_, i) => (
+              <div
+                key={i}
+                aria-hidden
+                className="absolute w-[3px] rounded"
+                style={{ left: `${12 + i * 13}%`, top: "38%", height: "24%", backgroundColor: roleColor, animation: "bounce-in 200ms cubic-bezier(0.23,1,0.32,1)" }}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Controles */}

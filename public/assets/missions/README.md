@@ -113,6 +113,20 @@ Cada misión de N2 se ambienta en el distrito de la isla cuyo concepto profundiz
 
 (En m2_1/m2_2 el componente dibuja la banda/nivel y su fuerza; en m2_3, la vela y el nombre del patrón.)
 
+### Nivel 3 Crypto — Ciudad Bitcoin (Conchagua · El Salvador) · acento `#F7931A`
+
+Fondo diurno/volcánico de Ciudad Bitcoin: Plaza del Bloque, volcán al fondo, puerto Lightning. Todos los fondos pueden ser opacos. Los medidores, barras y velas los dibuja el componente.
+
+| Misión | Lab | Pieza | Archivo | Relación | Tamaño rec. | Anclaje |
+|---|---|---|---|---|---|---|
+| m3c_1 (riesgo 24/7) | GaugeLab | Fondo (plaza del bloque) | `m3c_1-plaza-bloque.webp` | ~3:2 | 1024×683 | Cubre la escena; Plaza del Bloque con el volcán. Ambienta Ciudad Bitcoin |
+| m3c_1 | GaugeLab | Moneda (posición) | `m3c_1-coin.webp` | 1:1 | 96×96 | Se repite como "tu posición"; una por unidad. Moneda ₿ dorada |
+| m3c_2 (dominancia) | LevelLab · meter | Fondo (Nexus) | `m3c_2-nexus.webp` | ~5:3 | 1024×614 | Cubre la escena; pantallas de mercado de Ciudad Nexus |
+| m3c_3 (sentimiento) | LevelLab · meter | Fondo (ciclo) | `m3c_3-ciclo.webp` | ~5:3 | 1024×614 | Cubre la escena; Ciudad Bitcoin de noche, ánimo del mercado |
+| m3c_4 (ATR vs stop) | LevelLab · meter | Fondo (bloques) | `m3c_4-bloques.webp` | ~5:3 | 1024×614 | Cubre la escena; sala de gráficos/velas de BTC |
+
+(m3c_0 exploración y m3c_5 boss no se convierten.)
+
 ## Cómo se conecta
 
 Cada misión declara sus piezas en `config.scene` (en `src/lib/content/levelX.ts`).

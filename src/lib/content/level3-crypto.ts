@@ -21,6 +21,7 @@ import type {
 
 export type Level3CryptoMinigameType =
   | Level2MinigameType
+  | "gauge_lab"
   | "dominance_gauge"
   | "cycle_mapper"
   | "volume_reader"
@@ -187,12 +188,12 @@ export const level3Crypto: Level3CryptoConfig = {
       order: 2,
       title: "La Ciudad que Nunca Duerme",
       subtitle: "El mercado más diferente que jamás operarás",
-      description: "Primera misión en Ciudad Nexus. Descubrirás qué hace único al mercado crypto: disponibilidad 24/7, alta volatilidad estructural, CEX vs DEX, y los fundamentos de un par de trading.",
+      description: "Primera misión en Ciudad Nexus. Descubrirás qué hace único al mercado crypto: disponibilidad 24/7, CEX vs DEX y los fundamentos de un par de trading. En el laboratorio moverás tú mismo el tamaño de la posición y la distancia del Stop Loss, y un medidor te mostrará en vivo cuánto de tu capital pones en juego — hasta inducir qué mantiene la pérdida bajo control en un mercado que nunca cierra.",
       learningObjectives: [
-        "Entender qué hace diferente al mercado crypto de cualquier otro",
+        "Inducir, moviendo los controles, cómo el tamaño de posición y la distancia del stop determinan el capital en riesgo",
+        "Descubrir que, con el stop fijo, solo el tamaño de posición controla la pérdida máxima",
         "Distinguir entre CEX (exchange centralizado) y DEX (descentralizado)",
         "Comprender qué es un par de trading y cómo leer un order book básico",
-        "Aplicar reglas de gestión de riesgo a la alta volatilidad crypto",
       ],
       keyConcepts: ["mercado 24/7", "CEX", "DEX", "par de trading", "order book", "volatilidad estructural", "spot trading", "USDT / stablecoin"],
       cryptoConcepts: ["CEX vs DEX", "trading pair", "stablecoin como activo de cotización", "order book depth"],
@@ -205,8 +206,8 @@ export const level3Crypto: Level3CryptoConfig = {
         { id: "m3c1_intro_4", character: "el_especulador", type: "enemy_taunt", text: "24 horas, 7 días... Yo una vez operé 36 horas seguidas sin dormir. Me sentía imparable. El mercado eventualmente me demostró que no lo era. No repitas mi error." },
       ],
       outroDialogues: [
-        { id: "m3c1_outro_1", character: "aria", type: "tip", text: "Recuerda: en un CEX delegas custodia y asumes riesgo de contraparte. En un DEX operas desde una wallet, pero conservas riesgos de contrato, interfaz, liquidez y error humano. La elección depende del uso y del riesgo que comprendes." },
-        { id: "m3c1_outro_2", character: "el_viejo_marco", type: "diary", text: "El par BTC/USDT no significa que compras Bitcoin con dólares. Significa que usas USDT —un dólar digital— como moneda base. Entender eso parece trivial. No lo es.", footnote: "— Entrada #2 desde Nexus" },
+        { id: "m3c1_outro_1", character: "aria", type: "tip", text: "Acabas de inducirlo tú: el capital en riesgo nace de dos cosas a la vez — cuántas unidades llevas y qué tan lejos está tu Stop Loss. Fija primero dónde se invalida el trade; el tamaño de posición se ajusta después para no pasar del 2%." },
+        { id: "m3c1_outro_2", character: "el_viejo_marco", type: "diary", text: "Nadie te dio la fórmula: la viste subir y bajar en el medidor. En un mercado que no cierra, ese medidor es lo que te deja dormir. El par BTC/USDT usa USDT como moneda base; entender eso parece trivial, no lo es.", footnote: "— Entrada #2 desde Nexus" },
       ],
       quiz: [
         { id: "q_m3c1_01", difficulty: "basico", conceptEvaluated: "Diferencia CEX vs DEX", question: "¿Cuál es la principal diferencia entre un CEX y un DEX?", options: [
@@ -235,16 +236,34 @@ export const level3Crypto: Level3CryptoConfig = {
         ], explanation: "El order book tiene dos lados: Bids (compradores, verde) y Asks (vendedores, rojo). El spread es la diferencia entre el mejor ask y el mejor bid." },
       ],
       minigame: {
-        id: "mg_m3c1", type: "pair_calculator", title: "Calculadora de Pares",
-        description: "Calcula el tamaño de posición correcto respetando el 2% de riesgo para diferentes pares crypto.",
-        instructions: "Para cada par, calcula cuántas unidades puedes comprar sin superar el 2% de riesgo. Considera: capital disponible, precio de entrada, y distancia al Stop Loss.",
-        config: { capital: 3500, riskPct: 0.02, scenarios: [
-          { pair: "BTC/USDT", entry: 95000, stopLoss: 93000, correctUnits: 0.035 },
-          { pair: "ETH/USDT", entry: 3200, stopLoss: 3050, correctUnits: 0.466 },
-          { pair: "SOL/USDT", entry: 185, stopLoss: 175, correctUnits: 7 },
-          { pair: "BNB/USDT", entry: 620, stopLoss: 595, correctUnits: 2.8 },
-          { pair: "XRP/USDT", entry: 0.62, stopLoss: 0.58, correctUnits: 1750 },
-        ], tolerance: 0.05 },
+        id: "mg_m3c1", type: "gauge_lab", title: "El Medidor de Riesgo Cripto",
+        description: "Mueve el tamaño de la posición y la distancia del Stop Loss; el medidor muestra en vivo cuánto de tu capital pones en riesgo.",
+        instructions: "Explora los dos controles y observa el medidor. Luego resuelve los retos: mantén tu pérdida máxima en el 2% del capital o menos.",
+        config: {
+          capital: 3500,
+          thresholdPct: 2,
+          maxScalePct: 8,
+          units: { min: 1, max: 15, start: 10, label: "Tamaño de posición (unidades)", accent: "#F7931A" },
+          stop: { min: 5, max: 40, start: 20, label: "Distancia al Stop Loss ($/u)", accent: "#dc2626" },
+          challenges: [
+            { id: "c_m3c1_1", prompt: "Ajusta tu operación hasta arriesgar el 2% de tu capital o menos.", compare: "lte", target: 2, successNote: "Bajaste dentro del 2%. Fíjate: pudiste lograrlo cortando unidades, acercando el stop, o ambos." },
+            { id: "c_m3c1_2", prompt: "Ahora el mercado te exige un stop más ancho: con el stop bloqueado, baja tu pérdida al 2% o menos.", lock: "stop", compare: "lte", target: 2, successNote: "Con el stop fijo, lo único que te quedó fue reducir el tamaño de la posición. Ese es el control real del riesgo." },
+          ],
+          question: {
+            prompt: "¿Qué mantiene tu pérdida máxima bajo control en cada operación?",
+            options: [
+              { id: "a", text: "El tamaño de la posición ajustado a la distancia del Stop Loss", correct: true, feedback: "Correcto. Con el stop donde el trade se invalida, el tamaño de posición es lo que fija cuánto arriesgas." },
+              { id: "b", text: "Elegir siempre el activo con el precio unitario más bajo", correct: false, feedback: "El precio unitario no dice nada sobre tu riesgo; lo viste en el medidor." },
+              { id: "c", text: "Poner un Stop Loss lo más lejos posible para que no se ejecute", correct: false, feedback: "Al revés: alejar el stop SUBE el capital en riesgo, como acabas de ver en el medidor." },
+              { id: "d", text: "Operar solo cuando el mercado está cerrado", correct: false, feedback: "El mercado crypto nunca cierra; por eso el tamaño y el stop importan tanto." },
+            ],
+          },
+          scene: {
+            alt: "Plaza del Bloque de Ciudad Bitcoin con el volcán de fondo",
+            backdrop: { image: "/assets/missions/m3c_1-plaza-bloque.webp" },
+            coin: { image: "/assets/missions/m3c_1-coin.webp" },
+          },
+        },
         passingScore: 70, virtualCapitalReward: 150,
       },
       rewards: { xp: 140, virtualCapital: 250 },
@@ -252,8 +271,8 @@ export const level3Crypto: Level3CryptoConfig = {
     // ── MISIÓN 3C.2 — El Ritmo de Bitcoin ──
     {
       id: "m3c_2", order: 3, title: "El Ritmo de Bitcoin", subtitle: "Entiende a BTC y entenderás el mercado crypto entero",
-      description: "Bitcoin suele concentrar la mayor parte del valor y la liquidez del mercado cripto, por lo que sus movimientos sirven como contexto, no como una orden automática. Aprenderás qué mide la dominancia de BTC, cómo cambia la correlación con las altcoins y qué representa el market cap total.",
-      learningObjectives: ["Comprender qué es la BTC Dominance y por qué importa", "Entender la correlación entre BTC y las altcoins", "Leer el market cap total del mercado crypto", "Identificar cuándo las altcoins se desacoplan de BTC"],
+      description: "Bitcoin suele concentrar la mayor parte del valor y la liquidez del mercado cripto. En el laboratorio moverás tú mismo la dominancia de BTC y verás la barra del mercado repartirse entre Bitcoin y las altcoins, hasta inducir hacia dónde rota el capital cuando la dominancia sube o baja.",
+      learningObjectives: ["Inducir, moviendo la dominancia, hacia dónde rota el capital entre BTC y altcoins", "Leer la BTC Dominance como reparto del market cap, no como precio", "Entender la correlación entre BTC y las altcoins", "Reconocer que dominancia bajando no confirma por sí sola una altseason"],
       keyConcepts: ["BTC dominance", "altcoins", "market cap", "correlación", "altcoin season", "BTC como reserva de valor", "total crypto market cap", "desacoplamiento"],
       cryptoConcepts: ["BTC dominance index", "altseason indicator", "total market cap", "BTC.D chart"],
       referenceAssets: ["BTC/USDT", "ETH/USDT", "BTC.D (Dominance)", "TOTAL (Market Cap)"],
@@ -265,7 +284,7 @@ export const level3Crypto: Level3CryptoConfig = {
         { id: "m3c2_intro_4", character: "aria", type: "warning", text: "La Señorita FOMO acaba de mostrar cómo se pierden carteras completas en crypto. Un altcoin que subió 200% en 3 días puede caer 80% en los próximos 3 días." },
       ],
       outroDialogues: [
-        { id: "m3c2_outro_1", character: "aria", type: "tip", text: "Checklist antes de operar cualquier altcoin: 1) ¿En qué fase está BTC? 2) ¿BTC.D subiendo o bajando? 3) ¿El market cap total en expansión o contracción?" },
+        { id: "m3c2_outro_1", character: "aria", type: "tip", text: "Lo viste tú mismo: cuando la dominancia sube, la barra de BTC se come a las altcoins; cuando baja, el capital rota hacia ellas. Por eso el primer paso antes de una altcoin es mirar la dirección de la BTC.D, no su precio suelto." },
         { id: "m3c2_outro_2", character: "el_viejo_marco", type: "diary", text: "Vi traders perder fortunas en altcoins que 'siempre van a existir'. Muchas no existen hoy.", footnote: "— Entrada #14 desde Nexus" },
       ],
       quiz: [
@@ -295,17 +314,42 @@ export const level3Crypto: Level3CryptoConfig = {
         ], explanation: "El precio unitario no indica potencial. Lo relevante es el market cap total y cuánto capital necesitaría entrar para que el precio doble." },
       ],
       minigame: {
-        id: "mg_m3c2", type: "dominance_gauge", title: "El Indicador de Dominancia",
-        description: "Observa BTC Dominance y precio BTC. Identifica la fase del ciclo en cada momento.",
-        instructions: "Se mostrarán 6 momentos del mercado. Para cada uno: ¿BTC, altcoins, o esperar? 4 de 6 para aprobar.",
-        config: { scenarios: [
-          { btcDominance: 72, btcTrend: "bajista", answer: "esperar" },
-          { btcDominance: 45, btcTrend: "alcista_consolidacion", answer: "altcoins" },
-          { btcDominance: 58, btcTrend: "alcista_fuerte", answer: "btc" },
-          { btcDominance: 65, btcTrend: "lateral", answer: "esperar" },
-          { btcDominance: 38, btcTrend: "lateral", answer: "altcoins_con_cuidado" },
-          { btcDominance: 55, btcTrend: "alcista_post_halving", answer: "btc_primero" },
-        ], requiredCorrect: 4 },
+        id: "mg_m3c2", type: "level_lab", title: "El Reparto del Mercado",
+        description: "Mueve la dominancia de BTC y observa cómo la barra del mercado se reparte entre Bitcoin y las altcoins.",
+        instructions: "Explora el control de dominancia y mira la etiqueta que emerge. Luego resuelve los retos moviéndola a cada extremo.",
+        config: {
+          region: "meter",
+          regionLabel: "Cuánto del mercado es BTC",
+          thresholdAt: 50,
+          roleName: "",
+          inputs: [
+            { key: "dominancia", label: "Dominancia de BTC (BTC.D %)", min: 30, max: 75, start: 55, accent: "#F7931A" },
+          ],
+          strength: { base: 0, weights: { dominancia: 1 } },
+          maxStrength: 100,
+          strengthWords: [
+            { min: 0, text: "Altcoins mandan", tone: "good" },
+            { min: 48, text: "Reparto parejo", tone: "good" },
+            { min: 60, text: "BTC concentra el capital", tone: "bad" },
+          ],
+          challenges: [
+            { id: "c_m3c2_1", prompt: "Haz que las altcoins ganen terreno: lleva la dominancia hacia abajo.", compare: "lte", target: 44, successNote: "Con la dominancia baja, la barra deja espacio a las altcoins: el capital rota hacia ellas." },
+            { id: "c_m3c2_2", prompt: "Ahora haz que Bitcoin concentre el capital: sube la dominancia.", compare: "gte", target: 62, successNote: "Dominancia alta = BTC se come la barra. En estos tramos las altcoins suelen quedar rezagadas." },
+          ],
+          question: {
+            prompt: "Cuando la BTC Dominance baja de forma sostenida, ¿qué sugiere?",
+            options: [
+              { id: "a", text: "Que el capital está rotando desde BTC hacia las altcoins", correct: true, feedback: "Correcto. Lo viste en la barra: menos dominancia deja más mercado para las altcoins." },
+              { id: "b", text: "Que el precio de Bitcoin sube con seguridad", correct: false, feedback: "La dominancia mide reparto, no precio: BTC puede subir o bajar con dominancia cayendo." },
+              { id: "c", text: "Que hay que comprar la altcoin con el precio unitario más bajo", correct: false, feedback: "El precio unitario no dice nada; lo que cambió fue el reparto del market cap." },
+              { id: "d", text: "Que el mercado va a cerrar por la noche", correct: false, feedback: "El mercado crypto no cierra; la dominancia es solo el reparto del capital." },
+            ],
+          },
+          scene: {
+            alt: "Plaza del Bloque de Ciudad Bitcoin, pantallas de mercado",
+            backdrop: { image: "/assets/missions/m3c_2-nexus.webp" },
+          },
+        },
         passingScore: 66, virtualCapitalReward: 150,
       },
       rewards: { xp: 160, virtualCapital: 250, badge: "observador_de_dominancia" },
@@ -313,8 +357,8 @@ export const level3Crypto: Level3CryptoConfig = {
     // ── MISIÓN 3C.3 — Los Ciclos de la Luna ──
     {
       id: "m3c_3", order: 4, title: "Los Ciclos de la Luna", subtitle: "Crypto tiene estaciones. Aprender a reconocerlas lo cambia todo",
-      description: "El mercado crypto opera en ciclos de 4 años vinculados al halving de Bitcoin. Aprenderás las 4 fases del ciclo, qué es el halving, y cómo el Fear & Greed Index captura el estado emocional del mercado.",
-      learningObjectives: ["Identificar las 4 fases del ciclo del mercado crypto", "Entender qué es el halving de Bitcoin y su impacto histórico", "Usar el Fear & Greed Index como indicador de sentimiento", "Reconocer señales de techo y suelo de mercado"],
+      description: "El mercado crypto respira en ciclos vinculados al halving de Bitcoin. En el laboratorio moverás tú mismo el termómetro de sentimiento (Fear & Greed) y verás emerger las zonas — desde el miedo extremo hasta la codicia extrema — hasta inducir por qué los extremos suelen marcar suelos y techos.",
+      learningObjectives: ["Inducir, moviendo el termómetro, por qué el miedo extremo y la codicia extrema marcan giros", "Identificar las 4 fases del ciclo del mercado crypto", "Entender qué es el halving de Bitcoin y su impacto en la oferta", "Usar el Fear & Greed Index como indicador contrarian en extremos"],
       keyConcepts: ["halving", "ciclo de 4 años", "acumulación", "distribución", "impulso", "capitulación", "Fear & Greed Index", "on-chain", "ATH"],
       cryptoConcepts: ["halving de Bitcoin", "ciclo de 4 años", "Fear & Greed Index", "supply shock", "miner selling"],
       referenceAssets: ["BTC/USDT"],
@@ -326,7 +370,7 @@ export const level3Crypto: Level3CryptoConfig = {
         { id: "m3c3_intro_4", character: "aria", type: "warning", text: "Don Pánico describió el error más costoso del ciclo bajista: vender en capitulación. Históricamente, 'crypto ha muerto' ha aparecido en cada ciclo bajista. En cada caso, el mercado se recuperó." },
       ],
       outroDialogues: [
-        { id: "m3c3_outro_1", character: "aria", type: "tip", text: "Fear & Greed Index: 0-25 = Miedo Extremo (históricamente buenas zonas de compra LP), 25-50 = Miedo, 50-75 = Codicia, 75-100 = Codicia Extrema (históricamente malas zonas de entrada)." },
+        { id: "m3c3_outro_1", character: "aria", type: "tip", text: "Lo llevaste tú a los dos extremos: cuando el termómetro marca miedo extremo, casi todos ya vendieron (suelo histórico); cuando marca codicia extrema, casi todos ya compraron (techo histórico). En los extremos, el sentimiento funciona al revés de lo que grita." },
         { id: "m3c3_outro_2", character: "el_viejo_marco", type: "diary", text: "El halving no garantiza nada. Lo que sí cambia es la oferta: los mineros reciben menos BTC por bloque. Si la demanda se mantiene y la oferta baja, la presión es alcista. Pero el timing nunca es exacto.", footnote: "— Entrada #24 desde Nexus" },
       ],
       quiz: [
@@ -356,19 +400,43 @@ export const level3Crypto: Level3CryptoConfig = {
         ], explanation: "Post-halving, mineros con costos altos ganan la mitad de BTC por el mismo costo. Muchos deben vender reservas para pagar facturas, creando presión vendedora temporal." },
       ],
       minigame: {
-        id: "mg_m3c3", type: "cycle_mapper", title: "Mapa del Ciclo",
-        description: "Identifica en qué fase del ciclo ocurrió cada evento marcado en el gráfico histórico de BTC.",
-        instructions: "Se mostrarán 8 puntos en el gráfico de BTC 2017-2024. Para cada punto: ¿acumulación, impulso, distribución, o capitulación? 6 de 8 para aprobar.",
-        config: { chartRange: "2017-2024", events: [
-          { date: "2018-12", price: 3200, answer: "capitulacion" },
-          { date: "2019-06", price: 13000, answer: "impulso" },
-          { date: "2020-03", price: 3800, answer: "capitulacion" },
-          { date: "2020-10", price: 12000, answer: "acumulacion_tardia" },
-          { date: "2021-04", price: 65000, answer: "distribucion_inicial" },
-          { date: "2021-11", price: 69000, answer: "distribucion_maxima" },
-          { date: "2022-06", price: 17500, answer: "capitulacion" },
-          { date: "2023-10", price: 35000, answer: "acumulacion" },
-        ], requiredCorrect: 6 },
+        id: "mg_m3c3", type: "level_lab", title: "El Termómetro del Mercado",
+        description: "Mueve el sentimiento del mercado (Fear & Greed) y observa qué zona emerge en el termómetro.",
+        instructions: "Explora el control y mira las zonas. Luego lleva el mercado a cada extremo para descubrir dónde suelen estar los suelos y los techos.",
+        config: {
+          region: "meter",
+          regionLabel: "Termómetro de sentimiento",
+          thresholdAt: 50,
+          roleName: "",
+          inputs: [
+            { key: "sentimiento", label: "Fear & Greed Index (0 = pánico, 100 = euforia)", min: 0, max: 100, start: 50, accent: "#F7931A" },
+          ],
+          strength: { base: 0, weights: { sentimiento: 1 } },
+          maxStrength: 100,
+          strengthWords: [
+            { min: 0, text: "Miedo extremo · suelo histórico", tone: "good" },
+            { min: 26, text: "Miedo", tone: "good" },
+            { min: 50, text: "Codicia", tone: "bad" },
+            { min: 76, text: "Codicia extrema · techo histórico", tone: "bad" },
+          ],
+          challenges: [
+            { id: "c_m3c3_1", prompt: "Lleva el mercado al miedo extremo, la zona que históricamente coincide con suelos.", compare: "lte", target: 18, successNote: "Miedo extremo: casi todos ya vendieron. Históricamente, buenas zonas de acumulación de largo plazo." },
+            { id: "c_m3c3_2", prompt: "Ahora lleva el mercado a la codicia extrema, la zona de mayor peligro.", compare: "gte", target: 85, successNote: "Codicia extrema: casi todos ya compraron. Cuando no queda quién compre, el precio suele girar." },
+          ],
+          question: {
+            prompt: "¿Por qué la codicia extrema es una señal de precaución y no de compra?",
+            options: [
+              { id: "a", text: "Porque si casi todos ya compraron, queda poco capital nuevo para seguir subiendo", correct: true, feedback: "Correcto. En los extremos el sentimiento actúa como contrarian: lo viste al llevar el termómetro arriba." },
+              { id: "b", text: "Porque el Fear & Greed prohíbe operar por encima de 75", correct: false, feedback: "No prohíbe nada; es un indicador de sentimiento, no una regla dura." },
+              { id: "c", text: "Porque la codicia extrema significa que Bitcoin ya no existe", correct: false, feedback: "El índice mide emoción del mercado, no la existencia del activo." },
+              { id: "d", text: "Porque el halving ocurre siempre en codicia extrema", correct: false, feedback: "El halving sigue el calendario de bloques, no el termómetro de sentimiento." },
+            ],
+          },
+          scene: {
+            alt: "Ciudad Bitcoin de noche, pantallas de sentimiento del mercado",
+            backdrop: { image: "/assets/missions/m3c_3-ciclo.webp" },
+          },
+        },
         passingScore: 75, virtualCapitalReward: 160,
       },
       rewards: { xp: 170, virtualCapital: 250, badge: "cronista_del_ciclo" },
@@ -376,8 +444,8 @@ export const level3Crypto: Level3CryptoConfig = {
     // ── MISIÓN 3C.4 — El Lenguaje de los Bloques ──
     {
       id: "m3c_4", order: 5, title: "El Lenguaje de los Bloques", subtitle: "Análisis técnico aplicado a la volatilidad crypto",
-      description: "Aplicas el AT del Nivel 2 al contexto crypto: timeframes, ATR para medir volatilidad, volumen spot vs derivados, y niveles históricos de BTC.",
-      learningObjectives: ["Elegir el timeframe correcto según operación crypto", "Usar ATR para dimensionar Stop Loss", "Distinguir volumen spot y derivados", "Identificar niveles históricos clave de BTC"],
+      description: "Aplicas el AT del Nivel 2 a la volatilidad crypto. En el laboratorio moverás la volatilidad diaria (ATR) y tu Stop Loss, y verás en un medidor si tu stop tiene margen sobre el ruido o si queda atrapado dentro de él — hasta inducir por qué la volatilidad dimensiona el stop.",
+      learningObjectives: ["Inducir, moviendo ATR y stop, por qué un stop menor que el ruido diario se ejecuta por volatilidad normal", "Usar el ATR para dimensionar el Stop Loss y el tamaño de posición", "Comprender la jerarquía de timeframes (HTF marca contexto, LTF afina)", "Distinguir volumen spot y derivados"],
       keyConcepts: ["ATR", "timeframes en crypto", "volumen spot", "volumen derivados", "open interest", "funding rate", "niveles históricos", "HTF vs LTF"],
       cryptoConcepts: ["ATR para SL en crypto", "HTF/LTF", "funding rate", "open interest"],
       referenceAssets: ["BTC/USDT", "ETH/USDT", "BTC perpetual futures"],
@@ -388,7 +456,7 @@ export const level3Crypto: Level3CryptoConfig = {
         { id: "m3c4_intro_3", character: "el_especulador", type: "enemy_taunt", text: "Timeframes, ATR, funding rate... Yo simplemente abro el gráfico de 1 minuto y opero lo que veo. Por eso a veces gano 500% y pierdo 400% al día siguiente." },
       ],
       outroDialogues: [
-        { id: "m3c4_outro_1", character: "aria", type: "tip", text: "Framework de timeframes para crypto: Contexto (1D, 1W) → Zona de entrada (4H, 1H) → Afinar entrada (15min, 5min). Nunca operes sin revisar el HTF primero." },
+        { id: "m3c4_outro_1", character: "aria", type: "tip", text: "Lo viste en el medidor: no existe un stop 'pequeño' o 'grande' en abstracto — solo un stop con margen sobre el ATR o sin él. La volatilidad dimensiona el stop, y el stop dimensiona la posición. El framework de timeframes te da el contexto: HTF (1D, 1W) primero, luego afinas en 4H y 1H." },
         { id: "m3c4_outro_2", character: "el_viejo_marco", type: "diary", text: "El funding rate positivo alto significa que los long están pagando a los short. Cuando todos apuestan a la suba, el mercado a veces hace lo contrario.", footnote: "— Entrada #35 desde Nexus" },
       ],
       quiz: [
@@ -418,10 +486,43 @@ export const level3Crypto: Level3CryptoConfig = {
         ], explanation: "El ATH previo es la resistencia más fuerte — donde holders en pérdida están breakeven. Al romperse, esa presión vendedora desaparece y el activo entra en price discovery." },
       ],
       minigame: {
-        id: "mg_m3c4", type: "timeframe_switcher", title: "El Análisis Multicapa",
-        description: "Analiza BTC/USDT en 3 timeframes y construye tu tesis de trading completa.",
-        instructions: "Revisa 1W (macro), 4H (contexto), 1H (entrada). Responde preguntas sobre cada capa.",
-        config: { asset: "BTC/USDT", timeframes: ["1W", "4H", "1H"], questionsPerTF: 2, requiredCorrect: 5 },
+        id: "mg_m3c4", type: "level_lab", title: "El Stop contra el Ruido",
+        description: "Mueve la volatilidad diaria (ATR) y tu Stop Loss; el medidor muestra si tu stop tiene margen sobre el ruido o queda dentro de él.",
+        instructions: "Explora ambos controles y observa la etiqueta. Luego resuelve los retos: primero dale margen a tu stop, después sube la volatilidad y mira qué ocurre.",
+        config: {
+          region: "meter",
+          regionLabel: "Margen del stop sobre el ruido",
+          thresholdAt: 2,
+          roleName: "",
+          inputs: [
+            { key: "stop", label: "Tu Stop Loss ($ miles)", min: 1, max: 8, start: 3, accent: "#2563eb" },
+            { key: "atr", label: "Volatilidad diaria · ATR ($ miles)", min: 1, max: 6, start: 2, accent: "#dc2626" },
+          ],
+          strength: { base: 0, weights: { stop: 1, atr: -1.2 } },
+          maxStrength: 6,
+          strengthWords: [
+            { min: -99, text: "Stop dentro del ruido · te barren", tone: "bad" },
+            { min: 0, text: "Stop al filo del ruido", tone: "bad" },
+            { min: 2, text: "Stop fuera del ruido · aguanta", tone: "good" },
+          ],
+          challenges: [
+            { id: "c_m3c4_1", prompt: "La volatilidad está fija: dale a tu stop margen suficiente para aguantar el ruido diario.", lock: "atr", compare: "gte", target: 2, successNote: "Un stop con margen sobre el ATR no se ejecuta por volatilidad normal — solo si el escenario realmente se invalida." },
+            { id: "c_m3c4_2", prompt: "Ahora tu stop queda fijo y la volatilidad sube: llévala hasta que tu stop quede dentro del ruido.", lock: "stop", compare: "lte", target: 0, successNote: "Mismo stop, más volatilidad: el ruido se lo traga. Por eso un ATR mayor exige un stop mayor y una posición menor." },
+          ],
+          question: {
+            prompt: "El ATR diario de BTC sube y no cambias tu Stop Loss. ¿Qué es lo más probable?",
+            options: [
+              { id: "a", text: "El stop se ejecuta por volatilidad normal, aunque tu análisis fuera correcto", correct: true, feedback: "Correcto. Lo viste: al subir el ATR con el stop fijo, el margen desaparece y el ruido barre el stop." },
+              { id: "b", text: "Nada: el ATR no tiene relación con el Stop Loss", correct: false, feedback: "El medidor mostró justo lo contrario: el ATR es el ruido contra el que compite tu stop." },
+              { id: "c", text: "El precio sube exactamente el valor del ATR", correct: false, feedback: "El ATR mide cuánto se mueve el activo, no la dirección." },
+              { id: "d", text: "Tu posición se vuelve automáticamente más grande", correct: false, feedback: "El tamaño de posición no cambia solo; eres tú quien debe reducirlo cuando el stop se ensancha." },
+            ],
+          },
+          scene: {
+            alt: "Sala de gráficos de Ciudad Bitcoin, velas de BTC",
+            backdrop: { image: "/assets/missions/m3c_4-bloques.webp" },
+          },
+        },
         passingScore: 80, virtualCapitalReward: 175,
       },
       rewards: { xp: 180, virtualCapital: 300 },
