@@ -23,6 +23,8 @@ export type MinigameType =
   | "match_term"
   | "supply_demand_lab"
   | "gauge_lab"
+  | "candle_lab"
+  | "structure_lab"
 
 export type QuizDifficulty = "basico" | "intermedio" | "avanzado"
 
@@ -281,11 +283,11 @@ export const level1: LevelConfig = {
       title: "Las Velas del Tiempo",
       subtitle: "Cada vela cuenta una historia de 4 precios",
       description:
-        "Aprenderás a leer velas japonesas: la unidad de información más fundamental en el análisis técnico. Entenderás qué representa cada parte de una vela y la diferencia entre alcista y bajista.",
+        "Descubre la vela japonesa construyéndola tú: mueve la apertura, el cierre y los extremos y mira cómo nacen el color, el cuerpo y las mechas.",
       learningObjectives: [
-        "Identificar las 4 partes de una vela japonesa (apertura, cierre, máximo, mínimo)",
-        "Distinguir una vela alcista de una bajista",
-        "Interpretar el tamaño del cuerpo y las mechas",
+        "Descubrir que el color de la vela sale de comparar el cierre con la apertura",
+        "Ver que el cuerpo es la distancia entre apertura y cierre, y las mechas lo que sobra hasta los extremos",
+        "Reconocer una mecha larga como un rechazo de precios",
       ],
       keyConcepts: ["vela japonesa", "apertura", "cierre", "máximo", "mínimo", "cuerpo", "mecha", "alcista", "bajista"],
       requiredMissions: ["m1_1"],
@@ -294,20 +296,20 @@ export const level1: LevelConfig = {
           id: "m1_2_intro_1",
           character: "el_viejo_marco",
           type: "diary",
-          text: "Los japoneses del siglo XVII ya usaban esto para operar arroz. Cada vela es una fotografía de la batalla entre compradores y vendedores durante un período de tiempo. Aprende a leerlas y el gráfico te hablará.",
+          text: "Los japoneses del siglo XVII ya operaban arroz con esto. Cada vela es una foto de la batalla entre compradores y vendedores. Hoy no te la voy a explicar: te doy los cuatro precios y tú armas la vela. Mira qué nace de cada uno.",
           footnote: "— Entrada #7, sobre las velas de Munehisa Homma",
         },
         {
           id: "m1_2_intro_2",
           character: "aria",
           type: "aria_message",
-          text: "Una vela japonesa registra 4 precios: Apertura (O), Máximo (H), Mínimo (L) y Cierre (C). El cuerpo muestra la diferencia entre apertura y cierre. Las mechas muestran los extremos alcanzados. Si el cierre es mayor que la apertura, la vela es verde (alcista). Si el cierre es menor, es roja (bajista).",
+          text: "Tienes cuatro mandos: apertura, cierre, máximo y mínimo. La vela se dibuja sola con lo que pongas. No te digo qué la pone verde ni qué es una mecha — muévelos y descúbrelo tú.",
         },
         {
           id: "m1_2_intro_3",
           character: "la_señorita_fomo",
           type: "enemy_taunt",
-          text: "¿Para qué aprender todo eso? ¡Si el precio sube, todos compran! No necesitas entender velas, solo seguir a la multitud... ¿verdad?",
+          text: "¿Para qué tanto detalle? ¡Si el precio sube, todos compran! Solo hay que seguir a la multitud... ¿verdad?",
         },
       ],
       outroDialogues: [
@@ -315,28 +317,28 @@ export const level1: LevelConfig = {
           id: "m1_2_outro_1",
           character: "aria",
           type: "aria_message",
-          text: "Ya puedes leer la historia básica de cada vela. Esto es la base de todo análisis técnico. Pronto verás patrones formados por múltiples velas.",
+          text: "Lo viste sin que te lo dictara: la vela es verde cuando el cierre queda por encima de la apertura, roja al revés. El cuerpo es esa distancia, y las mechas son lo que el precio estiró hasta los extremos y no sostuvo. Esa es la base de todo el análisis técnico.",
         },
         {
           id: "m1_2_outro_2",
           character: "el_especulador",
           type: "enemy_taunt",
-          text: "Interesante. Yo también sé leer velas... cuando quiero. Pero prefiero operar por emoción. Es más emocionante.",
+          text: "Sí, sí, muy bonito. Yo también sé leer velas... cuando quiero. Prefiero operar por emoción, es más emocionante. Y más caro.",
         },
       ],
       quiz: [
         {
           id: "q_m1_2_01",
           difficulty: "basico",
-          conceptEvaluated: "Componentes de la vela japonesa",
-          question: "¿Cuántos precios distintos registra una vela japonesa?",
+          conceptEvaluated: "El color sale de cierre vs apertura",
+          question: "En tu vela dejaste la apertura fija y subiste el cierre por encima de ella. ¿De qué color se puso?",
           options: [
-            { id: "a", text: "1 — solo el precio de cierre", isCorrect: false, feedback: "El cierre es importante, pero no es el único precio registrado." },
-            { id: "b", text: "2 — apertura y cierre", isCorrect: false, feedback: "Apertura y cierre forman el cuerpo, pero falta información de los extremos." },
-            { id: "c", text: "4 — apertura, máximo, mínimo y cierre", isCorrect: true, feedback: "Correcto. OHLC: Open, High, Low, Close." },
-            { id: "d", text: "6 — incluye volumen y precio promedio", isCorrect: false, feedback: "El volumen y precio promedio son datos adicionales, no parte de la vela." },
+            { id: "a", text: "Verde: el cierre quedó por encima de la apertura", isCorrect: true, feedback: "Correcto. Es lo que viste al mover el cierre: cierre arriba de la apertura = verde (alcista)." },
+            { id: "b", text: "Roja", isCorrect: false, feedback: "Roja es cuando el cierre queda por DEBAJO de la apertura." },
+            { id: "c", text: "Depende del volumen", isCorrect: false, feedback: "El color no mira el volumen, solo compara cierre con apertura." },
+            { id: "d", text: "Depende del máximo", isCorrect: false, feedback: "El máximo hace la mecha superior, no el color." },
           ],
-          explanation: "OHLC: Open (Apertura), High (Máximo), Low (Mínimo), Close (Cierre). Son los 4 datos que componen cada vela. El cuerpo es la diferencia entre apertura y cierre; las mechas son los extremos.",
+          explanation: "El color de la vela sale de una sola comparación: cierre contra apertura. Arriba = verde, abajo = roja.",
         },
         {
           id: "q_m1_2_02",
@@ -380,18 +382,48 @@ export const level1: LevelConfig = {
       ],
       minigame: {
         id: "mg_m1_2",
-        type: "candlestick_builder",
-        title: "Construye la Vela",
-        description: "Usa los cuatro precios OHLC para calcular la dirección, el cuerpo y las dos mechas de cada vela.",
-        instructions: "Recibirás O, H, L y C. Calcula: cuerpo = |C−O|, mecha superior = H−mayor(O,C), mecha inferior = menor(O,C)−L. Tienes 3 intentos por vela y necesitas 70% para aprobar.",
+        type: "candle_lab",
+        title: "Construye tu Vela",
+        description: "Mueve la apertura, el cierre, el máximo y el mínimo. La vela se dibuja sola. Descubre qué nace de cada uno.",
+        instructions: "Arrastra los cuatro precios y observa la vela. Resuelve los dos retos y responde qué la pone verde.",
         config: {
-          scenarios: [
-            { open: 100, high: 120, low: 90, close: 115, expectedColor: "green" },
-            { open: 110, high: 115, low: 85, close: 88, expectedColor: "red" },
-            { open: 100, high: 130, low: 95, close: 101, expectedColor: "green", note: "Mecha superior larga" },
+          priceMin: 2,
+          priceMax: 20,
+          open: { start: 11 },
+          close: { start: 11 },
+          high: { start: 12 },
+          low: { start: 10 },
+          scene: {
+            alt: "Taller de Velas",
+            backdrop: { image: "/assets/missions/m1_2-workshop.webp" },
+          },
+          challenges: [
+            {
+              id: "verde",
+              metric: "direction",
+              compare: "gte",
+              target: 2,
+              prompt: "Haz que la vela sea verde (alcista).",
+              successNote: "El cierre quedó por encima de la apertura y la vela se puso verde. El color sale de comparar cierre con apertura.",
+            },
+            {
+              id: "mecha",
+              metric: "upperWick",
+              compare: "gte",
+              target: 3,
+              prompt: "Ahora dale una mecha superior larga: sube el máximo bien por encima del cuerpo.",
+              successNote: "La mecha superior es lo que el precio subió por encima del cuerpo y no sostuvo: un rechazo de precios altos.",
+            },
           ],
-          maxAttempts: 3,
-          gridHeight: 300,
+          question: {
+            prompt: "En tu vela, ¿qué hace que sea verde (alcista)?",
+            options: [
+              { id: "a", text: "Que el cierre quede por encima de la apertura", correct: true, feedback: "Eso viste: subir el cierre sobre la apertura la ponía verde. Acabas de descubrir el color de la vela." },
+              { id: "b", text: "Que el máximo sea muy alto", correct: false, feedback: "El máximo hace la mecha superior, no el color. Una vela puede tener mecha larga y ser roja." },
+              { id: "c", text: "Que el cuerpo sea grande", correct: false, feedback: "Un cuerpo grande puede ser verde o rojo; el color lo decide cierre vs apertura." },
+              { id: "d", text: "Que el mínimo sea muy bajo", correct: false, feedback: "El mínimo hace la mecha inferior. El color solo mira cierre contra apertura." },
+            ],
+          },
         },
         passingScore: 70,
         virtualCapitalReward: 75,
@@ -410,11 +442,11 @@ export const level1: LevelConfig = {
       title: "El Lenguaje del Precio",
       subtitle: "Tendencias, rangos y la trampa de las emociones",
       description:
-        "Aprenderás a identificar si el mercado está en tendencia alcista, tendencia bajista o en rango lateral. Conocerás tu primer villano real: tus propias emociones.",
+        "Descubre la tendencia moviéndola tú: inclina la estructura de máximos y mínimos y mira cómo el gráfico —y su etiqueta— pasan de lateral a alcista o bajista.",
       learningObjectives: [
-        "Identificar tendencias alcistas, bajistas y movimientos laterales",
-        "Entender qué son los máximos y mínimos (HH, HL, LH, LL)",
-        "Reconocer cómo el miedo y la codicia afectan las decisiones de trading",
+        "Descubrir que una tendencia alcista es una escalera de máximos y mínimos que suben",
+        "Distinguir alcista, bajista y lateral por la dirección de esa estructura",
+        "Reconocer cómo el FOMO y el pánico empujan a operar contra la estructura",
       ],
       keyConcepts: ["tendencia alcista", "tendencia bajista", "rango lateral", "HH/HL/LH/LL", "sesgo emocional", "FOMO", "pánico"],
       requiredMissions: ["m1_2"],
@@ -430,7 +462,7 @@ export const level1: LevelConfig = {
           id: "m1_3_intro_2",
           character: "aria",
           type: "aria_message",
-          text: "Una tendencia alcista forma Higher Highs (HH) y Higher Lows (HL): cada pico y cada valle son más altos que el anterior. Una bajista forma Lower Highs (LH) y Lower Lows (LL). Un rango lateral no tiene una dirección clara.",
+          text: "No te voy a dar los nombres todavía. Tienes un control que sube o baja cada nuevo máximo y mínimo. Muévelo y mira qué le pasa al gráfico y a su etiqueta. ¿Qué tiene que hacer la estructura para que se llame 'alcista'?",
         },
         {
           id: "m1_3_intro_3",
@@ -450,7 +482,7 @@ export const level1: LevelConfig = {
           id: "m1_3_outro_1",
           character: "aria",
           type: "tip",
-          text: "Recuerda: FOMO (Fear Of Missing Out) y pánico son los dos enemigos más costosos del trader. La Señorita FOMO te hace entrar tarde en una tendencia. Don Pánico te hace salir en el peor momento. Tu arma contra ellos es el análisis.",
+          text: "Lo armaste tú: cuando cada máximo y cada mínimo quedan más altos que el anterior, eso es una tendencia alcista (los HH y HL); al revés, bajista; sin dirección, lateral. Y cuidado: el FOMO te hace entrar tarde en la tendencia y el pánico te saca en el peor momento. Tu arma contra ellos es leer la estructura.",
         },
         {
           id: "m1_3_outro_2",
@@ -464,15 +496,15 @@ export const level1: LevelConfig = {
         {
           id: "q_m1_3_01",
           difficulty: "basico",
-          conceptEvaluated: "Identificación de tendencia alcista",
-          question: "¿Cuál es la característica de una tendencia alcista?",
+          conceptEvaluated: "Qué define una tendencia alcista",
+          question: "Cuando en el laboratorio hiciste que cada nuevo máximo y mínimo quedara más alto que el anterior, ¿qué etiqueta apareció?",
           options: [
-            { id: "a", text: "El precio sube sin bajar nunca", isCorrect: false, feedback: "Las tendencias siempre tienen retrocesos — no suben en línea recta." },
-            { id: "b", text: "Cada máximo y mínimo son más altos que el anterior (HH y HL)", isCorrect: true, feedback: "Exacto. La estructura de HH y HL confirma una tendencia alcista." },
-            { id: "c", text: "El precio se mueve dentro de un rango fijo", isCorrect: false, feedback: "Eso describe un rango lateral, no una tendencia." },
-            { id: "d", text: "El precio sube solo en días de noticias positivas", isCorrect: false, feedback: "Las tendencias no dependen de noticias — son la estructura del mercado." },
+            { id: "a", text: "Alcista: la escalera de máximos y mínimos sube", isCorrect: true, feedback: "Correcto. Eso viste: máximos y mínimos ascendentes = tendencia alcista." },
+            { id: "b", text: "Bajista", isCorrect: false, feedback: "Bajista aparece cuando cada máximo y mínimo queda más BAJO que el anterior." },
+            { id: "c", text: "Lateral", isCorrect: false, feedback: "Lateral es cuando no suben ni bajan con claridad." },
+            { id: "d", text: "Ninguna: la etiqueta no cambia", isCorrect: false, feedback: "La etiqueta sí cambiaba con la inclinación que le dabas a la estructura." },
           ],
-          explanation: "Una tendencia alcista se confirma con Higher Highs (cada máximo supera al anterior) y Higher Lows (cada corrección termina más arriba que la anterior). Esa estructura de picos y valles ascendentes es la firma de la tendencia.",
+          explanation: "Una tendencia alcista es una estructura de máximos y mínimos que suben (HH y HL). La fabricaste inclinando el control hacia arriba.",
         },
         {
           id: "q_m1_3_02",
@@ -503,21 +535,47 @@ export const level1: LevelConfig = {
       ],
       minigame: {
         id: "mg_m1_3",
-        type: "chart_tap",
-        title: "Clasifica la Tendencia",
-        description: "Observa el gráfico y decide: ¿alcista, bajista o lateral?",
-        instructions: "Se mostrarán 5 gráficos distintos. Para cada uno, elige si la estructura del precio es alcista, bajista o lateral. Analiza los máximos y mínimos antes de responder.",
+        type: "structure_lab",
+        title: "El Observatorio de Tendencias",
+        description: "Inclina cada nuevo máximo y mínimo. Mira cómo el gráfico y su etiqueta cambian. Descubre qué define cada tendencia.",
+        instructions: "Mueve el control y observa la estructura. Resuelve los dos retos y responde qué define una tendencia alcista.",
         config: {
-          charts: [
-            { id: "ct1", type: "bullish", hint: "Observa los máximos y mínimos ascendentes" },
-            { id: "ct2", type: "bearish", hint: "Cada rebote es más bajo que el anterior" },
-            { id: "ct3", type: "sideways", hint: "El precio rebota entre dos niveles" },
-            { id: "ct4", type: "bullish", hint: "Tras el retroceso, el precio recupera y construye un nuevo HH" },
-            { id: "ct5", type: "bearish", hint: "Cada intento de recuperación termina por debajo del anterior" },
+          slope: { min: -6, max: 6, start: 0 },
+          points: 7,
+          trendThreshold: 8,
+          scene: {
+            alt: "Observatorio de Tendencias",
+            backdrop: { image: "/assets/missions/m1_3-observatory.webp" },
+          },
+          challenges: [
+            {
+              id: "alcista",
+              metric: "trend",
+              compare: "gte",
+              target: 12,
+              prompt: "Fabrica una tendencia alcista.",
+              successNote: "Subiste cada máximo y mínimo por encima del anterior: eso es una tendencia alcista (HH y HL).",
+            },
+            {
+              id: "bajista",
+              metric: "trend",
+              compare: "lte",
+              target: -12,
+              prompt: "Ahora fabrica una tendencia bajista.",
+              successNote: "Cada máximo y mínimo quedó más bajo que el anterior: tendencia bajista (LH y LL).",
+            },
           ],
-          timePerChart: 15,
+          question: {
+            prompt: "¿Qué define una tendencia alcista?",
+            options: [
+              { id: "a", text: "Que cada máximo y cada mínimo queden más altos que el anterior", correct: true, feedback: "Eso fabricaste: máximos y mínimos ascendentes. Es la firma de una tendencia alcista." },
+              { id: "b", text: "Que el precio suba sin bajar nunca", correct: false, feedback: "Toda tendencia tiene retrocesos; lo que importa es que la escalera siga subiendo." },
+              { id: "c", text: "Que haya muchas velas verdes", correct: false, feedback: "Puede haber velas rojas dentro de una tendencia alcista; lo que manda es la estructura." },
+              { id: "d", text: "Que salgan noticias buenas", correct: false, feedback: "La tendencia es la estructura del precio, no depende de las noticias." },
+            ],
+          },
         },
-        passingScore: 80,
+        passingScore: 70,
         virtualCapitalReward: 80,
       },
       rewards: {

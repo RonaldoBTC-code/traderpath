@@ -12,6 +12,8 @@ import QuizEngine from "@/components/game/QuizEngine";
 import MatchTermMinigame from "@/components/game/MatchTermMinigame";
 import SupplyDemandLab, { type SupplyDemandLabConfig } from "@/components/game/SupplyDemandLab";
 import GaugeLab, { type GaugeLabConfig } from "@/components/game/GaugeLab";
+import CandleLab, { type CandleLabConfig } from "@/components/game/CandleLab";
+import StructureLab, { type StructureLabConfig } from "@/components/game/StructureLab";
 import ChartTapGame from "@/components/game/ChartTapGame";
 import RiskCalculator from "@/components/game/RiskCalculator";
 import CandlestickBuilder from "@/components/game/CandlestickBuilder";
@@ -64,37 +66,34 @@ function getMissionTutorial(missionId: string): TutorialContent {
       hint: "Fíjate en cuál es mayor: ¿los clientes o las manzanas?",
     },
     m1_2: {
-      title: "Construir Velas Japonesas",
-      learningObjective: "Leer O, H, L y C para calcular la dirección, el cuerpo y las mechas de una vela.",
-      conceptExplanation: "La dirección sale de comparar C con O. El cuerpo mide |C−O|. La mecha superior mide H−mayor(O,C) y la inferior mide menor(O,C)−L.",
-      practicalExample: "Con O=100, H=120, L=90 y C=115: C>O, por eso es alcista. Cuerpo=15, mecha superior=5 y mecha inferior=10.",
+      title: "Construye tu Vela",
+      learningObjective: "Descubrir, armando la vela tú mismo, qué hace su color, su cuerpo y sus mechas.",
+      conceptExplanation: "Tienes cuatro mandos —apertura, cierre, máximo y mínimo— y la vela se dibuja sola con lo que pongas. Nadie te dice qué la pone verde ni qué es una mecha: lo vas a ver moviéndolos.",
+      practicalExample: "Prueba: sube el cierre por encima de la apertura y mira el color. Sube el máximo por encima del cuerpo y mira qué aparece arriba.",
       stepByStepInstructions: [
-        "Lee los cuatro datos entregados: apertura, máximo, mínimo y cierre.",
-        "Compara C con O para elegir alcista o bajista.",
-        "Calcula el cuerpo con |C−O|.",
-        "Calcula la mecha superior con H−mayor(O,C).",
-        "Calcula la mecha inferior con menor(O,C)−L.",
+        "Mueve la apertura y el cierre y observa el color y el cuerpo.",
+        "Mueve el máximo y el mínimo y observa las mechas.",
+        "Reto 1: haz una vela verde.",
+        "Reto 2: dale una mecha superior larga.",
+        "Responde qué hace que la vela sea verde.",
       ],
-      commonMistakes: [
-        "Sumar C y O en vez de calcular su diferencia absoluta.",
-        "Medir una mecha desde el precio equivocado: siempre parte del extremo del cuerpo.",
-      ],
-      hint: "Primero compara C con O. Después usa mayor(O,C) para la mecha superior y menor(O,C) para la inferior.",
+      commonMistakes: ["Creer que el color depende del máximo o del volumen — solo depende de cierre contra apertura."],
+      hint: "Para el color, fíjate solo en una cosa: ¿el cierre quedó por encima o por debajo de la apertura?",
     },
     m1_3: {
-      title: "Identificar Tendencias",
-      learningObjective: "Distinguir si un gráfico muestra tendencia alcista, bajista o lateral analizando la estructura de máximos y mínimos.",
-      conceptExplanation: "Tendencia alcista: los máximos (HH) y mínimos (HL) son cada vez más altos. Bajista: los máximos (LH) y mínimos (LL) son cada vez más bajos. Lateral: el precio oscila sin dirección clara.",
-      practicalExample: "Si el precio hace máximos en $100, $110, $120 y mínimos en $90, $95, $105 → eso es alcista porque cada pico y valle son más altos que el anterior.",
+      title: "El Observatorio de Tendencias",
+      learningObjective: "Descubrir, fabricándola tú, qué distingue una tendencia alcista de una bajista o lateral.",
+      conceptExplanation: "Tienes un control que sube o baja cada nuevo máximo y mínimo del gráfico. La etiqueta (alcista, bajista o lateral) aparece sola según lo que hagas. No te doy la regla: la vas a ver.",
+      practicalExample: "Prueba: sube el control y observa cómo la escalera de picos y valles asciende y la etiqueta cambia. Bájalo y mira qué pasa.",
       stepByStepInstructions: [
-        "Observa el gráfico completo de izquierda a derecha.",
-        "Identifica los picos (máximos) y los valles (mínimos).",
-        "¿Los picos son cada vez más altos? → Alcista.",
-        "¿Los picos son cada vez más bajos? → Bajista.",
-        "¿No hay dirección clara? → Lateral.",
+        "Mueve el control hacia arriba y observa el gráfico y su etiqueta.",
+        "Muévelo hacia abajo y observa de nuevo.",
+        "Reto 1: fabrica una tendencia alcista.",
+        "Reto 2: fabrica una tendencia bajista.",
+        "Responde qué define una tendencia alcista.",
       ],
-      commonMistakes: ["Mirar solo las últimas velas — analiza TODO el gráfico.", "Confundir un retroceso temporal con cambio de tendencia."],
-      hint: "Ignora las velas individuales. Mira la dirección general: ¿el gráfico sube, baja, o va de lado?",
+      commonMistakes: ["Mirar una sola vela — la tendencia es la estructura de TODO el gráfico, no un movimiento suelto."],
+      hint: "Fíjate en los picos y los valles: ¿cada uno queda más alto o más bajo que el anterior?",
     },
     m1_4: {
       title: "El Medidor de Riesgo",
@@ -650,6 +649,16 @@ export default function MissionPage() {
             ) : mission.minigame.type === "gauge_lab" && mission.minigame.config?.challenges ? (
               <GaugeLab
                 config={mission.minigame.config as unknown as GaugeLabConfig}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "candle_lab" && mission.minigame.config?.challenges ? (
+              <CandleLab
+                config={mission.minigame.config as unknown as CandleLabConfig}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "structure_lab" && mission.minigame.config?.challenges ? (
+              <StructureLab
+                config={mission.minigame.config as unknown as StructureLabConfig}
                 onComplete={handleMinigameComplete}
               />
             ) : mission.minigame.type === "chart_tap" && mission.minigame.config?.charts ? (

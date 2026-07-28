@@ -15,6 +15,8 @@ export interface LabChallenge {
   prompt: string;
   /** Clave del control que queda bloqueado durante el reto (opcional). */
   lock?: string;
+  /** Qué magnitud evalúa este reto cuando el lab tiene varias (opcional). */
+  metric?: string;
   compare: "gte" | "lte";
   target: number;
   successNote: string;

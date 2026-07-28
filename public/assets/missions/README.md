@@ -67,6 +67,22 @@ Fuente: distritos del overworld (`AcademyAgoraScene`) para N1 y `src/lib/game/ma
 
 (El medidor de riesgo y el número los dibuja el componente.)
 
+### m1_2 — Taller de Velas · CandleLab
+
+| Pieza | Archivo | Relación | Tamaño rec. | Anclaje |
+|---|---|---|---|---|
+| Fondo (taller) | `m1_2-workshop.webp` | ~4:3 | 1024×768 | Cubre la escena; taller de velas japonesas, acento naranja. Puede ser opaco |
+
+(La vela —cuerpo, mechas, color— la dibuja el componente en vivo según los cuatro precios.)
+
+### m1_3 — Observatorio · StructureLab
+
+| Pieza | Archivo | Relación | Tamaño rec. | Anclaje |
+|---|---|---|---|---|
+| Fondo (observatorio) | `m1_3-observatory.webp` | ~5:3 | 1024×614 | Cubre la escena; observatorio/torre de tendencias, acento violeta. Puede ser opaco |
+
+(El gráfico de estructura y la etiqueta de tendencia los dibuja el componente en vivo.)
+
 ## Cómo se conecta
 
 Cada misión declara sus piezas en `config.scene` (en `src/lib/content/levelX.ts`).
