@@ -45,7 +45,17 @@ Fuente: distritos del overworld (`AcademyAgoraScene`) para N1 y `src/lib/game/ma
 | futures | Ciudad de Contratos | Chicago · Futures Loop | `#F97316` | `#FFD9BC`→`#F8A468` | Reloj de Vencimientos |
 | etfs | Archipiélago Portafolio | Singapur · Investment Bay | `#D946EF` | `#F5D6FB`→`#D89BEE` | Puente de Diversificación |
 
-(N2 comparte la isla de Academia Ágora; su ambientación se asigna al convertir el lote de N2.)
+### Nivel 2 — misiones en la isla de Academia Ágora (mismo cielo diurno)
+
+Cada misión de N2 se ambienta en el distrito de la isla cuyo concepto profundiza:
+
+| Misión | Lugar | Acento | Landmark a evocar |
+|---|---|---|---|
+| m2_1 (zonas O/D) | **Mercado Plaza** | `#33b77a` verde | Plaza de intercambio, zonas del mercado |
+| m2_2 (soporte/resistencia) | **Observatorio** | `#8b72ff` violeta | Torre-observatorio, niveles del precio |
+| m2_3 (patrones de vela) | **Taller de Velas** | `#e8743b` naranja | Taller de velas japonesas |
+
+(m2_4 y m2_5 no se convierten: m2_4 ya es simulador y m2_5 es la elección de mercado.)
 
 ## Piezas por misión (según se van convirtiendo)
 
@@ -82,6 +92,26 @@ Fuente: distritos del overworld (`AcademyAgoraScene`) para N1 y `src/lib/game/ma
 | Fondo (observatorio) | `m1_3-observatory.webp` | ~5:3 | 1024×614 | Cubre la escena; observatorio/torre de tendencias, acento violeta. Puede ser opaco |
 
 (El gráfico de estructura y la etiqueta de tendencia los dibuja el componente en vivo.)
+
+### m2_1 — Mercado Plaza · LevelLab (zonas)
+
+| Pieza | Archivo | Relación | Tamaño rec. | Anclaje |
+|---|---|---|---|---|
+| Fondo (plaza) | `m2_1-plaza.webp` | ~5:3 | 1024×614 | Cubre la escena; plaza del mercado, acento verde. Puede ser opaco |
+
+### m2_2 — Observatorio · LevelLab (soporte/resistencia)
+
+| Pieza | Archivo | Relación | Tamaño rec. | Anclaje |
+|---|---|---|---|---|
+| Fondo (observatorio) | `m2_2-observatory.webp` | ~5:3 | 1024×614 | Cubre la escena; observatorio de niveles, acento violeta. Puede ser opaco |
+
+### m2_3 — Taller de Velas · CandleLab (patrones)
+
+| Pieza | Archivo | Relación | Tamaño rec. | Anclaje |
+|---|---|---|---|---|
+| Fondo (taller) | `m2_3-patterns.webp` | ~4:3 | 1024×768 | Cubre la escena; taller de patrones de vela, acento naranja. Puede ser opaco |
+
+(En m2_1/m2_2 el componente dibuja la banda/nivel y su fuerza; en m2_3, la vela y el nombre del patrón.)
 
 ## Cómo se conecta
 

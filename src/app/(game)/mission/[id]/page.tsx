@@ -14,6 +14,7 @@ import SupplyDemandLab, { type SupplyDemandLabConfig } from "@/components/game/S
 import GaugeLab, { type GaugeLabConfig } from "@/components/game/GaugeLab";
 import CandleLab, { type CandleLabConfig } from "@/components/game/CandleLab";
 import StructureLab, { type StructureLabConfig } from "@/components/game/StructureLab";
+import LevelLab, { type LevelLabConfig } from "@/components/game/LevelLab";
 import ChartTapGame from "@/components/game/ChartTapGame";
 import RiskCalculator from "@/components/game/RiskCalculator";
 import CandlestickBuilder from "@/components/game/CandlestickBuilder";
@@ -126,49 +127,48 @@ function getMissionTutorial(missionId: string): TutorialContent {
     },
     // ─── NIVEL 2 TUTORIALS ───
     m2_1: {
-      title: "Zonas de Oferta y Demanda",
-      learningObjective: "Identificar zonas donde el precio reaccionó con fuerza y clasificarlas como demanda (compradores) u oferta (vendedores).",
-      conceptExplanation: "Una zona de demanda es un rango de precio desde donde el mercado subió con fuerza — ahí había compradores institucionales. Una zona de oferta es donde el precio cayó con fuerza — ahí había vendedores. Las zonas frescas (no retestadas) tienen mayor probabilidad de producir una reacción.",
-      practicalExample: "Si BTC bajó hasta $82,000 y luego subió violentamente a $90,000, el rango $82,000-$84,000 es una zona de demanda fresca. Si el precio vuelve ahí, probablemente encuentre compradores de nuevo.",
+      title: "Las Zonas del Poder",
+      learningObjective: "Descubrir, moviendo tú los controles, qué hace fuerte a una zona de oferta o demanda.",
+      conceptExplanation: "Tienes una zona y dos mandos: con cuánta fuerza salió el precio de ella y cuántas veces volvió a tocarla. Un medidor te muestra su fuerza en vivo. No te doy la regla: la vas a ver.",
+      practicalExample: "Prueba: sube la fuerza de salida y mira la zona fortalecerse; luego sube los retesteos y mírala debilitarse.",
       stepByStepInstructions: [
-        "Selecciona el modo: Demanda (verde) u Oferta (rojo).",
-        "Busca rangos de precio donde el mercado salió con FUERZA.",
-        "Si subió fuerte desde ahí → es DEMANDA.",
-        "Si cayó fuerte desde ahí → es OFERTA.",
-        "Haz clic en la zona para clasificarla con el modo seleccionado.",
+        "Mueve la fuerza de salida y observa la fuerza de la zona.",
+        "Mueve los retesteos y observa de nuevo.",
+        "Reto 1: haz una zona fresca y fuerte.",
+        "Reto 2: quémala con retesteos.",
+        "Responde qué hace fuerte a una zona.",
       ],
-      commonMistakes: ["Confundir cualquier bajada con zona de oferta — necesita ser un movimiento FUERTE.", "Marcar zonas donde el precio solo pasó sin reacción."],
-      hint: "Busca movimientos explosivos. Si el precio salió disparado desde un nivel, ahí hay una zona.",
+      commonMistakes: ["Creer que más toques fortalecen la zona — la queman."],
+      hint: "Una zona nace de una salida FUERTE; cada vez que el precio vuelve, gasta parte de ella.",
     },
     m2_2: {
-      title: "Soporte, Resistencia y Role Reversal",
-      learningObjective: "Identificar niveles de soporte y resistencia, y entender cómo cambian de rol cuando se rompen.",
-      conceptExplanation: "Soporte = nivel donde el precio rebota hacia arriba (compradores). Resistencia = nivel donde el precio rebota hacia abajo (vendedores). Role Reversal: cuando un soporte se rompe, se convierte en resistencia (y viceversa). El mercado tiene memoria.",
-      practicalExample: "BTC tenía soporte en $10,000. El precio lo rompe y baja a $8,000. Cuando rebota y vuelve a $10,000, ese nivel ahora es RESISTENCIA — los que compraron ahí antes ahora venden para cerrar sus pérdidas.",
+      title: "El Mapa del Precio",
+      learningObjective: "Descubrir qué fortalece un nivel y en qué se convierte cuando se rompe.",
+      conceptExplanation: "Tienes un nivel y dos mandos: cuántas veces el precio rebota en él, y un botón para romperlo. Su fuerza y su nombre cambian según lo que hagas. La regla la descubres tú.",
+      practicalExample: "Prueba: sube los rebotes y mira el nivel fortalecerse; luego rómpelo y mira su nombre cambiar de Soporte a Resistencia.",
       stepByStepInstructions: [
-        "Observa el gráfico y busca niveles donde el precio rebotó varias veces.",
-        "Si rebotó ARRIBA → es soporte.",
-        "Si rebotó ABAJO → es resistencia.",
-        "Si un nivel se rompió, ahora tiene el rol OPUESTO.",
-        "Toca el nivel correcto según la pregunta.",
+        "Sube los rebotes y observa la fuerza del nivel.",
+        "Pulsa 'Romper el nivel' y observa qué pasa.",
+        "Reto 1: haz un soporte fuerte.",
+        "Reto 2: rómpelo para convertirlo en resistencia.",
+        "Responde en qué se convierte un soporte roto.",
       ],
-      commonMistakes: ["Asumir que un soporte roto sigue siendo soporte.", "No esperar confirmación de ruptura (puede ser fakeout)."],
-      hint: "Pregúntate: ¿el precio rebotó aquí antes? ¿Hacia arriba o hacia abajo? Si se rompió, el rol cambió.",
+      commonMistakes: ["Asumir que un soporte roto sigue siendo soporte — cambia de rol."],
+      hint: "Cuantos más rebotes, más fuerte. Al romperse, el nivel cambia de rol.",
     },
     m2_3: {
-      title: "Patrones de Velas y Contexto",
-      learningObjective: "Identificar los 6 patrones principales de velas japonesas y entender que solo son válidos CON CONTEXTO (zona + tendencia).",
-      conceptExplanation: "Los patrones de velas son señales visuales: Doji (indecisión), Hammer (rechazo de bajos), Shooting Star (rechazo de altos), Engulfing Alcista/Bajista (cambio de control), Morning/Evening Star (reversión en 3 velas). REGLA: patrón + zona + tendencia = señal válida. Patrón solo = ruido.",
-      practicalExample: "Un Hammer aparece en una zona de demanda después de una corrección en tendencia alcista → señal de alta calidad. El mismo Hammer en medio de la nada sin zona ni contexto → no significa nada.",
+      title: "El Taller de Patrones",
+      learningObjective: "Descubrir, dándole forma a una vela, qué silueta es un martillo y cuál una estrella fugaz.",
+      conceptExplanation: "Mueves los cuatro precios de una vela y su nombre de patrón aparece solo según la forma. No te listo los patrones: los vas a ver nacer.",
+      practicalExample: "Prueba: cuerpo pequeño con mecha inferior larga → aparece 'Martillo'; cuerpo pequeño con mecha superior larga → 'Estrella fugaz'.",
       stepByStepInstructions: [
-        "Se mostrará el nombre de un patrón de velas.",
-        "Piensa: ¿este patrón indica señal alcista, bajista o neutral?",
-        "Hammer/Engulfing Alcista/Morning Star → Alcista.",
-        "Shooting Star/Engulfing Bajista/Evening Star → Bajista.",
-        "Doji → Neutral (depende del contexto).",
+        "Mueve los cuatro precios y observa el nombre del patrón.",
+        "Reto 1: haz un martillo (mecha inferior larga).",
+        "Reto 2: haz una estrella fugaz (mecha superior larga).",
+        "Responde qué hace que una vela sea un martillo.",
       ],
-      commonMistakes: ["Operar un patrón sin confirmar la zona donde aparece.", "Considerar el Doji como señal de compra o venta por sí solo."],
-      hint: "Hammer = rechazo de precios bajos (alcista). Shooting Star = rechazo de precios altos (bajista). Doji = nadie ganó.",
+      commonMistakes: ["Fijarte en el color — el patrón lo define la silueta (cuerpo y mechas), no el color.", "Olvidar que un patrón solo vale con contexto (zona y tendencia)."],
+      hint: "El martillo tiene el cuerpo arriba y una mecha inferior larga: el precio bajó y fue rechazado.",
     },
     m2_4: {
       title: "Tipos de Órdenes",
@@ -659,6 +659,11 @@ export default function MissionPage() {
             ) : mission.minigame.type === "structure_lab" && mission.minigame.config?.challenges ? (
               <StructureLab
                 config={mission.minigame.config as unknown as StructureLabConfig}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "level_lab" && mission.minigame.config?.challenges ? (
+              <LevelLab
+                config={mission.minigame.config as unknown as LevelLabConfig}
                 onComplete={handleMinigameComplete}
               />
             ) : mission.minigame.type === "chart_tap" && mission.minigame.config?.charts ? (

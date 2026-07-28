@@ -25,7 +25,18 @@ export interface CandleLabConfig {
   low: { start: number };
   challenges: LabChallenge[];
   question: LabQuestion;
+  /** Si es true, muestra el nombre del patrón que emerge de la forma de la vela. */
+  showPattern?: boolean;
   scene?: { alt?: string; backdrop?: { image?: string } };
+}
+
+/** Nombre del patrón según la forma — emerge de la vela, no se enuncia antes. */
+function detectPattern(body: number, upper: number, lower: number): string {
+  if (body < 1 && upper < 1.5 && lower < 1.5) return "Doji";
+  if (body < 2.5 && lower >= 2.5 * Math.max(body, 1) && upper < 1.5) return "Martillo";
+  if (body < 2.5 && upper >= 2.5 * Math.max(body, 1) && lower < 1.5) return "Estrella fugaz";
+  if (body >= 6 && upper < 1.5 && lower < 1.5) return "Cuerpo pleno";
+  return "Vela sin patrón claro";
 }
 
 interface Props {
@@ -54,6 +65,7 @@ export default function CandleLab({ config, onComplete }: Props) {
   const body = Math.abs(close - open);
   const upperWick = h - bodyTop;
   const lowerWick = bodyBottom - l;
+  const pattern = config.showPattern ? detectPattern(body, upperWick, lowerWick) : null;
 
   const flow = useLabFlow(config.challenges, config.question);
 
@@ -96,14 +108,17 @@ export default function CandleLab({ config, onComplete }: Props) {
       <div
         role="img"
         aria-label={`Vela ${direction > 0 ? "alcista verde" : direction < 0 ? "bajista roja" : "neutra"}: apertura ${open}, cierre ${close}, máximo ${h}, mínimo ${l}`}
-        className="grid place-items-center overflow-hidden rounded-2xl border-2 border-tp-border p-4"
+        className="flex flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-tp-border p-4"
         style={
           backdropOk && backdropImg
             ? { backgroundImage: `url(${backdropImg})`, backgroundSize: "cover", backgroundPosition: "center" }
             : { background: "linear-gradient(#eaf4fe, #f1f8ff)" }
         }
       >
-        <svg viewBox={`0 0 ${W} ${H}`} className="h-56 w-full max-w-[240px]" role="presentation">
+        {pattern && (
+          <p className="mb-1 font-display text-base font-bold text-tp-text transition-colors duration-150 ease-out">{pattern}</p>
+        )}
+        <svg viewBox={`0 0 ${W} ${H}`} className="h-52 w-full max-w-[240px]" role="presentation">
           {/* mecha */}
           <line x1={cx} x2={cx} y1={y(h)} y2={y(l)} stroke={color} strokeWidth="3" />
           {/* cuerpo */}
