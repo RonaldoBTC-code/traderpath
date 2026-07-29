@@ -33,6 +33,8 @@ export interface LevelLabConfig {
   regionLabel?: string;
   /** Marca de umbral sobre el medidor, en unidades de fuerza (solo modo "meter"). */
   thresholdAt?: number;
+  /** Medidor con origen en el centro (para magnitudes con signo, p. ej. correlación). */
+  centered?: boolean;
   /** Nombre fijo del rol (zonas). Si hay `reversal`, el rol se alterna. */
   roleName?: string;
   reversal?: { before: string; after: string; toggleLabel: string };
@@ -72,6 +74,7 @@ export default function LevelLab({ config, onComplete }: Props) {
   const wordColor = word?.tone === "bad" ? "text-tp-supply" : "text-tp-demand";
   const opacity = 0.18 + 0.62 * Math.min(Math.max(strength / config.maxStrength, 0), 1);
   const fillFrac = Math.min(Math.max(strength / config.maxStrength, 0), 1);
+  const signedFrac = Math.min(Math.abs(strength) / config.maxStrength, 1);
   const meterColor = word ? (word.tone === "bad" ? "#dc2626" : "#16a34a") : roleColor;
   const regionLabel = config.regionLabel ?? "Región del precio";
   const headline = role ? `${role}${word ? ` · ${word.text}` : ""}` : word?.text ?? "";
@@ -126,20 +129,38 @@ export default function LevelLab({ config, onComplete }: Props) {
         {config.region === "meter" ? (
           <div>
             <div className="relative h-6 overflow-hidden rounded-full border-2 border-tp-border bg-tp-surface">
-              <div
-                className="h-full w-full origin-left"
-                style={{ transform: `scaleX(${fillFrac})`, transition: "transform 150ms ease-out", backgroundColor: meterColor }}
-              />
-              {config.thresholdAt != null && (
+              {config.centered ? (
                 <div
-                  className="absolute bottom-0 top-0 w-[2px] bg-tp-text"
-                  style={{ left: `${Math.min(Math.max(config.thresholdAt / config.maxStrength, 0), 1) * 100}%` }}
-                  aria-hidden
+                  className="absolute bottom-0 top-0"
+                  style={{
+                    left: strength >= 0 ? "50%" : `${50 - signedFrac * 50}%`,
+                    width: `${signedFrac * 50}%`,
+                    backgroundColor: meterColor,
+                    transition: "left 150ms ease-out, width 150ms ease-out",
+                  }}
+                />
+              ) : (
+                <div
+                  className="h-full w-full origin-left"
+                  style={{ transform: `scaleX(${fillFrac})`, transition: "transform 150ms ease-out", backgroundColor: meterColor }}
                 />
               )}
+              {config.centered ? (
+                <div className="absolute bottom-0 top-0 w-[2px] bg-tp-text" style={{ left: "50%" }} aria-hidden />
+              ) : (
+                config.thresholdAt != null && (
+                  <div
+                    className="absolute bottom-0 top-0 w-[2px] bg-tp-text"
+                    style={{ left: `${Math.min(Math.max(config.thresholdAt / config.maxStrength, 0), 1) * 100}%` }}
+                    aria-hidden
+                  />
+                )
+              )}
             </div>
-            {config.thresholdAt != null && (
-              <p className="mt-1 text-right font-data text-[10px] text-tp-text-muted">línea = umbral</p>
+            {(config.thresholdAt != null || config.centered) && (
+              <p className="mt-1 text-right font-data text-[10px] text-tp-text-muted">
+                {config.centered ? "centro = sin relación" : "línea = umbral"}
+              </p>
             )}
           </div>
         ) : (

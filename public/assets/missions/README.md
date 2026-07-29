@@ -127,6 +127,20 @@ Fondo diurno/volcánico de Ciudad Bitcoin: Plaza del Bloque, volcán al fondo, p
 
 (m3c_0 exploración y m3c_5 boss no se convierten.)
 
+### Nivel 3 Forex — Distrito FX (Nueva York · Wall Street) · acento `#38BDF8`
+
+Distrito financiero diurno: Torre de Liquidez, relojes de las cuatro sesiones, torres de Londres y Nueva York. Fondos opacos permitidos. Medidores y barras los dibuja el componente.
+
+| Misión | Lab | Pieza | Archivo | Relación | Tamaño rec. | Anclaje |
+|---|---|---|---|---|---|---|
+| m3f_1 (sesiones) | LevelLab · meter | Fondo (sesiones) | `m3f_1-sesiones.webp` | ~5:3 | 1024×614 | Cubre la escena; torres de Londres y NY con relojes de sesión |
+| m3f_2 (pips/lotes) | GaugeLab | Fondo (Torre de Liquidez) | `m3f_2-lotes.webp` | ~3:2 | 1024×683 | Cubre la escena; Torre de Liquidez, tablero de lotes |
+| m3f_2 | GaugeLab | Ficha (posición) | `m3f_2-coin.webp` | 1:1 | 96×96 | Se repite como "tu posición"; una por mini-lote |
+| m3f_3 (correlación) | LevelLab · meter centrado | Fondo (correlación) | `m3f_3-correlacion.webp` | ~5:3 | 1024×614 | Cubre la escena; tablero de correlaciones entre divisas |
+| m3f_4 (noticias) | LevelLab · meter | Fondo (calendario) | `m3f_4-calendario.webp` | ~5:3 | 1024×614 | Cubre la escena; calendario económico y relojes |
+
+(m3f_5 boss no se convierte.)
+
 ## Cómo se conecta
 
 Cada misión declara sus piezas en `config.scene` (en `src/lib/content/levelX.ts`).

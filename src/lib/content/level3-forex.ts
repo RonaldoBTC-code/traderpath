@@ -21,6 +21,7 @@ import type {
 
 export type Level3ForexMinigameType =
   | Level2MinigameType
+  | "gauge_lab"
   | "session_clock"
   | "pip_lot_calculator"
   | "correlation_matrix"
@@ -73,12 +74,12 @@ export const level3Forex: Level3ForexConfig = {
       order: 1,
       title: "La Ciudad de las Cuatro Sesiones",
       subtitle: "El mercado nunca cierra. Pero tampoco está siempre despierto igual.",
-      description: "Primera misión en Distrito FX. A diferencia de crypto, forex no opera 24/7 — opera 24/5, repartido en cuatro sesiones que se relevan: Sídney, Tokio, Londres y Nueva York. Aprenderás cuándo se solapan (más liquidez, spreads ajustados) y cuándo hay huecos de baja actividad que conviene evitar.",
+      description: "Primera misión en Distrito FX. A diferencia de crypto, forex opera 24/5 repartido en cuatro sesiones que se relevan. En el laboratorio abrirás y cerrarás tú mismo las sesiones de Londres y Nueva York y verás en un medidor cómo cambia la liquidez, hasta inducir por qué el momento en que dos grandes sesiones coinciden concentra el mayor volumen del día.",
       learningObjectives: [
-        "Ubicar las cuatro sesiones de forex en horario UTC",
+        "Inducir, abriendo y cerrando sesiones, por qué el solapamiento concentra la liquidez",
         "Identificar el overlap Londres-Nueva York como el momento de mayor liquidez",
-        "Reconocer zonas de baja liquidez y el horario de rollover",
-        "Relacionar la sesión activa con el comportamiento del spread",
+        "Reconocer zonas de baja actividad (mercado dormido) y el horario de rollover",
+        "Relacionar la liquidez de la sesión con el comportamiento del spread",
       ],
       keyConcepts: ["sesión de Sídney", "sesión de Tokio", "sesión de Londres", "sesión de Nueva York", "overlap", "liquidez", "spread", "rollover"],
       forexConcepts: ["London-NY overlap", "session liquidity", "rollover spread widening", "24/5 market"],
@@ -91,7 +92,7 @@ export const level3Forex: Level3ForexConfig = {
         { id: "m3f1_intro_4", character: "el_especulador", type: "enemy_taunt", text: "¿Horarios? Yo opero cuando tengo una corazonada, sin importar la hora. A veces funciona. Cuando no funciona, casi siempre fue a las 21:00 UTC, con un spread que se comió media operación." },
       ],
       outroDialogues: [
-        { id: "m3f1_outro_1", character: "aria", type: "tip", text: "Regla práctica: si puedes elegir cuándo operar, prioriza el overlap Londres-Nueva York. Si operas fuera de las sesiones grandes, ajusta tus expectativas de spread y evita entradas justo antes del rollover diario (~21:00-22:00 UTC)." },
+        { id: "m3f1_outro_1", character: "aria", type: "tip", text: "Lo viste tú en el medidor: con una sola sesión abierta hay actividad; con Londres y Nueva York a la vez, la liquidez salta al máximo; con ninguna, el mercado queda dormido. Por eso, si puedes elegir cuándo operar, prioriza el overlap Londres-Nueva York y evita entrar justo en el rollover (~21:00-22:00 UTC)." },
         { id: "m3f1_outro_2", character: "el_viejo_marco", type: "diary", text: "El reloj no predice la dirección del precio. Solo te dice cuánta gente hay mirando la misma pantalla que tú en ese momento. Eso ya es información valiosa.", footnote: "— Entrada #2 desde Distrito FX" },
       ],
       quiz: [
@@ -121,19 +122,42 @@ export const level3Forex: Level3ForexConfig = {
         ], explanation: "El rollover (o swap) es el ajuste que aplican los brokers por mantener posiciones abiertas de un día para otro. Coincide con una ventana de baja liquidez, lo que típicamente ensancha el spread durante unos minutos." },
       ],
       minigame: {
-        id: "mg_m3f1", type: "session_clock", title: "El Reloj de las Cuatro Sesiones",
-        description: "Observa la hora UTC y decide la mejor acción según qué sesiones están activas.",
-        instructions: "Para cada momento del día, identifica qué sesiones están activas y elige la decisión más prudente: operar con confianza, operar con cautela, esperar, o cuidado por rollover. 4 de 6 para aprobar.",
+        id: "mg_m3f1", type: "level_lab", title: "El Reloj de las Sesiones",
+        description: "Abre y cierra las sesiones de Londres y Nueva York y observa cómo cambia la liquidez del mercado.",
+        instructions: "Cada control es una sesión (0 = cerrada, 1 = abierta). Explóralas y mira la etiqueta que emerge. Luego resuelve los retos.",
         config: {
-          scenarios: [
-            { utcHour: 14, pair: "GBP/USD", answer: "maxima_liquidez" },
-            { utcHour: 9, pair: "EUR/USD", answer: "liquidez_normal" },
-            { utcHour: 21, pair: "USD/JPY", answer: "cuidado_rollover" },
-            { utcHour: 23, pair: "AUD/USD", answer: "liquidez_baja" },
-            { utcHour: 3, pair: "USD/JPY", answer: "liquidez_normal" },
-            { utcHour: 16, pair: "EUR/USD", answer: "maxima_liquidez" },
+          region: "meter",
+          regionLabel: "Liquidez del mercado",
+          thresholdAt: 2,
+          roleName: "",
+          inputs: [
+            { key: "londres", label: "Sesión de Londres (0 cerrada · 1 abierta)", min: 0, max: 1, start: 1, accent: "#38BDF8" },
+            { key: "ny", label: "Sesión de Nueva York (0 cerrada · 1 abierta)", min: 0, max: 1, start: 0, accent: "#818CF8" },
           ],
-          requiredCorrect: 4,
+          strength: { base: 0, weights: { londres: 1, ny: 1 } },
+          maxStrength: 2,
+          strengthWords: [
+            { min: 0, text: "Mercado dormido", tone: "bad" },
+            { min: 1, text: "Una sesión activa", tone: "good" },
+            { min: 2, text: "Overlap · máxima liquidez", tone: "good" },
+          ],
+          challenges: [
+            { id: "c_m3f1_1", prompt: "Abre el momento de mayor volumen del día: haz que Londres y Nueva York operen a la vez.", compare: "gte", target: 2, successNote: "Dos grandes centros a la vez: el overlap Londres-NY concentra el mayor volumen y los spreads más ajustados." },
+            { id: "c_m3f1_2", prompt: "Ahora muestra el mercado más dormido: cierra ambas sesiones.", compare: "lte", target: 0, successNote: "Sin sesiones grandes activas, la liquidez cae y el spread se ensancha. Es la franja que conviene evitar." },
+          ],
+          question: {
+            prompt: "¿Por qué el overlap Londres-Nueva York concentra la mayor liquidez del día?",
+            options: [
+              { id: "a", text: "Porque los dos mayores centros financieros operan al mismo tiempo, sumando participantes", correct: true, feedback: "Correcto. Lo viste: con las dos sesiones abiertas el medidor salta al máximo." },
+              { id: "b", text: "Porque a esa hora el mercado cambia de dirección con seguridad", correct: false, feedback: "La liquidez no dice la dirección; solo cuánta gente está operando a la vez." },
+              { id: "c", text: "Porque el spread desaparece por completo", correct: false, feedback: "El spread se ajusta con más liquidez, pero nunca desaparece." },
+              { id: "d", text: "Porque forex opera 24/7 como crypto", correct: false, feedback: "Forex es 24/5 y por sesiones; justo por eso la liquidez cambia según la hora." },
+            ],
+          },
+          scene: {
+            alt: "Distrito FX: torres de Londres y Nueva York con relojes de sesión",
+            backdrop: { image: "/assets/missions/m3f_1-sesiones.webp" },
+          },
         },
         passingScore: 66, virtualCapitalReward: 130,
       },
@@ -145,12 +169,12 @@ export const level3Forex: Level3ForexConfig = {
       order: 2,
       title: "Pips, Lotes y Apalancamiento",
       subtitle: "El mismo 2% de riesgo, una matemática distinta",
-      description: "La gestión de riesgo que ya conoces (arriesgar un % fijo del capital) se aplica en forex mediante una unidad propia: el pip. Aprenderás qué es un pip, cómo se miden los lotes (estándar, mini, micro) y cómo calcular el tamaño de posición correcto usando distancia en pips y valor del pip por lote.",
+      description: "La gestión de riesgo que ya conoces se aplica en forex con una unidad propia: el pip, medido en lotes. En el laboratorio moverás tú mismo cuántos lotes llevas y cuánto arriesga cada uno si salta el Stop Loss, y un medidor te mostrará el % de capital en juego — hasta inducir que el apalancamiento no cambia tu riesgo: el tamaño de posición sí.",
       learningObjectives: [
-        "Definir qué es un pip y su valor según el par",
-        "Distinguir lote estándar, mini y micro",
-        "Entender qué es el apalancamiento y el margen requerido",
-        "Calcular el tamaño de posición en lotes a partir del riesgo máximo permitido",
+        "Inducir, moviendo lotes y pérdida por lote, qué fija tu riesgo real en forex",
+        "Definir qué es un pip y distinguir lote estándar, mini y micro",
+        "Entender que el apalancamiento cambia el margen requerido, no el riesgo",
+        "Ajustar el tamaño de posición al riesgo máximo permitido",
       ],
       keyConcepts: ["pip", "lote estándar", "mini lote", "micro lote", "apalancamiento", "margen", "valor del pip", "position sizing"],
       forexConcepts: ["pip value per lot", "standard/mini/micro lot", "leverage & margin", "pip-based position sizing"],
@@ -163,7 +187,7 @@ export const level3Forex: Level3ForexConfig = {
         { id: "m3f2_intro_4", character: "aria", type: "warning", text: "La Señorita FOMO solo contó la mitad de la historia. El apalancamiento amplifica ganancias Y pérdidas por igual. El margen que exige un broker no es tu límite de riesgo real — tu límite de riesgo lo defines tú, con el tamaño de posición." },
       ],
       outroDialogues: [
-        { id: "m3f2_outro_1", character: "aria", type: "tip", text: "Fórmula central: lotes = riesgo máximo en dólares ÷ (distancia del Stop Loss en pips × valor del pip por lote). El apalancamiento determina cuánto margen necesitas para abrir la posición — no cuánto deberías arriesgar." },
+        { id: "m3f2_outro_1", character: "aria", type: "tip", text: "Lo viste en el medidor: tu pérdida máxima nace de cuántos lotes llevas por cuánto arriesga cada uno si salta el stop. La fórmula lotes = riesgo máximo ÷ (SL en pips × valor del pip por lote) solo pone números a lo que ya moviste. El apalancamiento define el margen para abrir, no cuánto arriesgas." },
         { id: "m3f2_outro_2", character: "el_viejo_marco", type: "diary", text: "Vi cuentas completas desaparecer en una tarde por confundir 'lo que el broker me permite abrir' con 'lo que debería abrir'. El apalancamiento es una herramienta, no una obligación de usarla al máximo.", footnote: "— Entrada #7 desde Distrito FX" },
       ],
       quiz: [
@@ -193,19 +217,33 @@ export const level3Forex: Level3ForexConfig = {
         ], explanation: "Fórmula: lotes = riesgo máximo ÷ (distancia SL en pips × valor del pip por lote) = $60 ÷ (20 × $10) = 0.3 lotes." },
       ],
       minigame: {
-        id: "mg_m3f2", type: "pip_lot_calculator", title: "Calculadora de Pips y Lotes",
-        description: "Calcula el tamaño de posición correcto en lotes, respetando el 2% de riesgo, para diferentes pares forex.",
-        instructions: "Para cada par, calcula cuántos lotes puedes operar sin superar el 2% de riesgo. Fórmula: lotes = riesgo máximo ÷ (SL en pips × valor del pip por lote).",
+        id: "mg_m3f2", type: "gauge_lab", title: "El Medidor de Lotes",
+        description: "Mueve cuántos mini-lotes llevas y cuánto arriesga cada uno si salta el Stop Loss; el medidor muestra el % de tu capital en riesgo.",
+        instructions: "Explora los dos controles y observa el medidor. Luego resuelve los retos: mantén tu pérdida máxima en el 2% del capital o menos.",
         config: {
-          capital: 3000, riskPct: 0.02,
-          scenarios: [
-            { pair: "EUR/USD", stopLossPips: 20, pipValuePerLot: 10, correctLots: 0.3 },
-            { pair: "GBP/USD", stopLossPips: 25, pipValuePerLot: 10, correctLots: 0.24 },
-            { pair: "USD/JPY", stopLossPips: 15, pipValuePerLot: 9.1, correctLots: 0.44 },
-            { pair: "AUD/USD", stopLossPips: 30, pipValuePerLot: 10, correctLots: 0.2 },
-            { pair: "USD/CHF", stopLossPips: 18, pipValuePerLot: 10.8, correctLots: 0.31 },
+          capital: 3000,
+          thresholdPct: 2,
+          maxScalePct: 8,
+          units: { min: 1, max: 15, start: 8, label: "Mini-lotes (tamaño de posición)", accent: "#38BDF8" },
+          stop: { min: 5, max: 40, start: 15, label: "Pérdida por mini-lote si salta el SL ($)", accent: "#dc2626" },
+          challenges: [
+            { id: "c_m3f2_1", prompt: "Ajusta tu operación hasta arriesgar el 2% de tu capital o menos.", compare: "lte", target: 2, successNote: "Bajaste al 2%. Pudiste hacerlo con menos lotes, un stop más ajustado, o ambos." },
+            { id: "c_m3f2_2", prompt: "Ahora tu stop queda fijo (más pips por el par): con la pérdida por lote bloqueada, baja al 2% solo con los lotes.", lock: "stop", compare: "lte", target: 2, successNote: "Con la pérdida por lote fija, solo el número de lotes controla tu riesgo. Ese es el sizing." },
           ],
-          tolerance: 0.08,
+          question: {
+            prompt: "Tu broker sube el apalancamiento de 1:100 a 1:500. ¿Qué le pasa a tu riesgo por operación?",
+            options: [
+              { id: "a", text: "No cambia: el riesgo lo fijan los lotes y la distancia del stop, no el apalancamiento", correct: true, feedback: "Correcto. En el medidor solo movieron el riesgo los lotes y la pérdida por lote; el apalancamiento solo cambia el margen para abrir." },
+              { id: "b", text: "Se multiplica por 5 automáticamente", correct: false, feedback: "El apalancamiento cambia el margen requerido, no cuánto arriesgas si el stop salta." },
+              { id: "c", text: "Se reduce a la quinta parte", correct: false, feedback: "Tampoco: el riesgo depende del tamaño de posición y del stop, no del apalancamiento." },
+              { id: "d", text: "Desaparece porque el broker cubre las pérdidas", correct: false, feedback: "El broker no cubre pérdidas; tu riesgo sigue siendo lotes × pérdida por lote." },
+            ],
+          },
+          scene: {
+            alt: "Torre de Liquidez de Distrito FX, tablero de lotes",
+            backdrop: { image: "/assets/missions/m3f_2-lotes.webp" },
+            coin: { image: "/assets/missions/m3f_2-coin.webp" },
+          },
         },
         passingScore: 70, virtualCapitalReward: 150,
       },
@@ -217,12 +255,12 @@ export const level3Forex: Level3ForexConfig = {
       order: 3,
       title: "El Tablero de Correlaciones",
       subtitle: "Dos operaciones que en realidad son la misma apuesta",
-      description: "Muchos pares de divisas comparten drivers comunes: si el dólar se fortalece, varios pares se mueven juntos (o en contra). Aprenderás a leer una matriz de correlación para detectar cuándo estás duplicando riesgo sin darte cuenta, y cuándo dos posiciones realmente se compensan.",
+      description: "Muchos pares de divisas comparten drivers comunes y se mueven juntos o en contra. En el laboratorio moverás tú mismo el coeficiente de correlación de -1 a +1 y verás la etiqueta de la relación emerger, hasta inducir cuándo dos posiciones son en realidad la misma apuesta duplicada y cuándo se compensan.",
       learningObjectives: [
-        "Entender qué mide un coeficiente de correlación entre pares",
-        "Identificar pares con correlación positiva fuerte (se mueven juntos)",
-        "Identificar pares con correlación negativa fuerte (se mueven en contra)",
-        "Detectar sobre-exposición oculta al abrir múltiples posiciones 'diversificadas' que en realidad son la misma apuesta",
+        "Inducir, moviendo el coeficiente, qué significa una correlación positiva o negativa fuerte",
+        "Reconocer que correlación positiva fuerte = misma apuesta duplicada (sobre-exposición oculta)",
+        "Reconocer que correlación negativa fuerte = posiciones que se compensan",
+        "Usar la correlación como contexto antes de abrir una nueva posición",
       ],
       keyConcepts: ["correlación positiva", "correlación negativa", "coeficiente de correlación", "sobre-exposición", "diversificación real vs aparente", "fortaleza del dólar"],
       forexConcepts: ["currency correlation matrix", "hidden overexposure", "positive vs negative pair correlation"],
@@ -235,7 +273,7 @@ export const level3Forex: Level3ForexConfig = {
         { id: "m3f3_intro_4", character: "aria", type: "warning", text: "Don Pánico describe una correlación negativa fuerte sin saberlo: EUR/USD y USD/CHF suelen moverse en direcciones opuestas. Abrir ambas 'largas' al mismo tiempo puede anular una posición con la otra." },
       ],
       outroDialogues: [
-        { id: "m3f3_outro_1", character: "aria", type: "tip", text: "Antes de abrir una nueva posición, revisa qué correlación tiene con lo que ya tienes abierto. Correlación fuerte (positiva o negativa) no es mala en sí misma — el problema es no saber que existe." },
+        { id: "m3f3_outro_1", character: "aria", type: "tip", text: "Lo llevaste tú a los dos extremos: cerca de +1, dos pares son la misma apuesta duplicada; cerca de -1, se compensan entre sí. Por eso, antes de abrir una posición, revisa su correlación con lo que ya tienes: el problema nunca es que exista, sino no saber que existe." },
         { id: "m3f3_outro_2", character: "el_viejo_marco", type: "diary", text: "La correlación no es una ley física. Puede romperse cuando un evento afecta a una sola divisa del par. Úsala como contexto, no como certeza absoluta.", footnote: "— Entrada #13 desde Distrito FX" },
       ],
       quiz: [
@@ -265,19 +303,41 @@ export const level3Forex: Level3ForexConfig = {
         ], explanation: "La correlación captura una tendencia estadística basada en datos históricos y drivers compartidos (como la fortaleza del dólar). Un evento específico de una sola divisa puede romper esa relación temporalmente — por eso se usa como contexto adicional, no como certeza." },
       ],
       minigame: {
-        id: "mg_m3f3", type: "correlation_matrix", title: "El Tablero de Correlaciones",
-        description: "Observa el coeficiente de correlación entre dos pares y clasifica la relación correctamente.",
-        instructions: "Para cada combinación de pares, decide: ¿misma dirección fuerte, dirección opuesta fuerte, relación moderada, o prácticamente independientes? 4 de 6 para aprobar.",
+        id: "mg_m3f3", type: "level_lab", title: "El Tablero de Correlaciones",
+        description: "Mueve el coeficiente de correlación entre dos pares (de -1 a +1) y observa qué relación emerge en el medidor centrado.",
+        instructions: "El medidor crece desde el centro: a la derecha si es positiva, a la izquierda si es negativa. Explóralo y luego resuelve los retos.",
         config: {
-          scenarios: [
-            { pairA: "EUR/USD", pairB: "GBP/USD", coefficient: 0.87, answer: "misma_direccion_fuerte" },
-            { pairA: "EUR/USD", pairB: "USD/CHF", coefficient: -0.91, answer: "opuesta_fuerte" },
-            { pairA: "USD/JPY", pairB: "AUD/USD", coefficient: 0.35, answer: "moderada" },
-            { pairA: "EUR/USD", pairB: "USD/JPY", coefficient: -0.15, answer: "independiente" },
-            { pairA: "GBP/USD", pairB: "AUD/USD", coefficient: 0.62, answer: "moderada" },
-            { pairA: "USD/CHF", pairB: "USD/JPY", coefficient: 0.55, answer: "moderada" },
+          region: "meter",
+          regionLabel: "Relación entre los dos pares",
+          centered: true,
+          roleName: "",
+          inputs: [
+            { key: "coef", label: "Coeficiente de correlación (×100: -100 a +100)", min: -100, max: 100, start: 0, accent: "#38BDF8" },
           ],
-          requiredCorrect: 4,
+          strength: { base: 0, weights: { coef: 1 } },
+          maxStrength: 100,
+          strengthWords: [
+            { min: -100, text: "Opuesta fuerte · se compensan", tone: "good" },
+            { min: -34, text: "Casi independientes", tone: "good" },
+            { min: 34, text: "Misma dirección · apuesta duplicada", tone: "bad" },
+          ],
+          challenges: [
+            { id: "c_m3f3_1", prompt: "Encuentra dos pares que sean la misma apuesta duplicada: llévalo a correlación positiva fuerte.", compare: "gte", target: 70, successNote: "Cerca de +1, abrir ambos en la misma dirección triplica una sola apuesta al dólar: sobre-exposición oculta, no diversificación." },
+            { id: "c_m3f3_2", prompt: "Ahora dos pares que se compensen: llévalo a correlación negativa fuerte.", compare: "lte", target: -70, successNote: "Cerca de -1, una posición tiende a anular a la otra: el riesgo neto es menor de lo que dos operaciones 'llenas' sugieren." },
+          ],
+          question: {
+            prompt: "Abres largo en EUR/USD, GBP/USD y AUD/USD, todos con correlación positiva fuerte. ¿Qué hiciste en realidad?",
+            options: [
+              { id: "a", text: "Triplicar una misma apuesta direccional al dólar, no diversificar", correct: true, feedback: "Correcto. Lo viste: correlación positiva fuerte = misma apuesta. Tres posiciones así concentran el riesgo, no lo reparten." },
+              { id: "b", text: "Diversificar en tres mercados independientes", correct: false, feedback: "Solo serían independientes si la correlación fuera cercana a 0, no a +1." },
+              { id: "c", text: "Neutralizar el riesgo, porque son tres pares distintos", correct: false, feedback: "El número de pares no reduce el riesgo si se mueven juntos." },
+              { id: "d", text: "Cubrir la posición, como si fueran de signo opuesto", correct: false, feedback: "La cobertura vendría de correlación negativa; aquí es positiva." },
+            ],
+          },
+          scene: {
+            alt: "Distrito FX: tablero de correlaciones entre divisas",
+            backdrop: { image: "/assets/missions/m3f_3-correlacion.webp" },
+          },
         },
         passingScore: 66, virtualCapitalReward: 150,
       },
@@ -289,10 +349,10 @@ export const level3Forex: Level3ForexConfig = {
       order: 4,
       title: "El Calendario que Mueve el Mercado",
       subtitle: "Los datos que hacen temblar al mercado tienen fecha y hora fijas",
-      description: "A diferencia de crypto, forex está profundamente ligado a la macroeconomía: nóminas de empleo, inflación, decisiones de tasas de interés. Aprenderás a leer un calendario económico, distinguir niveles de impacto, y por qué operar justo antes o durante una publicación de alto impacto es una fuente distinta de riesgo.",
+      description: "A diferencia de crypto, forex está ligado a la macroeconomía: nóminas, inflación, decisiones de tasas. En el laboratorio moverás tú mismo el impacto del evento y su cercanía en el tiempo, y verás en un medidor cómo sube el peligro del momento — hasta inducir que solo cuando impacto alto y noticia inminente coinciden conviene no abrir o proteger.",
       learningObjectives: [
-        "Identificar los eventos económicos de mayor impacto en forex (NFP, IPC, decisiones de tasas)",
-        "Distinguir niveles de impacto: bajo, medio y alto",
+        "Inducir, moviendo impacto y cercanía, cuándo el momento es peligroso para operar",
+        "Identificar los eventos de mayor impacto en forex (NFP, IPC, decisiones de tasas)",
         "Entender por qué el spread se ensancha alrededor de publicaciones de alto impacto",
         "Decidir cuándo evitar operar, esperar confirmación, o proteger una posición existente",
       ],
@@ -307,7 +367,7 @@ export const level3Forex: Level3ForexConfig = {
         { id: "m3f4_intro_4", character: "aria", type: "warning", text: "El Especulador describe una de las formas más rápidas de perder una cuenta: el spread se ensancha antes de la publicación, el slippage puede saltarse tu Stop Loss, y la dirección inicial del movimiento a veces se revierte en minutos." },
       ],
       outroDialogues: [
-        { id: "m3f4_outro_1", character: "aria", type: "tip", text: "Ante un evento de alto impacto: si no tienes posición, evita abrir una nueva justo antes. Si ya tienes una posición con Stop Loss ajustado, considera ampliarlo o cerrar antes del evento. Después de la publicación, espera a que el spread normalice antes de operar la reacción." },
+        { id: "m3f4_outro_1", character: "aria", type: "tip", text: "Lo viste en el medidor: ni el impacto solo ni la cercanía sola disparan el peligro — se disparan juntos. Ante impacto alto e inminente: sin posición, no abras justo antes; con posición y stop ajustado, amplíalo o cierra; después de la publicación, espera a que el spread normalice." },
         { id: "m3f4_outro_2", character: "el_viejo_marco", type: "diary", text: "No se trata de tenerle miedo al calendario. Se trata de no fingir que no existe.", footnote: "— Entrada #19 desde Distrito FX" },
       ],
       quiz: [
@@ -337,19 +397,42 @@ export const level3Forex: Level3ForexConfig = {
         ], explanation: "Un Stop Loss muy ajustado es especialmente vulnerable al ensanchamiento de spread que ocurre alrededor de eventos de alto impacto. Ampliar el SL (respetando el riesgo máximo) o cerrar la posición son formas válidas de gestionar ese riesgo adicional." },
       ],
       minigame: {
-        id: "mg_m3f4", type: "news_impact_planner", title: "El Planificador de Noticias",
-        description: "Ante cada evento del calendario económico, decide la acción más prudente según su impacto y momento.",
-        instructions: "Para cada evento, evalúa el nivel de impacto y el tiempo hasta/desde su publicación, y elige: evitar entrar, esperar confirmación, operar con normalidad, o proteger posiciones existentes. 4 de 6 para aprobar.",
+        id: "mg_m3f4", type: "level_lab", title: "El Planificador de Noticias",
+        description: "Mueve el impacto del evento y su cercanía en el tiempo, y observa cómo sube el peligro del momento para operar.",
+        instructions: "Explora los dos controles y mira la etiqueta. Luego resuelve los retos: dibuja el momento más peligroso y el más tranquilo.",
         config: {
-          scenarios: [
-            { event: "NFP (Nóminas no agrícolas, EE.UU.)", impactLevel: "alto", minutesToRelease: -3, answer: "evitar_entrar" },
-            { event: "IPC (CPI) EE.UU.", impactLevel: "alto", minutesToRelease: 2, answer: "esperar_confirmacion" },
-            { event: "Ventas minoristas de Australia", impactLevel: "bajo", minutesToRelease: -10, answer: "operar_normal" },
-            { event: "Decisión de tasas de la Reserva Federal (con posición EUR/USD abierta y SL ajustado)", impactLevel: "alto", minutesToRelease: -15, answer: "proteger_posiciones" },
-            { event: "PMI manufacturero de Alemania", impactLevel: "medio", minutesToRelease: -20, answer: "operar_normal" },
-            { event: "Discurso no programado de un gobernador de banco central", impactLevel: "medio", minutesToRelease: 1, answer: "esperar_confirmacion" },
+          region: "meter",
+          regionLabel: "Peligro del momento",
+          thresholdAt: 6,
+          roleName: "",
+          inputs: [
+            { key: "impacto", label: "Impacto del evento (0 bajo · 3 alto)", min: 0, max: 3, start: 1, accent: "#dc2626" },
+            { key: "cercania", label: "Cercanía a la noticia (0 lejos · 5 inminente)", min: 0, max: 5, start: 3, accent: "#38BDF8" },
           ],
-          requiredCorrect: 4,
+          strength: { base: 0, weights: { impacto: 1, cercania: 1 } },
+          maxStrength: 8,
+          strengthWords: [
+            { min: 0, text: "Tranquilo · opera normal", tone: "good" },
+            { min: 4, text: "Precaución", tone: "bad" },
+            { min: 6, text: "Peligro · no abras / protege", tone: "bad" },
+          ],
+          challenges: [
+            { id: "c_m3f4_1", prompt: "Dibuja el momento más peligroso para abrir: evento de alto impacto y a punto de publicarse.", compare: "gte", target: 7, successNote: "Alto impacto e inminente: spread ancho y slippage que puede saltarse tu stop. Es cuando NO conviene abrir." },
+            { id: "c_m3f4_2", prompt: "Ahora dibuja un momento tranquilo: bajo impacto y lejos de la noticia.", compare: "lte", target: 2, successNote: "Impacto bajo y sin noticia cerca: el medidor baja, se puede operar con normalidad." },
+          ],
+          question: {
+            prompt: "¿Cuándo un evento del calendario vuelve peligroso el momento de operar?",
+            options: [
+              { id: "a", text: "Cuando el impacto es alto Y la publicación está muy cerca — los dos a la vez", correct: true, feedback: "Correcto. Lo viste: ninguno solo dispara el peligro; juntos sí." },
+              { id: "b", text: "Siempre que haya cualquier evento en el calendario, sin importar nada más", correct: false, feedback: "Un evento de bajo impacto y lejano apenas movió el medidor." },
+              { id: "c", text: "Solo cuando el evento ya pasó hace horas", correct: false, feedback: "Una vez lejos en el tiempo, el peligro del momento baja." },
+              { id: "d", text: "Nunca: el calendario económico no afecta a forex", correct: false, feedback: "Forex está muy ligado a la macro; el NFP y las tasas mueven fuerte los pares con USD." },
+            ],
+          },
+          scene: {
+            alt: "Distrito FX: calendario económico y relojes de sesión",
+            backdrop: { image: "/assets/missions/m3f_4-calendario.webp" },
+          },
         },
         passingScore: 66, virtualCapitalReward: 160,
       },
