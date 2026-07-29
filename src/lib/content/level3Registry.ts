@@ -7,6 +7,7 @@
 import { level3Crypto } from "./level3-crypto"
 import { level3Forex } from "./level3-forex"
 import { level3Stocks } from "./level3-stocks"
+import { level3Commodities } from "./level3-commodities"
 
 // Forma estructural mínima que gameStore.ts necesita para ruteo/desbloqueo
 // (getLevelMissions, completeMission). Deliberadamente NO es el tipo completo
@@ -27,6 +28,7 @@ export const LEVEL3_REGISTRY: Record<string, Level3ConfigLike> = {
   crypto: level3Crypto,
   forex: level3Forex,
   stocks: level3Stocks,
+  commodities: level3Commodities,
 }
 
 // Reemplaza el heurístico `newMarket.charAt(0)` usado antes en
@@ -36,6 +38,7 @@ export const LEVEL3_MISSION_PREFIX: Record<string, string> = {
   crypto: "c",
   forex: "f",
   stocks: "s",
+  commodities: "o",
 }
 
 export function getLevel3ConfigByLevelId(levelId: string): Level3ConfigLike | undefined {

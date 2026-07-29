@@ -154,6 +154,19 @@ Distrito de rascacielos corporativos: Bolsa de Empresas, torres con tickers, pan
 
 (m3s_5 boss no se convierte.)
 
+### Nivel 3 Commodities — Puerto de Materias (Chicago · Golfo industrial) · acento `#EAB308`
+
+Puerto industrial: muelles, grúas, barcos de carga, tanques de crudo, terminal de gas, lingotes de oro y bobinas de cobre. Fondos opacos permitidos. Medidores y barras los dibuja el componente.
+
+| Misión | Lab | Pieza | Archivo | Relación | Tamaño rec. | Anclaje |
+|---|---|---|---|---|---|---|
+| m3o_1 (oferta/demanda) | LevelLab · meter centrado | Fondo (muelles) | `m3o_1-oferta.webp` | ~5:3 | 1024×614 | Cubre la escena; muelles, barcos y tanques de crudo |
+| m3o_2 (refugio/cíclico) | LevelLab · meter centrado | Fondo (oro vs cobre) | `m3o_2-refugio.webp` | ~5:3 | 1024×614 | Cubre la escena; lingotes de oro frente a bobinas de cobre |
+| m3o_3 (dólar) | LevelLab · meter centrado | Fondo (dólar/crudo) | `m3o_3-dolar.webp` | ~5:3 | 1024×614 | Cubre la escena; tablero del dólar frente a tanques de crudo |
+| m3o_4 (estacionalidad) | LevelLab · meter | Fondo (terminal de gas) | `m3o_4-estacional.webp` | ~5:3 | 1024×614 | Cubre la escena; terminal de gas natural con nieve/invierno |
+
+(m3o_0 no existe; m3o_5 boss no se convierte. Commodities queda cableado al registry, motor y MarketPreview, alcanzable como 4ª ruta.)
+
 ## Cómo se conecta
 
 Cada misión declara sus piezas en `config.scene` (en `src/lib/content/levelX.ts`).

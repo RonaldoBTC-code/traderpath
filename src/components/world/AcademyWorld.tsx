@@ -29,6 +29,7 @@ import { level2 } from "@/lib/content/level2";
 import { level3Crypto } from "@/lib/content/level3-crypto";
 import { level3Forex } from "@/lib/content/level3-forex";
 import { level3Stocks } from "@/lib/content/level3-stocks";
+import { level3Commodities } from "@/lib/content/level3-commodities";
 import { formatCurrency } from "@/lib/utils/format";
 import { useGameStore, type MissionStatus } from "@/store/gameStore";
 import {
@@ -291,7 +292,9 @@ export default function AcademyWorld() {
         ? level3Forex
         : currentLevelId === "level_3_stocks"
           ? level3Stocks
-          : level1;
+          : currentLevelId === "level_3_commodities"
+            ? level3Commodities
+            : level1;
   const completedInLevel = completedMissions.filter(
     (mission) => mission.levelId === currentLevelId
   ).length;
@@ -793,7 +796,7 @@ function PassportDrawer({
   onMission,
   onReplayWelcome,
 }: {
-  level: typeof level1 | typeof level2 | typeof level3Crypto | typeof level3Forex | typeof level3Stocks;
+  level: typeof level1 | typeof level2 | typeof level3Crypto | typeof level3Forex | typeof level3Stocks | typeof level3Commodities;
   currentLevelId: string;
   currentMissionId: string;
   completed: number;

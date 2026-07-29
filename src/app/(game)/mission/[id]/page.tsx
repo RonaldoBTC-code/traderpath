@@ -7,6 +7,7 @@ import { getLevel2MissionById } from "@/lib/content/level2";
 import { getLevel3CryptoMissionById } from "@/lib/content/level3-crypto";
 import { getLevel3ForexMissionById } from "@/lib/content/level3-forex";
 import { getLevel3StocksMissionById } from "@/lib/content/level3-stocks";
+import { getLevel3CommoditiesMissionById } from "@/lib/content/level3-commodities";
 import CharacterDialogue from "@/components/narrative/CharacterDialogue";
 import QuizEngine from "@/components/game/QuizEngine";
 import MatchTermMinigame from "@/components/game/MatchTermMinigame";
@@ -437,6 +438,78 @@ function getMissionTutorial(missionId: string): TutorialContent {
       commonMistakes: ["Ignorar una posición correlacionada por sector ya abierta al elegir la nueva acción.", "Sumar el riesgo de un reporte de earnings inminente sin ajustar el plan."],
       hint: "Sigue la secuencia: sector → concentración/earnings → acción → entrada/SL/TP → tamaño. Si falta un paso, no operes.",
     },
+    // ─── NIVEL 3 COMMODITIES TUTORIALS ───
+    m3o_1: {
+      title: "El Balance Físico",
+      learningObjective: "Descubrir, moviendo oferta y demanda física, hacia dónde presiona el precio de una materia prima.",
+      conceptExplanation: "Tienes dos controles: el cambio en la oferta física (un recorte o un aumento de producción) y el cambio en la demanda. Un medidor centrado muestra la presión sobre el precio. No te doy la regla: la vas a ver.",
+      practicalExample: "Prueba: recorta la oferta (como un recorte de la OPEC+) y mira el medidor inclinarse al alza. Ahora inunda el mercado de oferta y míralo caer.",
+      stepByStepInstructions: [
+        "Mueve la oferta y la demanda y observa la presión en el medidor centrado.",
+        "Reto 1: provoca presión alcista (recorta la oferta o sube la demanda).",
+        "Reto 2: provoca presión bajista (inunda de oferta o hunde la demanda).",
+        "Responde qué presión ejerce un recorte de producción de la OPEC+.",
+      ],
+      commonMistakes: ["Reaccionar a un evento de final incierto (como un huracán en curso) como si tuviera dirección clara.", "Olvidar que la sorpresa respecto a lo esperado mueve el precio, no el dato en bruto."],
+      hint: "Menos oferta o más demanda empuja al alza; más oferta o menos demanda, a la baja. ¿Dónde queda el recorte de la OPEC+?",
+    },
+    m3o_2: {
+      title: "Refugio vs Cíclico",
+      learningObjective: "Descubrir, moviendo el ánimo del mercado, quién lidera entre el oro (refugio) y el cobre (cíclico).",
+      conceptExplanation: "Tienes un control: el ánimo del mercado, de la confianza (risk-on) al miedo (risk-off). El medidor se inclina hacia el oro o hacia el cobre. La misma noticia los mueve en direcciones opuestas — lo vas a ver.",
+      practicalExample: "Prueba: lleva el mercado al miedo (risk-off) y mira al oro tomar la delantera. Llévalo a la confianza (risk-on) y mira al cobre liderar.",
+      stepByStepInstructions: [
+        "Mueve el ánimo del mercado y observa quién lidera en el medidor.",
+        "Reto 1: haz que el oro lidere (lleva el mercado al miedo).",
+        "Reto 2: haz que el cobre lidere (lleva el mercado a la confianza).",
+        "Responde qué pasa con oro y cobre en una crisis (risk-off).",
+      ],
+      commonMistakes: ["Asumir que todas las materias primas suben o bajan juntas.", "Olvidar que el cobre ('Dr. Copper') depende del crecimiento económico."],
+      hint: "El oro no necesita que la economía vaya bien para subir; el cobre sí. ¿Qué lado gana con el miedo?",
+    },
+    m3o_3: {
+      title: "El Dólar y el Shock Propio",
+      learningObjective: "Descubrir la relación inversa del dólar con las materias primas — y cómo un shock de oferta propio puede dominarla.",
+      conceptExplanation: "Tienes dos controles: la fuerza del dólar y un shock de oferta propio del activo. El medidor centrado muestra el precio de la materia prima. Verás que el dólar la empuja en sentido inverso, pero que un shock propio fuerte puede dar vuelta el resultado.",
+      practicalExample: "Prueba: sin shock propio, debilita el dólar y mira la materia prima subir. Ahora deja el dólar fuerte y fijo, aplica un recorte de oferta y mira cómo domina.",
+      stepByStepInstructions: [
+        "Mueve el dólar y el shock propio y observa el medidor centrado.",
+        "Reto 1: con el shock fijo en cero, debilita el dólar y mira la materia prima subir.",
+        "Reto 2: con el dólar fuerte y fijo, aplica un recorte de oferta y comprueba qué domina.",
+        "Responde qué domina si el dólar sube pero la OPEC+ recorta.",
+      ],
+      commonMistakes: ["Tratar la correlación con el dólar como una ley absoluta.", "Ignorar los fundamentos propios del activo (oferta, inventarios, eventos)."],
+      hint: "El dólar es la corriente de fondo; un shock de oferta directo es la ola que muchas veces decide.",
+    },
+    m3o_4: {
+      title: "El Calendario del Gas",
+      learningObjective: "Descubrir, moviendo la estación del año, por qué la demanda de gas natural sube en invierno.",
+      conceptExplanation: "Tienes un control: la estación del año, del verano al invierno. Un medidor muestra la demanda estacional de gas natural. La etiqueta emerge sola. No te doy la regla: la vas a ver en el calendario.",
+      practicalExample: "Prueba: desliza hacia el pleno invierno y mira la demanda de calefacción dispararse. Vuelve al verano y mírala caer al mínimo.",
+      stepByStepInstructions: [
+        "Mueve la estación y observa la demanda estacional en el medidor.",
+        "Reto 1: lleva el calendario al pleno invierno (demanda alta).",
+        "Reto 2: llévalo al pleno verano (demanda mínima).",
+        "Responde por qué sube la demanda de gas natural en invierno.",
+      ],
+      commonMistakes: ["Ignorar la estacionalidad por creer que 'el mercado no le hace caso al calendario'.", "Tratar la estacionalidad como una garantía en vez de una tendencia histórica."],
+      hint: "El gas se usa para calefacción. ¿Qué estación dispara esa demanda? La cosecha hace lo inverso con la oferta agrícola.",
+    },
+    m3o_5: {
+      title: "Plan de Trading Integrado — Commodities",
+      learningObjective: "Combinar contexto de oferta física, clasificación refugio/cíclico y correlación con el dólar en un plan de trading completo.",
+      conceptExplanation: "Un plan de materias primas completo integra: 1) Contexto de oferta física (¿hay un shock de oferta con dirección clara?), 2) Clasificación refugio/cíclico y el dólar (¿el activo es refugio o cíclico? ¿el dólar ayuda o frena?), 3) Elección de la materia prima correcta, 4) Entrada + SL + TP con ratio mínimo, 5) Tamaño de posición al riesgo máximo permitido.",
+      practicalExample: "La OPEC+ recorta producción + dólar debilitándose + ya tienes oro (refugio) → el petróleo (cíclico, con catalizador de oferta confirmado) diversifica mejor; traza entrada + SL + TP y calcula el tamaño al 2% de $3,200.",
+      stepByStepInstructions: [
+        "Lee el contexto de oferta física (¿shock con dirección clara?).",
+        "Evalúa la clasificación refugio/cíclico del activo y el efecto del dólar.",
+        "Elige la materia prima que no duplica el riesgo ya asumido.",
+        "Traza entrada + SL + TP con el ratio mínimo indicado.",
+        "Calcula el tamaño de posición al riesgo máximo permitido.",
+      ],
+      commonMistakes: ["Sumar un activo del mismo tipo (otro refugio) al que ya tienes en cartera.", "Tratar el dólar como un veto en vez de un factor de contexto."],
+      hint: "Sigue la secuencia: oferta → refugio/cíclico + dólar → activo → entrada/SL/TP → tamaño. Si falta un paso, no operes.",
+    },
   };
 
   return tutorials[missionId] || {
@@ -455,6 +528,7 @@ function getLevelLabel(levelId: string): string {
   if (levelId === "level_3_crypto") return "Nivel 3 — Crypto";
   if (levelId === "level_3_forex") return "Nivel 3 — Forex";
   if (levelId === "level_3_stocks") return "Nivel 3 — Stocks";
+  if (levelId === "level_3_commodities") return "Nivel 3 — Commodities";
   return "Nivel";
 }
 
@@ -467,11 +541,12 @@ export default function MissionPage() {
   const { isMissionCompleted, isMissionUnlocked, completeMission } = useGameStore();
 
   // Find mission in all levels
-  const mission = getMissionById(missionId) || getLevel2MissionById(missionId) || getLevel3CryptoMissionById(missionId) || getLevel3ForexMissionById(missionId) || getLevel3StocksMissionById(missionId);
+  const mission = getMissionById(missionId) || getLevel2MissionById(missionId) || getLevel3CryptoMissionById(missionId) || getLevel3ForexMissionById(missionId) || getLevel3StocksMissionById(missionId) || getLevel3CommoditiesMissionById(missionId);
   const levelId = missionId.startsWith("m1_") ? "level_1"
     : missionId.startsWith("m2_") ? "level_2"
     : missionId.startsWith("m3f_") ? "level_3_forex"
     : missionId.startsWith("m3s_") ? "level_3_stocks"
+    : missionId.startsWith("m3o_") ? "level_3_commodities"
     : "level_3_crypto";
 
   const [phase, setPhase] = useState<Phase>("intro");
