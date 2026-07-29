@@ -141,6 +141,19 @@ Distrito financiero diurno: Torre de Liquidez, relojes de las cuatro sesiones, t
 
 (m3f_5 boss no se convierte.)
 
+### Nivel 3 Stocks — Capital Corporativa (Nueva York · Exchange District) · acento `#22C55E`
+
+Distrito de rascacielos corporativos: Bolsa de Empresas, torres con tickers, pantallas de resultados. Fondos opacos permitidos. Medidores y barras los dibuja el componente.
+
+| Misión | Lab | Pieza | Archivo | Relación | Tamaño rec. | Anclaje |
+|---|---|---|---|---|---|---|
+| m3s_1 (capitalización) | LevelLab · meter | Fondo (rascacielos) | `m3s_1-capitalizacion.webp` | ~5:3 | 1024×614 | Cubre la escena; distrito de rascacielos corporativos |
+| m3s_2 (resultados) | LevelLab · meter centrado | Fondo (sala de earnings) | `m3s_2-resultados.webp` | ~5:3 | 1024×614 | Cubre la escena; sala de resultados con pantallas de EPS |
+| m3s_3 (dividendos/splits) | LevelLab · meter centrado | Fondo (eventos corp.) | `m3s_3-corporativo.webp` | ~5:3 | 1024×614 | Cubre la escena; tablero de eventos corporativos |
+| m3s_4 (beta/rotación) | LevelLab · meter | Fondo (rotación) | `m3s_4-beta.webp` | ~5:3 | 1024×614 | Cubre la escena; panel de rotación sectorial |
+
+(m3s_5 boss no se convierte.)
+
 ## Cómo se conecta
 
 Cada misión declara sus piezas en `config.scene` (en `src/lib/content/levelX.ts`).
