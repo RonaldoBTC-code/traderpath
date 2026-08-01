@@ -40,6 +40,7 @@ import EarningsReaction, { type EarningsScenario } from "@/components/game/Earni
 import CorporateActionPlanner, { type CorporateActionScenario } from "@/components/game/CorporateActionPlanner";
 import SectorBetaGauge, { type SectorBetaScenario } from "@/components/game/SectorBetaGauge";
 import StockTradePlanWizard, { type StockScenario } from "@/components/game/StockTradePlanWizard";
+import CommodityTradePlanWizard, { type CommodityScenario } from "@/components/game/CommodityTradePlanWizard";
 import MissionMarketChart from "@/components/game/MissionMarketChart";
 import { useHasMounted } from "@/hooks/useHasMounted";
 import MissionTutorial, { type TutorialContent } from "@/components/game/MissionTutorial";
@@ -870,6 +871,15 @@ export default function MissionPage() {
             ) : mission.minigame.type === "stock_trade_plan_wizard" && mission.minigame.config?.scenario ? (
               <StockTradePlanWizard
                 scenario={mission.minigame.config.scenario as StockScenario}
+                capital={mission.minigame.config.capital as number}
+                minRR={mission.minigame.config.minRR as number}
+                maxRisk={mission.minigame.config.maxRisk as number}
+                passingSteps={mission.minigame.config.passingSteps as number}
+                onComplete={handleMinigameComplete}
+              />
+            ) : mission.minigame.type === "commodity_trade_plan_wizard" && mission.minigame.config?.scenario ? (
+              <CommodityTradePlanWizard
+                scenario={mission.minigame.config.scenario as CommodityScenario}
                 capital={mission.minigame.config.capital as number}
                 minRR={mission.minigame.config.minRR as number}
                 maxRisk={mission.minigame.config.maxRisk as number}
