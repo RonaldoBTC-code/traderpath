@@ -29,21 +29,38 @@ como sprite; si no, se dibujan las formas actuales (fallback, nada se rompe).
 
 ## El bucle de iteración
 
-No puedo ver los renders desde aquí, así que trabajamos así:
-
-1. Corres el script → se genera `explorer.png`.
-2. Me pasas una captura (o lo ves en `/world`).
-3. Ajusto `build_explorer.py` (proporciones, paleta, cámara, luces) y repetimos.
+Renderiza en modo rápido, abre la imagen de salida (PNG o WebP), ajusta el script
+y repite. En el juego basta recargar la misión o `/world`: los assets se precargan
+y, si falta alguno, se dibuja la forma provisional.
 
 Todo el look se controla en el bloque `CONFIG` y en `build_explorer()`:
 paleta VDD v2.0, contorno navy (Freestyle), ángulo 3/4, luz diurna.
 
-## Próximas fases
+## Scripts
 
-- **Fase 2** — resto de personajes (ARIA, Elena, Leo) + variantes de color del
-  avatar (bucle sobre los 5 hex; ver nota al pie del script).
-- **Fase 3** — dioramas de ciudad (Ciudad Bitcoin, Distrito FX, …) como fondos
-  que reemplazan el hero AI y las postales SVG de `MarketCityAtlas`.
+| Script | Salida | Estado |
+|---|---|---|
+| `build_explorer.py` | `public/assets/sprites/explorer*.png` | ✅ Explorador + 5 variantes de color |
+| `build_overworld.py` | `public/assets/world/overworld*` | ✅ Diorama del overworld + máscara de caminabilidad |
+| `build_mission_art.py` | `public/assets/missions/*.webp` | ✅ Nivel 1 (8 piezas) · pendiente N2 y N3 |
+
+### Arte de misiones (`build_mission_art.py`)
+
+Genera las piezas del contrato `public/assets/missions/README.md` con su nombre
+exacto: el lab las carga solo, sin tocar código.
+
+```bash
+blender -b --python blender/build_mission_art.py                          # todas
+blender -b --python blender/build_mission_art.py -- --only m1_1-apple     # una o varias (coma)
+blender -b --python blender/build_mission_art.py -- --preview             # pocas muestras
+```
+
+Cada pieza se verifica al guardarse (tamaño del contrato y alfa en sprites) y el
+puesto de m1_1 imprime dónde caen sus anclas respecto a las líneas del lab. Los
+objetos en la colección `NoInk` (brillos, juntas, adoquines) no llevan contorno
+Freestyle: con tinta, un brillo se lee como agujero.
+
+Pendiente: Fase 2 de personajes (ARIA, Elena, Leo como sprites renderizados).
 
 ## Convenciones
 

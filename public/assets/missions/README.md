@@ -19,6 +19,39 @@ de mostrarse).
   ambientación de su lugar (abajo). Cada misión apunta su propio `scene.backdrop`,
   así que puede haber uno distinto por misión/ciudad.
 
+## Producción en Blender
+
+Las piezas se generan con scripts `bpy` reproducibles (ver `blender/README.md`),
+con el nombre exacto de este contrato:
+
+| Script | Piezas entregadas |
+|---|---|
+| `blender/build_mission_art.py` | ✅ **Nivel 1 completo**: `m1_1-stall`, `m1_1-client`, `m1_1-apple`, `m1_1-sign`, `m1_2-workshop`, `m1_3-observatory`, `m1_4-vault`, `m1_4-coin` |
+
+Pendientes: N2 (`m2_1-plaza`, `m2_2-observatory`, `m2_3-patterns`) y N3 (crypto, forex, stocks, commodities).
+
+Reglas de composición medidas en los componentes (valen también si dibujas a mano):
+
+- **Fondos de GaugeLab/LevelLab/CandleLab/StructureLab:** la tarjeta es ancha y
+  baja y usa `cover`, así que sólo se ve una **franja central horizontal**, y
+  **el recorte cambia con el ancho de la pantalla** (en escritorio es más fina
+  que en móvil). Medidores y texto van encima, así que cada lab reserva zonas
+  distintas:
+  - **CandleLab** (vela al centro) y **StructureLab** (gráfico a todo lo ancho,
+    etiquetas arriba a izquierda y derecha): detalle en los laterales, centro
+    tranquilo y claro.
+  - **GaugeLab** es la excepción: sus textos ocupan los bordes y, en móvil, casi
+    la mitad izquierda (etiquetas "Tu posición" / "Capital en riesgo" y monedas a
+    la izquierda; % de riesgo y la nota "línea = 2%…" a la derecha). La única zona
+    sin textos en **todos** los anchos (medida en móvil, panel y escritorio ancho)
+    es **x≈50–72 %, y≈22–52 % de la imagen**: ahí va el motivo principal. El resto,
+    liso y claro. Las monedas pueden pasar por encima del arte sin problema.
+- **m1_1 (SupplyDemandLab, 4:3):** el cartel va arriba al centro, las manzanas se
+  apoyan en una línea de mostrador a **y≈52 %** y los clientes se paran de
+  **y≈60 %** hacia abajo.
+- **Figuras repetidas** (cliente 24×40 px, manzana y moneda 20×20 px en pantalla):
+  siluetas simples; el detalle fino no se ve a ese tamaño.
+
 ## Ambientación por misión (qué ciudad/lugar dibujar)
 
 Fuente: distritos del overworld (`AcademyAgoraScene`) para N1 y `src/lib/game/marketCities.ts` para N3.
