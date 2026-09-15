@@ -30,7 +30,13 @@ con el nombre exacto de este contrato:
 | `blender/build_mission_art.py` | ✅ **Nivel 2 completo**: `m2_1-plaza`, `m2_2-observatory`, `m2_3-patterns` |
 | `blender/build_mission_art.py` | ✅ **N3 Crypto completo**: `m3c_1-plaza-bloque`, `m3c_1-coin`, `m3c_2-nexus`, `m3c_3-ciclo`, `m3c_4-bloques` |
 
-Pendiente: N3 Forex, Stocks y Commodities.
+| `blender/build_mission_art.py` | ✅ **N3 Forex completo**: `m3f_1-sesiones`, `m3f_2-lotes`, `m3f_2-coin`, `m3f_3-correlacion`, `m3f_4-calendario` |
+
+Pendiente: N3 Stocks y Commodities.
+
+Nota `m3f_3`: con `centered: true` la nota del medidor ("centro = sin relación")
+es más ancha: en móvil ocupa x≈54–94 %, así que el detalle abajo a la izquierda
+debe quedar en x≤52 %.
 
 Nota `m3c_3-ciclo`: el contrato pedía "Ciudad Bitcoin de noche"; se hizo **atardecer
 cálido** para que el panel blanco y los textos del lab sigan legibles.

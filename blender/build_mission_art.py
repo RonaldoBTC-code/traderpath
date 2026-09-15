@@ -1036,6 +1036,187 @@ def piece_m3c_4_bloques():
     render_piece("m3c_4-bloques", (1024, 614), transparent=False, outline_px=2.2, wash=0.04)
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+# NIVEL 3 · FOREX — Distrito FX (Nueva York · Wall Street) · acento #38BDF8
+# ═════════════════════════════════════════════════════════════════════════════
+# Mismas zonas del modo meter (medido otra vez en m3f_1 y m3f_3 a 375/1280 px).
+# Diferencia: con `centered` la nota "centro = sin relación" es más ancha: en
+# móvil ocupa x≈54–94 %, así que en m3f_3 el detalle abajo-izq va en x≤52 %.
+FX = "#38BDF8"
+FX_MUTED = "#5B8DB8"
+FX_PALE = "#CFEBFA"
+
+
+def clock(prefix, center, radius, hour, minute):
+    """Reloj de pared mirando a -Y: esfera blanca, aro azul y dos agujas."""
+    cx, cy, cz = center
+    cylinder(f"{prefix}_face", (cx, cy, cz), radius, 0.08, "#FFFFFF", rotation=(R(90), 0, 0), vertices=40)
+    torus(f"{prefix}_rim", (cx, cy - 0.05, cz), radius, radius * 0.1, FX, rotation=(R(90), 0, 0))
+    for name, turns, length, width in (("hour", hour / 12, 0.5, 0.09), ("min", minute / 60, 0.78, 0.06)):
+        a = turns * 2 * math.pi
+        L = radius * length
+        box(f"{prefix}_{name}", (cx + math.sin(a) * L / 2, cy - 0.1, cz + math.cos(a) * L / 2),
+            (width * radius, 0.03, L), INK_HEX, bevel=0.0, rotation=(0, a, 0))
+    sphere(f"{prefix}_hub", (cx, cy - 0.12, cz), (radius * 0.1, 0.04, radius * 0.1), INK_HEX)
+
+
+def polyline(prefix, points, y, width, color):
+    """Línea quebrada en el plano XZ (mirando a -Y) hecha de segmentos."""
+    for i, ((x0, z0), (x1, z1)) in enumerate(zip(points, points[1:])):
+        dx, dz = x1 - x0, z1 - z0
+        length = math.hypot(dx, dz)
+        box(f"{prefix}{i}", ((x0 + x1) / 2, y, (z0 + z1) / 2), (width, 0.04, length + width * 0.8),
+            color, bevel=0.0, rotation=(0, math.atan2(dx, dz), 0))
+
+
+def _frieze(color):
+    """Friso superior (sólo asoma en móvil, y≈12–23 %)."""
+    box("frieze", (0, 2.75, 7.95), (15.0, 0.2, 1.0), color, bevel=0.05)
+
+
+def piece_m3f_1_sesiones():
+    """Sesiones: skyline de Londres y Nueva York arriba, relojes de sesión abajo-izq."""
+    reset_scene()
+    daylight(0.7)
+    _meter_backdrop("#EAF6FD", "#D6E4F0")
+    _frieze(FX_PALE)
+    # Londres (izq.): torre del reloj; Nueva York (der.): rascacielos escalonado.
+    box("ldn_tower", (-4.8, 2.6, 7.85), (0.45, 0.06, 0.7), FX_MUTED, bevel=0.0)
+    cone("ldn_roof", (-4.8, 2.6, 8.3), 0.3, 0.0, 0.25, FX_MUTED, vertices=4)
+    cylinder("ldn_clock", (-4.8, 2.55, 7.95), 0.14, 0.02, "#FFFFFF", rotation=(R(90), 0, 0), vertices=20)
+    for i, (x, h) in enumerate(((-6.4, 0.5), (-5.6, 0.6), (-3.9, 0.45), (-3.2, 0.55))):
+        box(f"ldn_bldg{i}", (x, 2.62, 7.5 + h / 2), (0.6, 0.05, h), "#7FA8CC", bevel=0.0)
+    # Capas del rascacielos: sólo la exterior lleva tinta. Con las tres entintadas,
+    # los contornos superpuestos lo volvían una mancha negra a ese tamaño.
+    for i, (w, h, col) in enumerate(((0.8, 0.45, FX_MUTED), (0.56, 0.65, "#6E9CC4"), (0.32, 0.85, "#86B0D4"))):
+        tier = box(f"ny_tier{i}", (4.6, 2.6 - i * 0.02, 7.5 + h / 2), (w, 0.06, h), col, bevel=0.0)
+        if i > 0:
+            no_ink(tier)
+    for i, (x, h) in enumerate(((3.1, 0.5), (3.8, 0.35), (5.5, 0.6), (6.3, 0.4))):
+        box(f"ny_bldg{i}", (x, 2.62, 7.5 + h / 2), (0.6, 0.05, h), "#7FA8CC", bevel=0.0)
+    # Abajo-izquierda: tablero con cuatro relojes de sesión (horas distintas).
+    box("clock_board", (-3.9, 2.85, 2.45), (6.0, 0.1, 1.4), "#FFFFFF", bevel=0.08)
+    no_ink(box("clock_board_rail", (-3.9, 2.82, 1.78), (6.0, 0.06, 0.08), FX, bevel=0.0))
+    for i, (x, hour, minute) in enumerate(((-6.0, 8, 0), (-4.6, 13, 30), (-3.2, 21, 0), (-1.8, 7, 15))):
+        clock(f"clock{i}", (x, 2.75, 2.5), 0.45, hour % 12, minute)
+    cylinder("pot", (1.2, 1.6, 1.55), 0.35, 0.7, FX)
+    sphere("plant", (1.2, 1.6, 2.15), (0.5, 0.45, 0.45), "#5FB97A")
+    report_anchors([
+        ("friso borde inf. (≤23%)", (0, 2.75, 7.45)),
+        ("tablero tope (≥67%)", (-3.9, 2.85, 3.15)),
+        ("tablero borde der. (≤64%)", (-0.9, 2.85, 2.45)),
+        ("planta borde der. (≤64%)", (1.7, 1.6, 2.15)),
+    ])
+    render_piece("m3f_1-sesiones", (1024, 614), transparent=False, outline_px=2.2, wash=0.04)
+
+
+def piece_m3f_2_lotes():
+    """GaugeLab (zona libre x≈50–72 %, y≈22–52 %): la Torre de Liquidez."""
+    reset_scene()
+    daylight()
+    camera(16.0, 8.0, (0, 0, 3.0))
+    sky_plane("sky", (0, 70, 10), (120, 60), "#D6EEFB")
+    # Skyline bajo, con los techos dentro del cuadro: altos se salían por arriba y
+    # se leían como paneles en blanco.
+    for i, (x, w, h, col) in enumerate(((-8.6, 2.2, 3.0, "#BFD7EC"), (-6.3, 1.8, 4.2, "#CADFF0"),
+                                        (-4.0, 2.4, 2.6, "#BFD7EC"), (6.2, 2.0, 3.6, "#CADFF0"),
+                                        (8.6, 2.4, 2.8, "#BFD7EC"))):
+        no_ink(box(f"skyline{i}", (x, 30, h / 2), (w, 2.0, h), col, bevel=0.1))
+        no_ink(box(f"skyline{i}_roof", (x, 30, h + 0.15), (w * 0.6, 1.4, 0.3), "#B3CDE6", bevel=0.05))
+    no_ink(plane("plaza", (0, 1.5, 0), (40, 27), "#E4ECF3"))
+    for i, (x, y) in enumerate(((-6.2, -2.0), (-3.4, 4.0), (5.8, 1.5), (7.4, -3.5), (-1.2, -5.0))):
+        no_ink(cylinder(f"tile{i}", (x, y, 0.01), 0.7, 0.02, "#D6E2EE"))
+
+    tx, ty = 1.76, 3.0
+    cylinder("pedestal", (tx, ty, 0.3), 1.35, 0.6, "#D6E2EE")
+    z = 0.6
+    for i, (w, h) in enumerate(((1.9, 2.4), (1.5, 2.0), (1.1, 1.6))):
+        box(f"tier{i}", (tx, ty, z + h / 2), (w, w, h), "#9FD8F5" if i % 2 == 0 else FX_PALE, bevel=0.12)
+        for k in range(int(h / 0.5)):
+            no_ink(box(f"tier{i}_window{k}", (tx, ty - w / 2 - 0.01, z + 0.35 + k * 0.5),
+                       (w * 0.7, 0.02, 0.14), "#EAF6FD", bevel=0.0))
+        z += h
+    sphere("drop", (tx, ty, z + 0.4), (0.4, 0.4, 0.4), FX)
+    cone("drop_tip", (tx, ty, z + 0.9), 0.3, 0.0, 0.55, FX)
+    report_anchors([
+        ("torre borde izq. (≥50%)", (tx - 0.95, ty, 3.0)),
+        ("torre borde der. (≤72%)", (tx + 0.95, ty, 3.0)),
+        ("tope gota (≈22%)", (tx, ty, z + 1.17)),
+        ("base pedestal", (tx, ty - 1.35, 0.0)),
+    ])
+    render_piece("m3f_2-lotes", (1024, 683), transparent=False, outline_px=2.2, wash=0.05)
+
+
+def piece_m3f_2_coin():
+    """Ficha de posición (una por mini-lote): ficha azul con muescas blancas."""
+    reset_scene()
+    daylight(0.75)
+    camera(2.35, 0.0, (0, 0, 0), azim_deg=18)
+    rot = (R(90), 0, 0)
+    cylinder("chip", (0, 0, 0), 1.0, 0.24, FX, rotation=rot, vertices=64)
+    for k in range(6):
+        a = R(k * 60)
+        box(f"notch{k}", (0.86 * math.sin(a), 0, 0.86 * math.cos(a)), (0.32, 0.27, 0.15), "#FFFFFF",
+            bevel=0.03, rotation=(0, a, 0))
+    torus("ring", (0, -0.13, 0), 0.6, 0.05, "#FFFFFF", rotation=rot)
+    cylinder("emblem", (0, -0.1, 0), 0.4, 0.26, "#8FD6F7", rotation=rot, vertices=48)
+    no_ink(sphere("shine", (-0.45, -0.28, 0.45), (0.11, 0.05, 0.17), "#EAF6FD"))
+    render_piece("m3f_2-coin", (96, 96), transparent=True, outline_px=0.9,
+                 supersample=SPRITE_SUPERSAMPLE)
+
+
+def piece_m3f_3_correlacion():
+    """Correlación: pantallas de pares arriba; dos líneas que se mueven juntas abajo-izq
+    (x≤52 %: la nota del medidor centrado es más ancha)."""
+    reset_scene()
+    daylight(0.7)
+    _meter_backdrop("#EDF4FD", "#D6E4F0")
+    for i, x in enumerate((-6.25, -3.75, -1.25, 1.25, 3.75, 6.25)):
+        box(f"pair_screen{i}", (x, 2.7, 7.95), (2.2, 0.2, 1.0), "#3A4660", bevel=0.06)
+        together = i % 3 != 1
+        for j, (dz, col) in enumerate(((0.16, FX), (-0.16, "#818CF8"))):
+            tilt = R(62) if together or j == 0 else R(118)
+            box(f"pair{i}_line{j}", (x, 2.55, 7.95 + dz), (0.06, 0.04, 1.2), col, bevel=0.0,
+                rotation=(0, tilt, 0))
+    box("chart_board", (-3.4, 2.85, 2.45), (5.0, 0.1, 1.4), "#FFFFFF", bevel=0.08)
+    base = ((-5.6, 1.95), (-4.7, 2.35), (-3.8, 2.05), (-2.9, 2.6), (-2.0, 2.3), (-1.2, 2.85))
+    polyline("line_a", [(x, z + 0.12) for x, z in base], 2.76, 0.08, FX)
+    polyline("line_b", [(x, z - 0.12) for x, z in base], 2.76, 0.08, "#818CF8")
+    report_anchors([
+        ("pantallas borde inf. (≤23%)", (0, 2.7, 7.45)),
+        ("tablero tope (≥67%)", (-3.4, 2.85, 3.15)),
+        ("tablero borde der. (≤52%)", (-0.9, 2.85, 2.45)),
+    ])
+    render_piece("m3f_3-correlacion", (1024, 614), transparent=False, outline_px=2.2, wash=0.04)
+
+
+def piece_m3f_4_calendario():
+    """Calendario económico: días con impacto arriba; calendario de pared y reloj abajo-izq."""
+    reset_scene()
+    daylight(0.7)
+    _meter_backdrop("#EAF6FD", "#D6E4F0")
+    impacts = ("#DC2626", "#9AA8BC", "#F28B3C", "#9AA8BC", "#DC2626", "#9AA8BC", "#F28B3C")
+    for i, col in enumerate(impacts):
+        x = -6.3 + i * 2.1
+        box(f"day{i}", (x, 2.7, 7.95), (1.8, 0.2, 1.0), "#FFFFFF", bevel=0.06)
+        box(f"day{i}_tab", (x, 2.58, 8.33), (1.8, 0.05, 0.22), FX, bevel=0.0)
+        sphere(f"day{i}_impact", (x, 2.55, 7.85), (0.18, 0.06, 0.18), col)
+    box("calendar", (-4.2, 2.85, 2.45), (4.2, 0.1, 1.4), "#FFFFFF", bevel=0.08)
+    box("calendar_tab", (-4.2, 2.78, 3.0), (4.2, 0.05, 0.28), FX, bevel=0.0)
+    hot = {(0, 2), (1, 0), (1, 4), (0, 4)}
+    for r in range(2):
+        for c in range(5):
+            col = "#DC2626" if (r, c) in hot else "#DCE6F2"
+            box(f"cell{r}_{c}", (-5.8 + c * 0.8, 2.78, 2.52 - r * 0.5), (0.6, 0.04, 0.36), col, bevel=0.0)
+    clock("wall_clock", (-0.7, 2.8, 2.45), 0.55, 1, 55)
+    report_anchors([
+        ("días borde inf. (≤23%)", (0, 2.7, 7.45)),
+        ("calendario tope (≥67%)", (-4.2, 2.85, 3.15)),
+        ("reloj borde der. (≤64%)", (-0.15, 2.8, 2.45)),
+    ])
+    render_piece("m3f_4-calendario", (1024, 614), transparent=False, outline_px=2.2, wash=0.04)
+
+
 PIECES = {
     "m1_1-stall": piece_m1_1_stall,
     "m1_1-client": piece_m1_1_client,
@@ -1053,6 +1234,11 @@ PIECES = {
     "m3c_2-nexus": piece_m3c_2_nexus,
     "m3c_3-ciclo": piece_m3c_3_ciclo,
     "m3c_4-bloques": piece_m3c_4_bloques,
+    "m3f_1-sesiones": piece_m3f_1_sesiones,
+    "m3f_2-lotes": piece_m3f_2_lotes,
+    "m3f_2-coin": piece_m3f_2_coin,
+    "m3f_3-correlacion": piece_m3f_3_correlacion,
+    "m3f_4-calendario": piece_m3f_4_calendario,
 }
 
 

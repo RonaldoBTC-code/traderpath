@@ -42,7 +42,7 @@ paleta VDD v2.0, contorno navy (Freestyle), ángulo 3/4, luz diurna.
 |---|---|---|
 | `build_explorer.py` | `public/assets/sprites/explorer*.png` | ✅ Explorador + 5 variantes de color |
 | `build_overworld.py` | `public/assets/world/overworld*` | ✅ Diorama del overworld + máscara de caminabilidad |
-| `build_mission_art.py` | `public/assets/missions/*.webp` | ✅ Niveles 1 y 2 + N3 Crypto (16 piezas) · pendiente Forex, Stocks, Commodities |
+| `build_mission_art.py` | `public/assets/missions/*.webp` | ✅ Niveles 1 y 2 + N3 Crypto y Forex (21 piezas) · pendiente Stocks, Commodities |
 
 ### Arte de misiones (`build_mission_art.py`)
 
