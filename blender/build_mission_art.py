@@ -320,6 +320,7 @@ def render_piece(name, size, transparent, outline_px, supersample=1, wash=0.0):
     """
     ss = max(1, supersample)
     render_settings((size[0] * ss, size[1] * ss), transparent, outline_px * ss)
+    flush_anchors()
     tmp = os.path.join(bpy.app.tempdir, f"{name}_raw.png")
     scene = bpy.context.scene
     scene.render.image_settings.file_format = "PNG"
@@ -358,12 +359,25 @@ def render_piece(name, size, transparent, outline_px, supersample=1, wash=0.0):
     return out
 
 
+_PENDING_ANCHORS = []
+
+
 def report_anchors(anchors):
-    """Imprime dónde caen puntos del mundo en la imagen (fracción desde arriba)."""
+    """Registra puntos del mundo para informar dónde caen en la imagen.
+
+    Se imprimen en `flush_anchors`, llamado cuando la resolución de la pieza ya
+    está fijada: la proyección ortográfica depende de la proporción de la imagen,
+    y calcularla antes usaba la resolución de la pieza anterior (o 16:9).
+    """
+    _PENDING_ANCHORS.extend(anchors)
+
+
+def flush_anchors():
     scene = bpy.context.scene
-    for label, co in anchors:
+    for label, co in _PENDING_ANCHORS:
         v = world_to_camera_view(scene, scene.camera, Vector(co))
         print(f"[TraderPath]   ancla {label}: x={v.x * 100:.1f}% y={100 - v.y * 100:.1f}%")
+    _PENDING_ANCHORS.clear()
 
 
 # ═════════════════════════════════════════════════════════════════════════════
