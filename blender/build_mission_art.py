@@ -1217,6 +1217,255 @@ def piece_m3f_4_calendario():
     render_piece("m3f_4-calendario", (1024, 614), transparent=False, outline_px=2.2, wash=0.04)
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+# NIVEL 3 · STOCKS — Capital Corporativa (NY · Exchange District) · acento #22C55E
+# NIVEL 3 · COMMODITIES — Puerto de Materias (Chicago · Golfo) · acento #EAB308
+# ═════════════════════════════════════════════════════════════════════════════
+# Todo en modo meter: mismas zonas medidas. Límite derecho del detalle abajo-izq:
+# x≤64 % con umbral (m3s_1, m3s_4, m3o_4); x≤52 % con `centered` (el resto).
+STOCKS = "#22C55E"
+STOCKS_MUTED = "#5FA57E"
+COMMOD = "#EAB308"
+GOLD_BAR = "#F2B33D"
+COPPER = "#D9773B"
+OIL = "#3B3F4A"
+
+
+def arrow(prefix, center, size, color, up=True):
+    """Triángulo mirando a -Y (flecha arriba/abajo)."""
+    rot = (R(90), 0, 0) if up else (R(90), R(180), 0)
+    return cone(prefix, center, size, 0.0, 0.08, color, rotation=rot, vertices=3)
+
+
+def upright_coin(prefix, center, radius, color=GOLD_BAR):
+    cylinder(prefix, center, radius, 0.12, color, rotation=(R(90), 0, 0), vertices=40)
+    torus(f"{prefix}_ring", (center[0], center[1] - 0.07, center[2]), radius * 0.7, radius * 0.07, "#B9760A",
+          rotation=(R(90), 0, 0))
+
+
+def piece_m3s_1_capitalizacion():
+    """Capitalización: skyline arriba; maqueta small / mid / large cap abajo-izq (x≤64 %)."""
+    reset_scene()
+    daylight(0.7)
+    _meter_backdrop("#EEFBF2", "#D6EBDD")
+    _frieze("#D8F5E3")
+    for i, (x, h, col) in enumerate(((-6.2, 0.45, STOCKS_MUTED), (-5.3, 0.8, "#7DBE97"), (-4.4, 0.6, STOCKS_MUTED),
+                                     (-2.8, 0.85, "#7DBE97"), (2.6, 0.55, STOCKS_MUTED), (3.5, 0.85, "#7DBE97"),
+                                     (4.5, 0.7, STOCKS_MUTED), (5.9, 0.5, "#7DBE97"))):
+        box(f"frieze_bldg{i}", (x, 2.62, 7.5 + h / 2), (0.7, 0.05, h), col, bevel=0.0)
+    box("model_base", (-3.4, 2.0, 1.35), (6.4, 1.2, 0.3), "#FFFFFF", bevel=0.06)
+    for i, (x, w, h) in enumerate(((-5.6, 0.7, 0.6), (-3.6, 1.0, 1.0), (-1.3, 1.3, 1.6))):
+        box(f"cap_bldg{i}", (x, 1.9, 1.5 + h / 2), (w, 0.8, h), STOCKS if i == 2 else "#9ADBB3", bevel=0.06)
+        for k in range(int(h / 0.35)):
+            no_ink(box(f"cap_bldg{i}_win{k}", (x, 1.49, 1.72 + k * 0.35), (w * 0.6, 0.02, 0.1), "#EEFBF2", bevel=0.0))
+    report_anchors([
+        ("friso borde inf. (≤23%)", (0, 2.75, 7.45)),
+        ("edificio grande tope (≥67%)", (-1.3, 1.9, 3.1)),
+        ("maqueta borde der. (≤64%)", (-0.2, 2.0, 1.35)),
+    ])
+    render_piece("m3s_1-capitalizacion", (1024, 614), transparent=False, outline_px=2.2, wash=0.04)
+
+
+def piece_m3s_2_resultados():
+    """Resultados: pantallas con flechas arriba; tablero de EPS abajo-izq (x≤52 %)."""
+    reset_scene()
+    daylight(0.7)
+    _meter_backdrop("#EEFBF2", "#D6EBDD")
+    for i, x in enumerate((-6.25, -3.75, -1.25, 1.25, 3.75, 6.25)):
+        box(f"earn_screen{i}", (x, 2.7, 7.95), (2.2, 0.2, 1.0), "#3A4660", bevel=0.06)
+        up = i % 3 != 2
+        arrow(f"earn_arrow{i}", (x, 2.5, 7.95), 0.33, STOCKS if up else "#DC2626", up=up)
+    box("eps_board", (-3.4, 2.85, 2.45), (4.4, 0.1, 1.4), "#FFFFFF", bevel=0.08)
+    for i, h in enumerate((0.4, 0.65, 0.95)):
+        box(f"eps_bar{i}", (-4.9 + i * 0.9, 2.75, 1.9 + h / 2), (0.55, 0.05, h), STOCKS, bevel=0.0)
+    arrow("eps_up", (-1.9, 2.72, 2.55), 0.4, STOCKS, up=True)
+    report_anchors([
+        ("pantallas borde inf. (≤23%)", (0, 2.7, 7.45)),
+        ("tablero tope (≥67%)", (-3.4, 2.85, 3.15)),
+        ("tablero borde der. (≤52%)", (-1.2, 2.85, 2.45)),
+    ])
+    render_piece("m3s_2-resultados", (1024, 614), transparent=False, outline_px=2.2, wash=0.04)
+
+
+def piece_m3s_3_corporativo():
+    """Eventos corporativos: fichas de evento arriba; split que no cambia el valor
+    abajo-izq: una moneda grande = dos pequeñas (x≤52 %)."""
+    reset_scene()
+    daylight(0.7)
+    _meter_backdrop("#EEFBF2", "#D6EBDD")
+    for i in range(6):
+        x = -6.25 + i * 2.5
+        box(f"event_tile{i}", (x, 2.7, 7.95), (2.2, 0.2, 1.0), "#FFFFFF", bevel=0.06)
+        kind = i % 3
+        if kind == 0:  # dividendo: moneda
+            cylinder(f"event_coin{i}", (x, 2.55, 7.95), 0.3, 0.06, GOLD_BAR, rotation=(R(90), 0, 0), vertices=24)
+        elif kind == 1:  # split: barra partida
+            for j, dx in enumerate((-0.28, 0.28)):
+                box(f"event_split{i}_{j}", (x + dx, 2.55, 7.95), (0.46, 0.05, 0.3), STOCKS, bevel=0.0)
+        else:  # fecha ex-dividendo: calendario mínimo
+            box(f"event_cal{i}", (x, 2.55, 7.9), (0.6, 0.05, 0.5), "#DCE6F2", bevel=0.0)
+            box(f"event_cal_tab{i}", (x, 2.53, 8.18), (0.6, 0.05, 0.12), STOCKS, bevel=0.0)
+    box("split_table", (-3.6, 2.0, 1.35), (4.6, 1.2, 0.3), "#FFFFFF", bevel=0.06)
+    upright_coin("big_coin", (-5.1, 2.0, 2.2), 0.6)
+    for i, dz in enumerate((0.12, -0.12)):
+        box(f"equals{i}", (-4.0, 1.9, 2.2 + dz), (0.4, 0.05, 0.1), INK_HEX, bevel=0.0)
+    for i, x in enumerate((-3.1, -2.15)):
+        upright_coin(f"small_coin{i}", (x, 2.0, 2.02), 0.42)
+    report_anchors([
+        ("fichas borde inf. (≤23%)", (0, 2.7, 7.45)),
+        ("moneda grande tope (≥67%)", (-5.1, 2.0, 2.8)),
+        ("mesa borde der. (≤52%)", (-1.3, 2.0, 1.35)),
+    ])
+    render_piece("m3s_3-corporativo", (1024, 614), transparent=False, outline_px=2.2, wash=0.04)
+
+
+def piece_m3s_4_beta():
+    """Beta: sectores arriba; la onda del sector amplifica la del mercado abajo-izq (x≤64 %)."""
+    reset_scene()
+    daylight(0.7)
+    _meter_backdrop("#EEFBF2", "#D6EBDD")
+    # Friso más bajo y más arriba (base z 7.7, y≈20 %): la etiqueta de este lab se
+    # parte en 3 líneas en móvil y las fichas quedaban pegadas a su primera línea.
+    for i in range(7):
+        x = -6.3 + i * 2.1
+        box(f"sector_tile{i}", (x, 2.7, 8.1), (1.8, 0.2, 0.8), "#FFFFFF", bevel=0.06)
+        amp = 0.2 + 0.1 * ((i * 5) % 4)
+        for j, (dx, h, col) in enumerate(((-0.45, amp, STOCKS), (0.0, amp * 0.6, "#9AA8BC"), (0.45, amp * 1.2, STOCKS))):
+            box(f"sector{i}_bar{j}", (x + dx, 2.55, 7.82 + h / 2), (0.28, 0.05, h), col, bevel=0.0)
+    box("beta_board", (-3.6, 2.85, 2.45), (5.2, 0.1, 1.4), "#FFFFFF", bevel=0.08)
+    xs = [-5.9 + i * 0.9 for i in range(6)]
+    wave = (0.0, 1.0, -0.4, 0.8, -0.8, 0.5)
+    polyline("market_wave", [(x, 2.45 + 0.18 * w) for x, w in zip(xs, wave)], 2.76, 0.07, "#9AA8BC")
+    polyline("sector_wave", [(x, 2.45 + 0.45 * w) for x, w in zip(xs, wave)], 2.74, 0.09, STOCKS)
+    report_anchors([
+        ("sectores borde inf. (≈20%, etiqueta en 3 líneas)", (0, 2.7, 7.7)),
+        ("tablero tope (≥67%)", (-3.6, 2.85, 3.15)),
+        ("tablero borde der. (≤64%)", (-1.0, 2.85, 2.45)),
+    ])
+    render_piece("m3s_4-beta", (1024, 614), transparent=False, outline_px=2.2, wash=0.04)
+
+
+def barrel(prefix, center, color=OIL, band=COMMOD):
+    cylinder(prefix, center, 0.38, 0.9, color, vertices=24)
+    for j, dz in enumerate((-0.22, 0.22)):
+        no_ink(torus(f"{prefix}_band{j}", (center[0], center[1], center[2] + dz), 0.385, 0.03, band))
+
+
+def piece_m3o_1_oferta():
+    """Oferta física: puerto con grúas, barco y tanques arriba; barriles abajo-izq (x≤52 %)."""
+    reset_scene()
+    daylight(0.7)
+    _meter_backdrop("#FFF8E6", "#EBDDB8")
+    _frieze("#FBF0C8")
+    for i, x in enumerate((-5.6, 3.8)):  # grúas: torre + pluma
+        box(f"crane{i}_tower", (x, 2.6, 7.85), (0.1, 0.05, 0.75), "#B8912A", bevel=0.0)
+        box(f"crane{i}_boom", (x + 0.45, 2.6, 8.2), (1.1, 0.05, 0.08), "#B8912A", bevel=0.0)
+    box("ship_hull", (-2.6, 2.6, 7.62), (2.6, 0.05, 0.3), "#5B6B80", bevel=0.0)
+    for i, (dx, col) in enumerate(((-0.8, COMMOD), (-0.25, "#D9773B"), (0.3, "#7FA8CC"))):
+        box(f"container{i}", (-2.6 + dx, 2.58, 7.94), (0.5, 0.05, 0.3), col, bevel=0.0)
+    for i, x in enumerate((1.2, 2.0, 5.6, 6.4)):
+        cylinder(f"tank{i}", (x, 2.6, 7.75), 0.34, 0.55, "#E6E0CC", vertices=20)
+    for i, x in enumerate((-5.9, -5.1, -4.3)):
+        barrel(f"barrel{i}", (x, 1.9, 1.65))
+    for i, x in enumerate((-5.5, -4.7)):
+        barrel(f"barrel_top{i}", (x, 1.9, 2.55))
+    box("pallet", (-5.1, 1.9, 1.15), (2.8, 1.0, 0.1), "#C98B55", bevel=0.02)
+    report_anchors([
+        ("friso borde inf. (≤23%)", (0, 2.75, 7.45)),
+        ("barriles tope (≥67%)", (-5.1, 1.9, 3.0)),
+        ("barriles borde der. (≤52%)", (-3.92, 1.9, 1.65)),
+    ])
+    render_piece("m3o_1-oferta", (1024, 614), transparent=False, outline_px=2.2, wash=0.04)
+
+
+def piece_m3o_2_refugio():
+    """Refugio vs cíclico: oro y cobre arriba; balanza oro/cobre abajo-izq (x≤52 %)."""
+    reset_scene()
+    daylight(0.7)
+    _meter_backdrop("#FFF8E6", "#EBDDB8")
+    box("frieze", (0, 2.75, 7.95), (15.0, 0.2, 1.0), "#FFFFFF", bevel=0.05)
+    for i in range(7):
+        x = -6.3 + i * 2.1
+        if i % 2 == 0:
+            box(f"frieze_gold{i}", (x, 2.6, 7.85), (0.9, 0.3, 0.35), GOLD_BAR, bevel=0.06)
+        else:
+            torus(f"frieze_coil{i}", (x, 2.6, 7.95), 0.3, 0.1, COPPER, rotation=(R(90), 0, 0))
+    cylinder("scale_post", (-3.2, 2.0, 2.0), 0.08, 1.6, "#8A96A8", vertices=12)
+    box("scale_beam", (-3.2, 1.95, 2.8), (3.6, 0.1, 0.1), "#8A96A8", bevel=0.02)
+    box("scale_base", (-3.2, 2.0, 1.3), (1.2, 0.8, 0.2), "#8A96A8", bevel=0.04)
+    for i, x in enumerate((-4.8, -1.6)):
+        box(f"scale_string{i}", (x, 1.95, 2.45), (0.03, 0.03, 0.7), INK_HEX, bevel=0.0)
+        cylinder(f"scale_pan{i}", (x, 1.95, 2.1), 0.55, 0.08, "#C8D2DE", vertices=32)
+    box("pan_gold_a", (-4.95, 1.95, 2.27), (0.5, 0.3, 0.22), GOLD_BAR, bevel=0.04)
+    box("pan_gold_b", (-4.65, 1.95, 2.45), (0.5, 0.3, 0.2), GOLD_BAR, bevel=0.04)
+    torus("pan_coil", (-1.6, 1.95, 2.42), 0.3, 0.12, COPPER, rotation=(R(90), 0, 0))
+    report_anchors([
+        ("friso borde inf. (≤23%)", (0, 2.75, 7.45)),
+        ("balanza tope (≥67%)", (-3.2, 1.95, 2.85)),
+        ("plato der. borde der. (≤52%)", (-1.05, 1.95, 2.1)),
+    ])
+    render_piece("m3o_2-refugio", (1024, 614), transparent=False, outline_px=2.2, wash=0.04)
+
+
+def piece_m3o_3_dolar():
+    """Dólar vs crudo: billetes y gotas de crudo arriba; billetes junto a un barril abajo-izq."""
+    reset_scene()
+    daylight(0.7)
+    _meter_backdrop("#FFF8E6", "#EBDDB8")
+    box("frieze", (0, 2.75, 7.95), (15.0, 0.2, 1.0), "#FFFFFF", bevel=0.05)
+    for i in range(7):
+        x = -6.3 + i * 2.1
+        if i % 2 == 0:
+            box(f"frieze_bill{i}", (x, 2.6, 7.95), (1.1, 0.05, 0.5), "#7CC08A", bevel=0.03)
+            no_ink(cylinder(f"frieze_bill_seal{i}", (x, 2.56, 7.95), 0.14, 0.03, "#D8F0DC",
+                            rotation=(R(90), 0, 0), vertices=16))
+        else:
+            sphere(f"frieze_oil{i}", (x, 2.6, 7.85), (0.25, 0.1, 0.25), OIL)
+            cone(f"frieze_oil_tip{i}", (x, 2.6, 8.18), 0.2, 0.0, 0.32, OIL, vertices=16)
+    # Sobre una caja: apoyados en el suelo quedaban con el tope en ~78 % y casi no
+    # entraban en la franja visible (y≈67–82 %).
+    box("crate", (-3.9, 1.9, 1.55), (3.8, 1.0, 0.7), "#C98B55", bevel=0.05)
+    for k in range(5):
+        box(f"bill{k}", (-4.9 + (k % 2) * 0.08, 1.9, 1.96 + k * 0.14), (1.6, 0.8, 0.12), "#7CC08A", bevel=0.02)
+    no_ink(cylinder("bill_seal", (-4.86, 1.49, 2.52), 0.16, 0.02, "#D8F0DC", rotation=(R(90), 0, 0), vertices=16))
+    barrel("barrel", (-2.8, 1.9, 2.35))
+    report_anchors([
+        ("friso borde inf. (≤23%)", (0, 2.75, 7.45)),
+        ("barril tope (≥67%)", (-2.8, 1.9, 2.8)),
+        ("caja borde der. (≤52%)", (-2.0, 1.9, 1.55)),
+    ])
+    render_piece("m3o_3-dolar", (1024, 614), transparent=False, outline_px=2.2, wash=0.04)
+
+
+def piece_m3o_4_estacional():
+    """Estacionalidad: estaciones arriba; terminal de gas con nieve abajo-izq (x≤64 %)."""
+    reset_scene()
+    daylight(0.7)
+    _meter_backdrop("#FFF8E6", "#EBDDB8")
+    seasons = (("#F2C14E", "sun"), ("#E8743B", "leaf"), ("#FFFFFF", "snow"), ("#7DCB92", "sprout"))
+    for i, (col, kind) in enumerate(seasons):
+        x = -5.4 + i * 3.6
+        box(f"season_panel{i}", (x, 2.7, 7.95), (3.2, 0.2, 1.0), "#FBF0C8" if kind != "snow" else "#DCEBF7", bevel=0.06)
+        if kind == "leaf":
+            sphere(f"season_icon{i}", (x, 2.55, 7.95), (0.34, 0.08, 0.2), col, rotation=(0, R(30), 0))
+        else:
+            sphere(f"season_icon{i}", (x, 2.55, 7.95), (0.3, 0.08, 0.3), col)
+    cylinder("gas_leg_a", (-5.0, 1.6, 1.6), 0.07, 0.8, "#8A96A8", vertices=10)
+    cylinder("gas_leg_b", (-3.4, 1.6, 1.6), 0.07, 0.8, "#8A96A8", vertices=10)
+    sphere("gas_tank", (-4.2, 1.6, 2.35), (0.95, 0.7, 0.7), "#E6E0CC")
+    no_ink(sphere("snow_cap", (-4.2, 1.5, 2.95), (0.6, 0.45, 0.14), "#FFFFFF"))
+    box("gas_pipe", (-2.3, 1.6, 1.75), (2.0, 0.14, 0.14), "#8A96A8", bevel=0.03)
+    cylinder("gas_valve", (-1.4, 1.5, 1.75), 0.18, 0.1, COMMOD, rotation=(R(90), 0, 0), vertices=16)
+    for i, x in enumerate((-6.2, -2.8, -0.9)):
+        no_ink(sphere(f"snow_drift{i}", (x, 1.0, 1.22), (0.55, 0.4, 0.12), "#FFFFFF"))
+    report_anchors([
+        ("estaciones borde inf. (≤23%)", (0, 2.7, 7.45)),
+        ("tanque tope (≥67%)", (-4.2, 1.6, 3.09)),
+        ("válvula borde der. (≤64%)", (-1.22, 1.5, 1.75)),
+    ])
+    render_piece("m3o_4-estacional", (1024, 614), transparent=False, outline_px=2.2, wash=0.04)
+
+
 PIECES = {
     "m1_1-stall": piece_m1_1_stall,
     "m1_1-client": piece_m1_1_client,
@@ -1239,6 +1488,14 @@ PIECES = {
     "m3f_2-coin": piece_m3f_2_coin,
     "m3f_3-correlacion": piece_m3f_3_correlacion,
     "m3f_4-calendario": piece_m3f_4_calendario,
+    "m3s_1-capitalizacion": piece_m3s_1_capitalizacion,
+    "m3s_2-resultados": piece_m3s_2_resultados,
+    "m3s_3-corporativo": piece_m3s_3_corporativo,
+    "m3s_4-beta": piece_m3s_4_beta,
+    "m3o_1-oferta": piece_m3o_1_oferta,
+    "m3o_2-refugio": piece_m3o_2_refugio,
+    "m3o_3-dolar": piece_m3o_3_dolar,
+    "m3o_4-estacional": piece_m3o_4_estacional,
 }
 
 

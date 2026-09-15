@@ -32,7 +32,10 @@ con el nombre exacto de este contrato:
 
 | `blender/build_mission_art.py` | ✅ **N3 Forex completo**: `m3f_1-sesiones`, `m3f_2-lotes`, `m3f_2-coin`, `m3f_3-correlacion`, `m3f_4-calendario` |
 
-Pendiente: N3 Stocks y Commodities.
+| `blender/build_mission_art.py` | ✅ **N3 Stocks completo**: `m3s_1-capitalizacion`, `m3s_2-resultados`, `m3s_3-corporativo`, `m3s_4-beta` |
+| `blender/build_mission_art.py` | ✅ **N3 Commodities completo**: `m3o_1-oferta`, `m3o_2-refugio`, `m3o_3-dolar`, `m3o_4-estacional` |
+
+Todo el contrato actual está entregado. Indices, futures y ETFs aún no tienen misiones.
 
 Nota `m3f_3`: con `centered: true` la nota del medidor ("centro = sin relación")
 es más ancha: en móvil ocupa x≈54–94 %, así que el detalle abajo a la izquierda
