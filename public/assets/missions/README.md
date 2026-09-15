@@ -28,8 +28,12 @@ con el nombre exacto de este contrato:
 |---|---|
 | `blender/build_mission_art.py` | ✅ **Nivel 1 completo**: `m1_1-stall`, `m1_1-client`, `m1_1-apple`, `m1_1-sign`, `m1_2-workshop`, `m1_3-observatory`, `m1_4-vault`, `m1_4-coin` |
 | `blender/build_mission_art.py` | ✅ **Nivel 2 completo**: `m2_1-plaza`, `m2_2-observatory`, `m2_3-patterns` |
+| `blender/build_mission_art.py` | ✅ **N3 Crypto completo**: `m3c_1-plaza-bloque`, `m3c_1-coin`, `m3c_2-nexus`, `m3c_3-ciclo`, `m3c_4-bloques` |
 
-Pendiente: N3 (crypto, forex, stocks, commodities).
+Pendiente: N3 Forex, Stocks y Commodities.
+
+Nota `m3c_3-ciclo`: el contrato pedía "Ciudad Bitcoin de noche"; se hizo **atardecer
+cálido** para que el panel blanco y los textos del lab sigan legibles.
 
 Reglas de composición medidas en los componentes (valen también si dibujas a mano):
 
@@ -47,6 +51,13 @@ Reglas de composición medidas en los componentes (valen también si dibujas a m
     sin textos en **todos** los anchos (medida en móvil, panel y escritorio ancho)
     es **x≈50–72 %, y≈22–52 % de la imagen**: ahí va el motivo principal. El resto,
     liso y claro. Las monedas pueden pasar por encima del arte sin problema.
+- **LevelLab en modo medidor (`region: "meter"`, casi todo N3):** la tarjeta mide
+  ~110 px de alto. En escritorio sólo se ve **y≈35–65 %** de la imagen, y ahí
+  están los textos y la barra. Textos arriba a todo lo ancho (y≈24–47 %), barra
+  opaca (y≈47–67 %), nota "línea = umbral" abajo a la derecha (x≈68–97 %,
+  y≈56–77 %). Libre para detalle: **abajo a la izquierda (y≈67–82 %, x≤64 %)** y
+  una tira superior (y≈18–23 %) que sólo asoma en móvil. El arte es sobre todo
+  ambientación de color; la identidad de la ciudad va abajo a la izquierda.
 - **m1_1 (SupplyDemandLab, 4:3):** el cartel va arriba al centro, las manzanas se
   apoyan en una línea de mostrador a **y≈52 %** y los clientes se paran de
   **y≈60 %** hacia abajo.

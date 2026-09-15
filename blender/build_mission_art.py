@@ -843,6 +843,199 @@ def piece_m2_3_patterns():
     render_piece("m2_3-patterns", (1024, 768), transparent=False, outline_px=2.2, wash=0.08)
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+# NIVEL 3 · CRYPTO — Ciudad Bitcoin (Conchagua, El Salvador) · acento #F7931A
+# ═════════════════════════════════════════════════════════════════════════════
+# LevelLab en modo `meter` (m3c_2..m3c_4): la tarjeta mide ~110 px de alto.
+# Medido a 375 y 1280 px, en % de la imagen:
+#   · visible: escritorio y≈35–65 %; móvil y≈12–88 % o 18–82 % (según si el
+#     titular se parte en dos líneas);
+#   · fila de textos y≈24–47 % a todo lo ancho; barra (opaca) y≈47–67 %;
+#     nota "línea = umbral" x≈68–97 %, y≈56–77 %;
+#   · libre para detalle: abajo a la izquierda y≈67–82 %, x≤64 %, y una tira
+#     superior y≈18–23 % que sólo asoma en móvil.
+# El arte aquí es sobre todo ambientación de color; la identidad va abajo-izq.
+# Cámara recta: f = 0.5 − (z − 4.8) / 9.6 → z 5.1–7.4 tranquilo, z 1.7–3.1 detalle.
+CRYPTO = "#F7931A"
+METER_CAM = dict(ortho_scale=16.0, elev_deg=0.0, target=(0, 0, 4.8))
+
+
+def btc_glyph(prefix, center, height, color, depth_y):
+    """₿ geométrico (sin depender de fuentes): trazo, dos lóbulos y remates."""
+    cx, cy, cz = center
+    h = height
+    box(f"{prefix}_stem", (cx - 0.18 * h, cy, cz), (0.14 * h, depth_y, h * 0.86), color, bevel=0.0)
+    for i, dz in enumerate((0.2, -0.2)):
+        box(f"{prefix}_lobe{i}", (cx + 0.02 * h, cy, cz + dz * h), (0.36 * h, depth_y, 0.3 * h), color,
+            bevel=0.08 * h)
+    for i, dz in enumerate((0.5, -0.5)):
+        for j, dx in enumerate((-0.2, 0.0)):
+            box(f"{prefix}_tick{i}_{j}", (cx + dx * h, cy, cz + dz * h), (0.06 * h, depth_y, 0.14 * h), color,
+                bevel=0.0)
+
+
+def piece_m3c_1_plaza_bloque():
+    """GaugeLab (misma zona libre que m1_4: x≈50–72 %, y≈22–52 %).
+    Torre de bloques encadenados en la Plaza del Bloque, volcán suave al fondo."""
+    reset_scene()
+    daylight()
+    camera(16.0, 8.0, (0, 0, 3.0))
+    sky_plane("sky", (0, 70, 10), (120, 60), "#FFE7C2")
+    # Fondo sin tinta (sus bordes no rayan textos): volcán, mar y palmeras lejanas.
+    # Volcán más pequeño, claro y a la izquierda: grande y oscuro dominaba la escena
+    # y apagaba la etiqueta "Tu posición" (visto en el lab, móvil).
+    no_ink(cone("volcano", (-6.0, 40, 3.5), 7.0, 1.4, 7.0, "#F2CDA8"))
+    no_ink(cone("volcano_cap", (-6.0, 40, 7.3), 1.5, 0.9, 0.8, "#F9A94D"))
+    no_ink(plane("sea", (0, 30, -0.02), (80, 30), "#BFE6F0"))
+    for i, x in enumerate((-8.6, 8.8)):
+        no_ink(cylinder(f"palm_trunk{i}", (x, 13, 1.4), 0.12, 2.8, "#D9B08A"))
+        no_ink(sphere(f"palm_crown{i}", (x, 13, 3.0), (1.1, 1.1, 0.5), "#BFE3B0"))
+    # Plaza (borde lejano sin tinta: la línea del horizonte cruzaría el % en móvil).
+    no_ink(plane("plaza", (0, 1.5, 0), (40, 27), "#F1DCC0"))
+    for i, (x, y) in enumerate(((-6.2, -2.0), (-3.4, 4.0), (5.8, 1.5), (7.4, -3.5), (-1.2, -5.0))):
+        no_ink(cylinder(f"tile{i}", (x, y, 0.01), 0.7, 0.02, "#E8CDA9"))
+
+    # Motivo: torre de tres bloques encadenados sobre pedestal (x 51–68 %).
+    tx, ty = 1.76, 3.0
+    cylinder("pedestal", (tx, ty, 0.3), 1.35, 0.6, "#E8CDA9")
+    colors = (CRYPTO, "#FFF3DC", CRYPTO)
+    for i, col in enumerate(colors):
+        z = 1.55 + i * 2.1
+        box(f"block{i}", (tx, ty, z), (1.9, 1.9, 1.7), col, bevel=0.18)
+        if i < 2:
+            torus(f"link{i}", (tx, ty - 0.2, z + 1.05), 0.32, 0.09, "#8A96A8", rotation=(R(90), 0, 0))
+    btc_glyph("glyph", (tx, ty - 0.98, 3.65), 1.1, CRYPTO, 0.06)
+
+    report_anchors([
+        ("torre borde izq. (≥50%)", (tx - 0.95, ty, 3.0)),
+        ("torre borde der. (≤72%)", (tx + 0.95, ty, 3.0)),
+        ("tope torre (≈22%)", (tx, ty, 1.55 + 2 * 2.1 + 0.85)),
+        ("base pedestal", (tx, ty - 1.35, 0.0)),
+    ])
+    render_piece("m3c_1-plaza-bloque", (1024, 683), transparent=False, outline_px=2.2, wash=0.05)
+
+
+def piece_m3c_1_coin():
+    reset_scene()
+    daylight(0.75)
+    camera(2.35, 0.0, (0, 0, 0))
+    rot = (R(90), 0, R(18))
+    cylinder("coin", (0, 0, 0), 1.0, 0.22, GOLD_HEX, rotation=rot, vertices=64)
+    torus("ring", (0, -0.12, 0), 0.78, 0.05, "#B9760A", rotation=rot)
+    cylinder("emblem", (0, -0.1, 0), 0.62, 0.24, CRYPTO, rotation=rot, vertices=48)
+    btc_glyph("glyph", (0.03, -0.26, 0.0), 0.8, "#FFFFFF", 0.05)
+    no_ink(sphere("shine", (-0.5, -0.24, 0.5), (0.11, 0.05, 0.17), "#FFF4D6"))
+    render_piece("m3c_1-coin", (96, 96), transparent=True, outline_px=0.9,
+                 supersample=SPRITE_SUPERSAMPLE)
+
+
+def _meter_backdrop(wall_hex, floor_hex):
+    """Base común de los fondos en modo meter: pared lisa + suelo, cámara recta."""
+    camera(**METER_CAM)
+    box("wall", (0, 3.0, 5.0), (30, 0.2, 12.0), wall_hex, bevel=0.0)
+    box("floor", (0, 0.0, 0.6), (30, 6.0, 1.2), floor_hex, bevel=0.0)
+
+
+def piece_m3c_2_nexus():
+    """Pantallas de mercado: reparto BTC / altcoins."""
+    reset_scene()
+    daylight(0.7)
+    _meter_backdrop("#FFF1DE", "#F1DCC0")
+    # Tira superior (sólo móvil): fila de pantallas con barras de reparto.
+    for i, x in enumerate((-6.4, -3.2, 0.0, 3.2, 6.4)):
+        box(f"top_screen{i}", (x, 2.7, 7.95), (2.6, 0.2, 1.0), "#3A4660", bevel=0.06)
+        split = 0.35 + 0.1 * ((i * 7) % 5) / 4
+        box(f"top_btc{i}", (x - 1.1 + 1.1 * split, 2.55, 7.95), (2.2 * split, 0.05, 0.6), CRYPTO, bevel=0.0)
+        box(f"top_alt{i}", (x + 1.1 * split, 2.55, 7.95), (2.2 * (1 - split), 0.05, 0.6), "#C8D2DE", bevel=0.0)
+    # Abajo-izquierda: quiosco con la pantalla grande del reparto de mercado.
+    cylinder("kiosk_post", (-4.0, 2.2, 1.6), 0.12, 2.0, "#8A96A8", vertices=12)
+    box("kiosk_screen", (-4.0, 2.0, 2.45), (4.4, 0.25, 1.4), "#3A4660", bevel=0.08)
+    box("kiosk_btc", (-4.95, 1.84, 2.45), (2.3, 0.05, 1.0), CRYPTO, bevel=0.0)
+    box("kiosk_alt", (-2.7, 1.84, 2.45), (1.6, 0.05, 1.0), "#C8D2DE", bevel=0.0)
+    for i, (x, col) in enumerate(((-7.6, "#5FB97A"), (0.6, "#5FB97A"))):
+        cylinder(f"pot{i}", (x, 1.4, 1.55), 0.35, 0.7, CRYPTO)
+        sphere(f"plant{i}", (x, 1.4, 2.15), (0.5, 0.45, 0.45), col)
+    # Moldura por DEBAJO de la nota "línea = umbral" (y≈70–77 %): a z 3.1 pasaba
+    # justo encima del texto (visto en el lab, móvil).
+    no_ink(box("trim", (0, 2.85, 1.35), (30, 0.06, 0.12), "#F6C58A", bevel=0.0))
+    report_anchors([
+        ("pantallas sup. borde inf. (≤23%)", (0, 2.7, 7.45)),
+        ("pantalla quiosco tope (≥67%)", (-4.0, 2.0, 3.15)),
+        ("pantalla quiosco borde der. (≤64%)", (-1.8, 2.0, 2.45)),
+        ("planta der. borde der. (≤64%)", (1.1, 1.4, 2.15)),
+    ])
+    render_piece("m3c_2-nexus", (1024, 614), transparent=False, outline_px=2.2, wash=0.04)
+
+
+def piece_m3c_3_ciclo():
+    """Ánimo del mercado al atardecer (contrato: 'de noche'; atardecer cálido para
+    que el panel y los textos del lab se lean). Medidor analógico Fear & Greed."""
+    reset_scene()
+    daylight(0.6, key=1.6)
+    camera(**METER_CAM)
+    sky_plane("sky_mid", (0, 20, 5.0), (60, 30), "#FFE3C0")
+    no_ink(sky_plane("sky_top", (0, 19.5, 9.4), (60, 3.2), "#F7C29B"))
+    # Tira superior: siluetas de Ciudad Bitcoin y el volcán con resplandor. Todo con
+    # base en z≥7.6 (y≤21 %): con la base en y≈43 % el volcán quedaba detrás de la
+    # etiqueta "Termómetro de sentimiento" (visto en el lab, móvil).
+    no_ink(cone("volcano", (-2.0, 15, 8.5), 3.6, 0.7, 1.8, "#D9B8C9"))
+    no_ink(cone("volcano_glow", (-2.0, 14.8, 9.45), 0.75, 0.5, 0.25, "#F9A94D"))
+    for i, (x, hgt, col) in enumerate(((-7.2, 1.0, "#B58DB6"), (-5.6, 1.4, "#C99BB0"), (4.4, 1.2, "#B58DB6"),
+                                      (6.0, 1.6, "#C99BB0"), (7.6, 1.1, "#B58DB6"))):
+        box(f"tower{i}", (x, 10, 7.6 + hgt / 2), (1.2, 1.0, hgt), col, bevel=0.05)
+        box(f"window{i}", (x, 9.45, 7.6 + hgt / 2 + 0.1), (0.3, 0.05, 0.3), "#FFE3B3", bevel=0.0)
+    # Suelo de la plaza.
+    box("ground", (0, 2.0, 0.85), (30, 8.0, 1.7), "#E9C9A6", bevel=0.0)
+    # Abajo-izquierda: medidor analógico de sentimiento (pánico → euforia).
+    gx, gz = -4.0, 1.95
+    for i, col in enumerate(("#DC2626", "#F28B3C", "#F2C14E", "#8CCB6E", "#16A34A")):
+        a0 = R(180 - i * 36 - 18)
+        seg = cylinder(f"dial_seg{i}", (gx + 1.25 * math.cos(a0), 1.2, gz + 1.25 * math.sin(a0)), 0.34, 0.14,
+                       col, rotation=(R(90), 0, 0), vertices=20)
+    box("dial_base", (gx, 1.25, gz - 0.2), (3.6, 0.3, 0.3), "#8A96A8", bevel=0.05)
+    box("needle", (gx + 0.35, 1.05, gz + 0.55), (0.1, 0.06, 1.2), INK_HEX, bevel=0.0, rotation=(0, R(-30), 0))
+    sphere("needle_hub", (gx, 1.0, gz + 0.02), (0.16, 0.08, 0.16), INK_HEX)
+    report_anchors([
+        ("siluetas borde inf. (≤23%)", (0, 10, 7.6)),
+        ("medidor tope (≥67%)", (gx, 1.2, gz + 1.25 + 0.34)),
+        ("medidor borde der. (≤64%)", (gx + 1.8, 1.2, gz)),
+    ])
+    render_piece("m3c_3-ciclo", (1024, 614), transparent=False, outline_px=2.2, wash=0.03)
+
+
+def piece_m3c_4_bloques():
+    """Sala de gráficos de BTC: tira de velas arriba, escritorio con monitor abajo-izq."""
+    reset_scene()
+    daylight(0.7)
+    _meter_backdrop("#FFF4E6", "#EAD3B6")
+    # Tira superior (sólo móvil): pantalla panorámica con velas de BTC.
+    box("wide_screen", (0, 2.7, 7.95), (15.0, 0.2, 1.0), "#3A4660", bevel=0.06)
+    heights = (0.5, 0.35, 0.6, 0.3, 0.55, 0.45, 0.62, 0.28, 0.5, 0.4, 0.58, 0.33)
+    for i, hgt in enumerate(heights):
+        x = -6.6 + i * 1.2
+        col = "#4CC38A" if i % 3 != 1 else "#EF6B5B"
+        box(f"strip_wick{i}", (x, 2.56, 7.95), (0.04, 0.03, min(0.84, hgt + 0.24)), "#FFF3DC", bevel=0.0)
+        box(f"strip_candle{i}", (x, 2.55, 7.95), (0.3, 0.05, hgt), col, bevel=0.0)
+    # Abajo-izquierda: escritorio con monitor de velas y silla.
+    box("desk", (-4.6, 1.6, 2.0), (4.2, 1.2, 0.18), "#C98B55", bevel=0.04)
+    for i, x in enumerate((-6.5, -2.7)):
+        box(f"desk_leg{i}", (x, 1.6, 1.55), (0.14, 0.14, 0.9), "#A86B3C", bevel=0.02)
+    box("monitor", (-4.8, 1.8, 2.65), (2.4, 0.15, 1.05), "#3A4660", bevel=0.06)
+    for i, (dx, hgt, col) in enumerate(((-0.8, 0.5, "#4CC38A"), (-0.35, 0.3, "#EF6B5B"),
+                                        (0.1, 0.55, "#4CC38A"), (0.55, 0.4, "#4CC38A"))):
+        box(f"monitor_candle{i}", (-4.8 + dx, 1.7, 2.65), (0.22, 0.04, hgt), col, bevel=0.0)
+    box("mug", (-3.0, 1.5, 2.25), (0.3, 0.3, 0.32), CRYPTO, bevel=0.06)
+    box("chair_seat", (0.4, 1.0, 1.9), (1.3, 1.1, 0.2), CRYPTO, bevel=0.08)
+    box("chair_back", (0.4, 1.5, 2.55), (1.3, 0.16, 1.1), CRYPTO, bevel=0.08)
+    no_ink(box("trim", (0, 2.85, 1.35), (30, 0.06, 0.12), "#F6C58A", bevel=0.0))  # bajo la nota, ver m3c_2
+    report_anchors([
+        ("pantalla sup. borde inf. (≤23%)", (0, 2.7, 7.45)),
+        ("monitor tope (≥67%)", (-4.8, 1.8, 3.17)),
+        ("silla borde der. (≤64%)", (1.05, 1.5, 2.55)),
+    ])
+    render_piece("m3c_4-bloques", (1024, 614), transparent=False, outline_px=2.2, wash=0.04)
+
+
 PIECES = {
     "m1_1-stall": piece_m1_1_stall,
     "m1_1-client": piece_m1_1_client,
@@ -855,6 +1048,11 @@ PIECES = {
     "m2_1-plaza": piece_m2_1_plaza,
     "m2_2-observatory": piece_m2_2_observatory,
     "m2_3-patterns": piece_m2_3_patterns,
+    "m3c_1-plaza-bloque": piece_m3c_1_plaza_bloque,
+    "m3c_1-coin": piece_m3c_1_coin,
+    "m3c_2-nexus": piece_m3c_2_nexus,
+    "m3c_3-ciclo": piece_m3c_3_ciclo,
+    "m3c_4-bloques": piece_m3c_4_bloques,
 }
 
 
