@@ -42,7 +42,7 @@ paleta VDD v2.0, contorno navy (Freestyle), ángulo 3/4, luz diurna.
 |---|---|---|
 | `build_explorer.py` | `public/assets/sprites/explorer*.png` | ✅ Explorador + 5 variantes de color |
 | `build_overworld.py` | `public/assets/world/overworld*` | ✅ Diorama del overworld + máscara de caminabilidad |
-| `build_mission_art.py` | `public/assets/missions/*.webp` | ✅ Nivel 1 (8 piezas) · pendiente N2 y N3 |
+| `build_mission_art.py` | `public/assets/missions/*.webp` | ✅ Niveles 1 y 2 (11 piezas) · pendiente N3 |
 
 ### Arte de misiones (`build_mission_art.py`)
 

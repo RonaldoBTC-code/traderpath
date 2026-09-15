@@ -1,7 +1,7 @@
-# build_mission_art.py — TraderPath · arte de escena de las misiones (Nivel 1)
+# build_mission_art.py — TraderPath · arte de escena de las misiones (Niveles 1–2)
 #
-# Renderiza las piezas del contrato de public/assets/missions/README.md para el
-# Nivel 1 (Isla de Academia Ágora): fondos por distrito + figuras repetidas.
+# Renderiza las piezas del contrato de public/assets/missions/README.md para los
+# Niveles 1 y 2 (Isla de Academia Ágora): fondos por distrito + figuras repetidas.
 # Cada archivo sale con el nombre EXACTO del contrato, así que aparece en el lab
 # sin tocar código (los labs precargan y caen a su forma provisional si falta).
 #
@@ -656,6 +656,179 @@ def piece_m1_4_coin():
                  supersample=SPRITE_SUPERSAMPLE)
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+# NIVEL 2
+# ═════════════════════════════════════════════════════════════════════════════
+# LevelLab (m2_1, m2_2). Zonas medidas en el navegador a 375 y 1280 px, en % de
+# la imagen (unión de ambos anchos):
+#   · encabezado (etiqueta + titular, que en móvil se parte en 2 líneas y ocupa el
+#     centro): y≈10–37 % A LO ANCHO → ahí sólo formas suaves NoInk, nada de tinta;
+#   · banda/línea del nivel: y≈52–68 % → sin bordes horizontales;
+#   · panel blanco al 40 %: y≈36–91 % (suaviza lo que tiene detrás).
+# Orden resultante: fondo suave arriba (≤46 %), suelo liso 46–69 %, detalle con
+# tinta abajo (≥69 %): en escritorio casi no asoma y en móvil llena la escena.
+# Cámara a 30°: f(y, z) = 0.5 − (0.5·y + 0.866·z) / 9.6  (fracción desde arriba).
+LEVEL_LAB_CAM = dict(ortho_scale=16.0, elev_deg=30.0, target=(0, 0, 0))
+
+
+def piece_m2_1_plaza():
+    """Mercado Plaza (zonas de oferta y demanda) · acento verde."""
+    reset_scene()
+    daylight()
+    camera(**LEVEL_LAB_CAM)
+
+    # Arriba, casi uniforme y sin tinta: césped y copas muy pálidos. El titular del
+    # lab cambia de color con el estado (verde/rojo/gris) y en móvil cruza el centro:
+    # sobre un techo verde el titular verde no se leía (medido). Las casas van a los
+    # bordes extremos (x<10 % / >90 %), fuera del alcance de los textos.
+    no_ink(plane("lawn", (0, 6.5, -0.01), (32, 12), "#DDF1E2"))
+    for i, (x, y, r, col) in enumerate(((-6.6, 6.0, 1.5, "#CDEBD6"), (6.9, 7.2, 1.8, "#D5EFDD"),
+                                        (-2.2, 9.0, 1.3, "#D5EFDD"), (2.9, 8.4, 1.2, "#CDEBD6"))):
+        no_ink(sphere(f"tree{i}", (x, y, r), (r, r, r * 0.9), col))
+    for i, (x, col) in enumerate(((-7.9, "#F4EEDB"), (7.9, "#E3EDF6"))):
+        no_ink(box(f"house{i}", (x, 4.6, 0.8), (2.2, 1.6, 1.6), col, bevel=0.1))
+        no_ink(box(f"house_roof{i}", (x, 4.6, 1.8), (2.5, 1.9, 0.5), "#CDEBD6", bevel=0.15))
+
+    # Borde de la plaza: setos bajos con tinta en y≈42–46 % (sobre la banda).
+    for i, x in enumerate((-6.0, 0.0, 6.0)):
+        box(f"hedge{i}", (x, 1.0, 0.25), (4.2, 0.5, 0.5), "#5FB97A", bevel=0.12)
+
+    # Suelo liso de la plaza (detrás de la banda del nivel).
+    plane("plaza", (0, -5.6, 0), (32, 12.8), "#D8DFE8")
+    for i, (x, y) in enumerate(((-3.0, -1.2), (2.6, -2.4), (-5.8, -3.0), (5.4, -0.8), (0.4, -3.3))):
+        no_ink(cylinder(f"cobble{i}", (x, y, 0.01), 0.5, 0.02, "#CAD3DE"))
+
+    # Abajo, con detalle: fuente central y puestos a los lados.
+    fz = -6.3
+    cylinder("basin", (0, fz, 0.2), 1.6, 0.4, "#C9D3DF")
+    cylinder("water", (0, fz, 0.38), 1.38, 0.06, "#93D6EF")
+    cylinder("spout", (0, fz, 0.8), 0.18, 0.9, "#C9D3DF", vertices=16)
+    cylinder("bowl", (0, fz, 1.3), 0.5, 0.15, "#C9D3DF")
+    for i, sx in enumerate((-6.4, 6.4)):
+        for j, dx in enumerate((-1.25, 1.25)):
+            cylinder(f"stall{i}_post{j}", (sx + dx, -8.6, 1.05), 0.1, 2.1, "#B97A4A", vertices=12)
+        box(f"stall{i}_counter", (sx, -8.0, 0.45), (2.8, 1.0, 0.9), "#E1B07C", bevel=0.05)
+        for k in range(3):
+            col = PLAZA_GREEN if k % 2 == 0 else "#FFF3DC"
+            box(f"stall{i}_awning{k}", (sx - 0.95 + k * 0.95, -8.0, 2.05), (0.95, 1.5, 0.1), col,
+                bevel=0.02, rotation=(R(-12), 0, 0))
+        for k, (dx, col) in enumerate(((-0.8, "#E4443A"), (-0.25, "#F2B33D"), (0.3, "#E4443A"), (0.85, "#7DCB92"))):
+            sphere(f"stall{i}_fruit{k}", (sx + dx, -8.1, 1.05), (0.2, 0.2, 0.19), col)
+    for i, x in enumerate((-3.2, 3.2)):
+        box(f"crate{i}", (x, -8.9, 0.35), (1.0, 0.8, 0.7), "#C98B55", bevel=0.05)
+        sphere(f"crate_fruit{i}", (x, -9.0, 0.82), (0.22, 0.22, 0.2), "#E4443A")
+
+    report_anchors([
+        ("tope setos (encabezado termina en ~37%)", (0, 0.75, 0.5)),
+        ("base setos = inicio del suelo liso (≈46%)", (0, 0.75, 0.0)),
+        ("tope fuente (≥69%)", (0, fz + 1.6, 0.4)),
+        ("tope toldos (≥69%)", (6.4, -7.25, 2.2)),
+    ])
+    render_piece("m2_1-plaza", (1024, 614), transparent=False, outline_px=2.2, wash=0.04)
+
+
+def piece_m2_2_observatory():
+    """Observatorio (soporte/resistencia, modo línea) · acento violeta."""
+    reset_scene()
+    daylight(0.7)
+    camera(**LEVEL_LAB_CAM)
+
+    # Pared del fondo: base con tinta en ≈46 %; decoración de la franja superior
+    # sin tinta (cartas celestes y cúpula pintada), para no rayar el encabezado.
+    box("wall", (0, 1.1, 2.6), (32, 0.2, 5.2), "#E6DFFF", bevel=0.0)
+    no_ink(cylinder("dome_window", (0, 1.0, 3.9), 2.4, 0.04, "#D6ECFF", rotation=(R(90), 0, 0)))
+    for i, (x, z, r) in enumerate(((-5.6, 3.3, 1.1), (5.8, 3.6, 1.3), (-2.9, 4.6, 0.55), (3.1, 4.7, 0.6))):
+        no_ink(cylinder(f"chart{i}", (x, 1.0, z), r, 0.04, "#D9CFFA", rotation=(R(90), 0, 0)))
+        no_ink(torus(f"chart_ring{i}", (x, 0.98, z), r * 0.62, 0.035, "#C4B6F4", rotation=(R(90), 0, 0)))
+
+    # Suelo liso (detrás de la línea del nivel) + alfombra suave.
+    plane("floor", (0, -5.5, 0), (32, 13), "#DDD6F6")
+    no_ink(cylinder("rug", (0, -7.2, 0.01), 2.6, 0.02, "#D0C6F3"))
+
+    # Abajo, con detalle: librería, globo, telescopio y mesa con astrolabio.
+    box("bookshelf", (-6.3, -8.5, 1.1), (2.2, 1.2, 2.2), "#B99CEB", bevel=0.05)
+    for i, (z, col) in enumerate(((0.55, "#8B72FF"), (1.25, "#F2B33D"), (1.9, "#4CC38A"))):
+        box(f"books{i}", (-6.3, -9.12, z), (1.8, 0.08, 0.42), col, bevel=0.02)
+    cylinder("globe_stand", (-3.5, -9.4, 0.35), 0.08, 0.7, "#A89BD6", vertices=12)
+    sphere("globe", (-3.5, -9.4, 0.95), (0.45, 0.45, 0.45), "#9FD3F5")
+    torus("globe_ring", (-3.5, -9.4, 0.95), 0.53, 0.04, OBSERVATORY_VIOLET, rotation=(R(70), 0, R(20)))
+
+    cylinder("table_leg", (0.2, -10.2, 0.4), 0.12, 0.8, "#A89BD6", vertices=12)
+    cylinder("table_top", (0.2, -10.2, 0.85), 0.9, 0.1, "#C9BDF7")
+    torus("astrolabe", (0.2, -10.2, 1.25), 0.34, 0.05, OBSERVATORY_VIOLET, rotation=(R(90), 0, R(25)))
+    sphere("astrolabe_core", (0.2, -10.2, 1.25), (0.1, 0.1, 0.1), "#F2B33D")
+
+    tube_rot = (0, R(-40), 0)
+    cylinder("tube", (6.1, -8.6, 1.55), 0.28, 2.0, WHITE_HEX, rotation=tube_rot)
+    cylinder("lens", (5.45, -8.6, 2.3), 0.33, 0.18, OBSERVATORY_VIOLET, rotation=tube_rot)
+    for i, (fx, fy) in enumerate(((-0.6, 0.3), (0.6, 0.3), (0.0, -0.6))):
+        top = Vector((6.3, -8.6, 1.2))
+        foot = Vector((6.3 + fx, -8.6 + fy, 0.0))
+        d = top - foot
+        leg = cylinder(f"tripod{i}", tuple((top + foot) / 2), 0.05, d.length, "#A89BD6", vertices=10)
+        leg.rotation_euler = d.to_track_quat("Z", "Y").to_euler()
+
+    report_anchors([
+        ("base de la pared = inicio del suelo liso (≈46%)", (0, 1.0, 0.0)),
+        ("tope librería (≥69%)", (-6.3, -7.9, 2.2)),
+        ("lente telescopio (≥69%)", (5.45, -8.6, 2.45)),
+    ])
+    render_piece("m2_2-observatory", (1024, 614), transparent=False, outline_px=2.2, wash=0.04)
+
+
+def piece_m2_3_patterns():
+    """Taller de patrones de vela · CandleLab. Columna central x≈33–67 % libre
+    en toda la altura (vela + nombre del patrón, medido a 375 y 1280 px)."""
+    reset_scene()
+    daylight()
+    camera(16.0, 10.0, (0, 0, 2.97))  # mismo encuadre que m1_2: suelo en y≈70 %
+    plane("floor", (0, -8, 0), (26, 24), "#E7B98A")
+    box("wall", (0, 3.1, 4.5), (26, 0.2, 9.0), "#FCE9D8", bevel=0.0)
+    box("wainscot", (0, 2.95, 0.6), (26, 0.12, 1.2), "#F4D2B2", bevel=0.02)
+    # Zócalo más pálido que en m1_2: queda justo bajo la vela y, en un doji, una raya
+    # naranja fuerte se confunde con el cuerpo de la vela.
+    box("trim", (0, 2.88, 1.23), (26, 0.1, 0.12), "#F2B48F", bevel=0.02)
+
+    # Izquierda: pizarra con los tres patrones que enseña la misión, en tiza.
+    box("board_frame", (-5.3, 2.92, 3.6), (4.0, 0.16, 3.0), "#A86B3C", bevel=0.06)
+    box("board", (-5.3, 2.82, 3.6), (3.6, 0.1, 2.6), "#4E7D6B", bevel=0.02)
+    box("chalk_tray", (-5.3, 2.7, 2.2), (3.6, 0.3, 0.08), "#C98B55", bevel=0.02)
+    chalk = "#F4F0E6"
+    # (x, cuerpo_z, cuerpo_h, mecha_z0, mecha_z1, color): martillo, doji, estrella fugaz
+    patterns = ((-6.4, 4.15, 0.4, 2.85, 4.5, "#7FD6A4"),
+                (-5.3, 3.6, 0.06, 2.8, 4.4, chalk),
+                (-4.2, 3.05, 0.4, 2.7, 4.35, "#F28B7E"))
+    for i, (x, bz, bh, w0, w1, col) in enumerate(patterns):
+        box(f"pattern_wick{i}", (x, 2.74, (w0 + w1) / 2), (0.05, 0.02, w1 - w0), chalk, bevel=0.0)
+        box(f"pattern_body{i}", (x, 2.72, bz), (0.4, 0.05, bh), col, bevel=0.0)
+
+    # Derecha: atril con el libro de patrones, libros en el suelo y una planta.
+    # Atril inclinado hacia la cámara para que el libro abierto se lea como libro.
+    cylinder("lectern_post", (5.6, 1.6, 0.8), 0.12, 1.6, "#A86B3C", vertices=16)
+    box("lectern_top", (5.6, 1.45, 1.78), (1.9, 1.3, 0.1), "#C98B55", bevel=0.03, rotation=(R(-40), 0, 0))
+    for i, (dx, tilt) in enumerate(((-0.44, 8), (0.44, -8))):
+        box(f"book_page{i}", (5.6 + dx, 1.36, 1.9), (0.84, 1.08, 0.06), "#FFF6E3", bevel=0.02,
+            rotation=(R(-40), R(tilt), 0))
+    box("ribbon", (5.6, 1.08, 1.55), (0.07, 0.04, 0.55), "#DC2626", bevel=0.0)
+    for i, (z, col) in enumerate(((0.15, "#8B72FF"), (0.42, "#F2B33D"), (0.66, "#4CC38A"))):
+        box(f"floor_book{i}", (7.4, 1.1, z), (1.2, 0.9, 0.24), col, bevel=0.04)
+    cylinder("pot", (4.0, 0.4, 0.35), 0.45, 0.7, WORKSHOP_ORANGE)
+    sphere("bush", (4.0, 0.4, 1.0), (0.6, 0.55, 0.5), "#5FB97A")
+
+    for i, x in enumerate((-3.4, 3.4)):
+        cylinder(f"lantern_cord{i}", (x, 2.5, 6.4), 0.03, 1.8, INK_HEX, vertices=8)
+        box(f"lantern{i}", (x, 2.5, 5.2), (0.55, 0.55, 0.75), "#FFE3B3", bevel=0.12)
+        box(f"lantern_cap{i}", (x, 2.5, 5.66), (0.66, 0.66, 0.16), WORKSHOP_ORANGE, bevel=0.05)
+
+    report_anchors([
+        ("borde der. pizarra (≤33%)", (-3.3, 2.92, 3.6)),
+        ("farol izq. borde der. (≤33%)", (-3.12, 2.5, 5.2)),
+        ("farol der. borde izq. (≥67%)", (3.12, 2.5, 5.2)),
+        ("maceta borde izq. (≥67%)", (3.55, 0.4, 0.35)),
+    ])
+    render_piece("m2_3-patterns", (1024, 768), transparent=False, outline_px=2.2, wash=0.08)
+
+
 PIECES = {
     "m1_1-stall": piece_m1_1_stall,
     "m1_1-client": piece_m1_1_client,
@@ -665,6 +838,9 @@ PIECES = {
     "m1_3-observatory": piece_m1_3_observatory,
     "m1_4-vault": piece_m1_4_vault,
     "m1_4-coin": piece_m1_4_coin,
+    "m2_1-plaza": piece_m2_1_plaza,
+    "m2_2-observatory": piece_m2_2_observatory,
+    "m2_3-patterns": piece_m2_3_patterns,
 }
 
 

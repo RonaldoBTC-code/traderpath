@@ -27,8 +27,9 @@ con el nombre exacto de este contrato:
 | Script | Piezas entregadas |
 |---|---|
 | `blender/build_mission_art.py` | ✅ **Nivel 1 completo**: `m1_1-stall`, `m1_1-client`, `m1_1-apple`, `m1_1-sign`, `m1_2-workshop`, `m1_3-observatory`, `m1_4-vault`, `m1_4-coin` |
+| `blender/build_mission_art.py` | ✅ **Nivel 2 completo**: `m2_1-plaza`, `m2_2-observatory`, `m2_3-patterns` |
 
-Pendientes: N2 (`m2_1-plaza`, `m2_2-observatory`, `m2_3-patterns`) y N3 (crypto, forex, stocks, commodities).
+Pendiente: N3 (crypto, forex, stocks, commodities).
 
 Reglas de composición medidas en los componentes (valen también si dibujas a mano):
 
