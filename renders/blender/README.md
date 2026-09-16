@@ -71,5 +71,10 @@ Pendiente: Fase 2 de personajes (ARIA, Elena, Leo como sprites renderizados).
   van en WebP con `quality=100`, que en Blender activa el codificador lossless.
 - Cámara **ortográfica** y misma iluminación entre assets, para que todo se vea
   como un mismo mundo.
-- Un script `bpy` por familia de asset, autocontenido y reproducible (nada de
-  `.blend` binarios como única fuente de verdad).
+- Un script `bpy` por familia de asset, autocontenido y reproducible. Los
+  `.blend` hechos a mano **sí** son fuente válida: viven en `renders/assets/` y
+  `npm run art` los renderiza sin modificarlos. Lo que no vale es un `.blend`
+  suelto fuera de esa carpeta, que nadie sabría de dónde salió.
+- Si una pieza tiene versión manual en `renders/assets/`, estos scripts **la
+  saltan** (`manual_overrides.skip_generated`). Con `-- --force` se regenera y se
+  pierde lo hecho a mano: hay que pedirlo a propósito.

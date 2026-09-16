@@ -19,10 +19,17 @@ de mostrarse).
   ambientación de su lugar (abajo). Cada misión apunta su propio `scene.backdrop`,
   así que puede haber uno distinto por misión/ciudad.
 
-## Producción en Blender
+## Producción del arte
 
-Las piezas se generan con scripts `bpy` reproducibles (ver `renders/blender/README.md`),
-con el nombre exacto de este contrato:
+Cada pieza puede venir de dos sitios, y **lo hecho a mano manda**:
+
+- **Tuya:** deja el archivo en `renders/assets/missions/<nombre>.<lo-que-sea>`
+  (`.blend`, `.png`, `.gltf`…) y publícalo con `npm run art`. El nombre de este
+  contrato es lo único que tiene que coincidir. Ver `renders/assets/README.md`.
+- **Generada:** scripts `bpy` reproducibles (ver `renders/blender/README.md`).
+  Si existe la versión manual, el script salta esa pieza y lo avisa.
+
+Piezas que hoy entrega el script, con el nombre exacto del contrato:
 
 | Script | Piezas entregadas |
 |---|---|

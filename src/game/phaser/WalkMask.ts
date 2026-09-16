@@ -8,6 +8,11 @@ import Phaser from "phaser";
  * demás negro. Por eso cada píxel de la máscara corresponde exactamente al
  * mismo píxel del mapa: no hay que mantener una colisión aparte del arte.
  *
+ * Esa correspondencia es la única condición que el juego impone al arte. Un
+ * mapa dibujado a mano (renders/assets/world/) tiene que traer SU máscara desde
+ * el mismo encuadre; si no, se camina sobre los edificios. La resolución da
+ * igual: aquí se escala mundo↔píxel, así que la máscara puede ser más pequeña.
+ *
  * La textura se vuelca una sola vez a un canvas fuera de pantalla; a partir de
  * ahí consultar un píxel es O(1). Muestrear con textures.getPixel() habría
  * costado un canvas nuevo por llamada, y el pathfinding hace miles.

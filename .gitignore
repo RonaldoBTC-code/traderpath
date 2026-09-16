@@ -38,3 +38,11 @@ next-env.d.ts
 # Config de editor/agente (personal, no va al repo)
 .claude/
 .cursor/
+
+# Python de los scripts de Blender
+__pycache__/
+*.py[cod]
+
+# Copias de seguridad que Blender deja al guardar un .blend
+*.blend1
+*.blend2

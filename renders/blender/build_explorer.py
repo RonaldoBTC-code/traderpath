@@ -20,6 +20,7 @@
 
 import bpy
 import os
+import sys
 import math
 import mathutils
 
@@ -36,6 +37,20 @@ INK_HEX = "#1E2A44"    # navy — contorno Freestyle + ojos + piernas
 BLUSH_HEX = "#F5A97F"
 WHITE_HEX = "#FFFFFF"
 SKY_HEX = "#EAF4FE"    # luz de ambiente diurna (tp-base)
+
+
+# renders/blender/ al sys.path: Blender ejecuta el script con --python y no
+# añade su carpeta, así que sin esto no encontraría manual_overrides.
+try:
+    _HERE = os.path.dirname(os.path.abspath(__file__))
+except NameError:  # pegado en la pestaña Scripting
+    _HERE = bpy.path.abspath("//")
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+from manual_overrides import skip_generated
+
+# Con --force se regenera también lo que tengas hecho a mano en renders/assets/.
+FORCE = "--force" in sys.argv
 
 RESOLUTION = (512, 640)
 SAMPLES = 96
@@ -272,9 +287,12 @@ def render_variant(body_hex, filename):
 
 def main():
     # Sprite por defecto (tp-gold), el que consume EXPLORER_SPRITE_PATH hoy.
-    render_variant(BODY_HEX, "explorer.webp")
+    if not skip_generated("sprites", "explorer", FORCE):
+        render_variant(BODY_HEX, "explorer.webp")
     # Fase 2: una variante por color del selector de avatar.
     for i, body_hex in enumerate(AVATAR_HEXES):
+        if skip_generated("sprites", f"explorer_{i}", FORCE):
+            continue
         render_variant(body_hex, f"explorer_{i}.webp")
     print(f"[TraderPath] Listo: 1 sprite base + {len(AVATAR_HEXES)} variantes.")
 

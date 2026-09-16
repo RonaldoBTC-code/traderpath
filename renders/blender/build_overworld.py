@@ -33,6 +33,18 @@ import mathutils
 # para ajustar el trazado: la validación de puntos obligatorios sólo
 # necesita la máscara.
 MASK_ONLY = "--mask-only" in sys.argv
+# Con --force se regenera también lo que tengas hecho a mano en renders/assets/.
+FORCE = "--force" in sys.argv
+
+# renders/blender/ al sys.path: Blender ejecuta el script con --python y no
+# añade su carpeta, así que sin esto no encontraría manual_overrides.
+try:
+    _HERE = os.path.dirname(os.path.abspath(__file__))
+except NameError:  # pegado en la pestaña Scripting
+    _HERE = bpy.path.abspath("//")
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+from manual_overrides import skip_generated
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
 # 1:1 con el mundo de AcademyAgoraScene (ACADEMY_WORLD_WIDTH/HEIGHT). Todo en
@@ -1157,10 +1169,24 @@ def main():
     build_overworld(cam)
     setup_lights()
     setup_world()
-    if not MASK_ONLY:
+    manual_map = skip_generated("world", "overworld", FORCE)
+    if not MASK_ONLY and not manual_map:
         setup_render()
         render_to("overworld.webp")
+
+    if skip_generated("world", "overworld_walkmask", FORCE):
+        print("[TraderPath] Máscara manual: no se regenera ni se valida.")
+        return
     mask_path = render_walkmask()
+    if manual_map:
+        # El mapa y la máscara son el mismo render visto de dos maneras. Si uno
+        # es manual y la otra sale de la geometría del script, dejan de
+        # corresponderse y el jugador camina sobre edificios.
+        print(
+            "[TraderPath] ⚠ El mapa es tuyo pero la máscara viene de la geometría "
+            "de este script. Si tu mapa cambia por dónde se puede caminar, entrega "
+            "también renders/assets/world/overworld_walkmask.png (blanco = pisable)."
+        )
     verify_required_points(mask_path)
     print("[TraderPath] Diorama y máscara listos.")
 

@@ -16,7 +16,8 @@ export const EXPLORER_SPRITE_KEY = "explorer-sprite";
 export const EXPLORER_SPRITE_PATH = "/assets/sprites/explorer.webp";
 
 /**
- * Avatar colour variants rendered by renders/blender/build_explorer.py (Fase 2).
+ * Avatar colour variants rendered by renders/blender/build_explorer.py (Fase 2),
+ * or hand-made and published with `npm run art` (renders/assets/sprites/).
  *
  * Order matters: index i is the sprite rendered to explorer_{i}.webp, so this
  * must stay in sync with AVATAR_COLORS in components/world/AcademyWorld.tsx.
@@ -85,7 +86,7 @@ export function preloadExplorerSprite(scene: Phaser.Scene) {
     const key = file?.key;
     if (!key) return;
     if (key === EXPLORER_SPRITE_KEY || key.startsWith("explorer-sprite-")) {
-      // Expected until renders/blender/build_explorer.py has been run; vector fallback used.
+      // Expected until the sprite exists (render script or `npm run art`); vector fallback used.
     }
   };
   scene.load.on("loaderror", swallow);

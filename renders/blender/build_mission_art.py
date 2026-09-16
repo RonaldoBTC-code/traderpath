@@ -50,8 +50,21 @@ def _arg_value(flag):
     return ARGS[ARGS.index(flag) + 1] if flag in ARGS and ARGS.index(flag) + 1 < len(ARGS) else None
 
 
+
+# renders/blender/ al sys.path: Blender ejecuta el script con --python y no
+# añade su carpeta, así que sin esto no encontraría manual_overrides.
+try:
+    _HERE = os.path.dirname(os.path.abspath(__file__))
+except NameError:  # pegado en la pestaña Scripting
+    _HERE = bpy.path.abspath("//")
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+from manual_overrides import skip_generated
+
 ONLY = set(_arg_value("--only").split(",")) if _arg_value("--only") else None
 PREVIEW = "--preview" in ARGS
+# Con --force se regenera también lo que tengas hecho a mano en renders/assets/.
+FORCE = "--force" in ARGS
 PREVIEW_DIR = _arg_value("--preview-dir")
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
@@ -1505,6 +1518,9 @@ def main():
     if unknown:
         print(f"[TraderPath] Piezas desconocidas: {sorted(unknown)}")
     for name in names:
+        # Tu arte manual gana: este script no pisa lo que hay en renders/assets/.
+        if skip_generated("missions", name, FORCE):
+            continue
         print(f"[TraderPath] ▶ {name}")
         PIECES[name]()
 

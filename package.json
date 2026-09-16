@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "check": "npm run lint && npm run typecheck && npm run build"
+    "check": "npm run lint && npm run typecheck && npm run build",
+    "art": "node scripts/build-art.mjs",
+    "art:watch": "node scripts/build-art.mjs --watch",
+    "art:check": "node scripts/build-art.mjs --check"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
