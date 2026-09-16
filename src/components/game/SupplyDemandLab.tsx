@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+
+import { useImageReady } from "@/components/game/labKit";
 
 // ── Laboratorio de Oferta y Demanda ────────────────────────────────
 // Minijuego de DESCUBRIMIENTO donde la ESCENA es la visualización: el
@@ -53,26 +55,6 @@ export interface SupplyDemandLabConfig {
 interface Props {
   config: SupplyDemandLabConfig;
   onComplete: (score: number) => void;
-}
-
-/** true solo cuando la imagen existe y cargó — evita iconos rotos. */
-function useImageReady(url?: string): boolean {
-  const [ok, setOk] = useState(false);
-  useEffect(() => {
-    if (!url) {
-      setOk(false);
-      return;
-    }
-    const img = new window.Image();
-    img.onload = () => setOk(true);
-    img.onerror = () => setOk(false);
-    img.src = url;
-    return () => {
-      img.onload = null;
-      img.onerror = null;
-    };
-  }, [url]);
-  return ok;
 }
 
 const POP = "bounce-in 200ms cubic-bezier(0.23,1,0.32,1)";

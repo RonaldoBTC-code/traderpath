@@ -21,19 +21,19 @@ de mostrarse).
 
 ## Producción en Blender
 
-Las piezas se generan con scripts `bpy` reproducibles (ver `blender/README.md`),
+Las piezas se generan con scripts `bpy` reproducibles (ver `renders/blender/README.md`),
 con el nombre exacto de este contrato:
 
 | Script | Piezas entregadas |
 |---|---|
-| `blender/build_mission_art.py` | ✅ **Nivel 1 completo**: `m1_1-stall`, `m1_1-client`, `m1_1-apple`, `m1_1-sign`, `m1_2-workshop`, `m1_3-observatory`, `m1_4-vault`, `m1_4-coin` |
-| `blender/build_mission_art.py` | ✅ **Nivel 2 completo**: `m2_1-plaza`, `m2_2-observatory`, `m2_3-patterns` |
-| `blender/build_mission_art.py` | ✅ **N3 Crypto completo**: `m3c_1-plaza-bloque`, `m3c_1-coin`, `m3c_2-nexus`, `m3c_3-ciclo`, `m3c_4-bloques` |
+| `renders/blender/build_mission_art.py` | ✅ **Nivel 1 completo**: `m1_1-stall`, `m1_1-client`, `m1_1-apple`, `m1_1-sign`, `m1_2-workshop`, `m1_3-observatory`, `m1_4-vault`, `m1_4-coin` |
+| `renders/blender/build_mission_art.py` | ✅ **Nivel 2 completo**: `m2_1-plaza`, `m2_2-observatory`, `m2_3-patterns` |
+| `renders/blender/build_mission_art.py` | ✅ **N3 Crypto completo**: `m3c_1-plaza-bloque`, `m3c_1-coin`, `m3c_2-nexus`, `m3c_3-ciclo`, `m3c_4-bloques` |
 
-| `blender/build_mission_art.py` | ✅ **N3 Forex completo**: `m3f_1-sesiones`, `m3f_2-lotes`, `m3f_2-coin`, `m3f_3-correlacion`, `m3f_4-calendario` |
+| `renders/blender/build_mission_art.py` | ✅ **N3 Forex completo**: `m3f_1-sesiones`, `m3f_2-lotes`, `m3f_2-coin`, `m3f_3-correlacion`, `m3f_4-calendario` |
 
-| `blender/build_mission_art.py` | ✅ **N3 Stocks completo**: `m3s_1-capitalizacion`, `m3s_2-resultados`, `m3s_3-corporativo`, `m3s_4-beta` |
-| `blender/build_mission_art.py` | ✅ **N3 Commodities completo**: `m3o_1-oferta`, `m3o_2-refugio`, `m3o_3-dolar`, `m3o_4-estacional` |
+| `renders/blender/build_mission_art.py` | ✅ **N3 Stocks completo**: `m3s_1-capitalizacion`, `m3s_2-resultados`, `m3s_3-corporativo`, `m3s_4-beta` |
+| `renders/blender/build_mission_art.py` | ✅ **N3 Commodities completo**: `m3o_1-oferta`, `m3o_2-refugio`, `m3o_3-dolar`, `m3o_4-estacional` |
 
 Todo el contrato actual está entregado. Indices, futures y ETFs aún no tienen misiones.
 

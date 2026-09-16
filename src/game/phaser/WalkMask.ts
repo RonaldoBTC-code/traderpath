@@ -3,7 +3,7 @@ import Phaser from "phaser";
 /**
  * Zona caminable de una sala, leída de la máscara que produce Blender.
  *
- * blender/build_overworld.py renderiza el diorama y, desde la misma cámara y la
+ * renders/blender/build_overworld.py renderiza el diorama y, desde la misma cámara y la
  * misma geometría, una segunda pasada donde lo pisable sale blanco y todo lo
  * demás negro. Por eso cada píxel de la máscara corresponde exactamente al
  * mismo píxel del mapa: no hay que mantener una colisión aparte del arte.

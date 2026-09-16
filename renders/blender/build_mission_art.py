@@ -298,7 +298,7 @@ def missions_dir():
         base = os.path.dirname(os.path.abspath(__file__))
     except NameError:
         base = bpy.path.abspath("//")
-    out = os.path.normpath(os.path.join(base, "..", "public", "assets", "missions"))
+    out = os.path.normpath(os.path.join(base, "..", "..", "public", "assets", "missions"))
     os.makedirs(out, exist_ok=True)
     return out
 

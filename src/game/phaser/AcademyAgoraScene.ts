@@ -63,7 +63,7 @@ export default class AcademyAgoraScene extends BaseWorldScene {
         },
         walkMask: {
           key: ACADEMY_MASK_KEY,
-          path: "/assets/world/overworld_walkmask.png",
+          path: "/assets/world/overworld_walkmask.webp",
         },
         player: {
           x: 1180,
@@ -89,7 +89,7 @@ export default class AcademyAgoraScene extends BaseWorldScene {
 
   preload() {
     super.preload();
-    // Diorama de blender/build_overworld.py. Sustituye al hero generado por IA:
+    // Diorama de renders/blender/build_overworld.py. Sustituye al hero generado por IA:
     // este render y la máscara de caminabilidad salen de la misma cámara y la
     // misma geometría, así que el terreno y la colisión no pueden desalinearse.
     // WebP: en PNG este diorama pesaba ~4 MB y el presupuesto de carga inicial
@@ -265,7 +265,7 @@ export default class AcademyAgoraScene extends BaseWorldScene {
         // todo el mapa era pisable. En el diorama de Blender ese punto cae en
         // el canal entre la isla central y la de Ciudad Bitcoin; la máscara de
         // caminabilidad lo marca como agua: el punto está sobre el puente
-        // norte, que es la única vía a la isla. Ver blender/build_overworld.py.
+        // norte, que es la única vía a la isla. Ver renders/blender/build_overworld.py.
         approach: new Phaser.Math.Vector2(1660, 640),
         prompt: "Examinar el portal hacia Ciudad Bitcoin",
       },

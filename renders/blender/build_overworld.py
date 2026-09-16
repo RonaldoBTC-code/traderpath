@@ -10,7 +10,7 @@
 #
 # Salidas:
 #   public/assets/world/overworld.png           diorama (RGBA, fondo opaco)
-#   public/assets/world/overworld_walkmask.png  máscara (blanco = caminable)
+#   public/assets/world/overworld_walkmask.webp  máscara (blanco = caminable)
 #
 # LA IDEA CLAVE — se autora en píxeles de Phaser
 #   La cámara es ortográfica y fija, así que la proyección del plano del suelo
@@ -980,7 +980,7 @@ def setup_world():
 
 
 # ─── RENDER ──────────────────────────────────────────────────────────────────
-def setup_render(freestyle=True, resolution=None, image_format="WEBP"):
+def setup_render(freestyle=True, resolution=None, image_format="WEBP", quality=None):
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
     scene.cycles.samples = SAMPLES
@@ -991,7 +991,9 @@ def setup_render(freestyle=True, resolution=None, image_format="WEBP"):
     scene.render.image_settings.file_format = image_format
     scene.render.image_settings.color_mode = "RGBA"
     if image_format == "WEBP":
-        scene.render.image_settings.quality = DIORAMA_QUALITY
+        # quality=100 en WebP no es "casi sin pérdida": Blender cambia al
+        # codificador lossless. Es lo que pide la máscara.
+        scene.render.image_settings.quality = DIORAMA_QUALITY if quality is None else quality
     try:
         scene.view_settings.view_transform = "Standard"
     except TypeError:
@@ -1021,7 +1023,7 @@ def output_path(filename):
         base = os.path.dirname(os.path.abspath(__file__))
     except NameError:
         base = bpy.path.abspath("//")
-    out_dir = os.path.normpath(os.path.join(base, "..", "public", "assets", "world"))
+    out_dir = os.path.normpath(os.path.join(base, "..", "..", "public", "assets", "world"))
     os.makedirs(out_dir, exist_ok=True)
     return os.path.join(out_dir, filename)
 
@@ -1073,11 +1075,12 @@ def render_walkmask():
     scene.world.node_tree.nodes.get("Background").inputs["Strength"].default_value = 0.0
     scene.cycles.samples = 16
     scene.cycles.use_denoising = False
-    # El contorno arruinaría los bordes binarios, y PNG porque la máscara debe
-    # ser sin pérdida: un artefacto de compresión aquí es una celda de terreno
-    # que cambia de estado.
-    setup_render(freestyle=False, resolution=MASK_RESOLUTION, image_format="PNG")
-    return render_to("overworld_walkmask.png")
+    # El contorno arruinaría los bordes binarios, y WebP lossless (quality=100)
+    # porque la máscara debe ser exacta: un artefacto de compresión aquí es una
+    # celda de terreno que cambia de estado. Verificado píxel a píxel contra el
+    # PNG anterior — 0 diferencias y un tercio del peso (532 KB → 162 KB).
+    setup_render(freestyle=False, resolution=MASK_RESOLUTION, image_format="WEBP", quality=100)
+    return render_to("overworld_walkmask.webp")
 
 
 def _sample(pixels, width, height, px, py):

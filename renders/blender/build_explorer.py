@@ -1,15 +1,18 @@
 # build_explorer.py — TraderPath · Fase 1 (prueba de concepto de la tubería 2.5D)
 #
-# Construye el "Explorador" como personaje cartoon 3D y lo renderiza a un PNG
+# Construye el "Explorador" como personaje cartoon 3D y lo renderiza a un WebP
 # ortográfico con fondo transparente, listo para que Phaser lo cargue como sprite.
 #
 # CÓMO CORRERLO
 #   Opción A (recomendada, sin abrir la UI):
-#     blender --background --python blender/build_explorer.py
+#     blender --background --python renders/blender/build_explorer.py
 #   Opción B (para iterar viendo el modelo):
 #     Abre Blender → pestaña Scripting → abre este archivo → Run Script (Alt+P)
 #
-# Salida: public/assets/sprites/explorer.png
+# Salida: public/assets/sprites/explorer.webp
+#
+# WebP y no PNG: el mismo sprite pesa 21 KB en vez de 255 KB, y el mundo
+# precarga seis (base + cinco variantes de color) en cada escena.
 #
 # Probado con Blender 3.6 LTS, 4.x y 5.2 LTS. Usa Cycles (renderiza headless
 # sin problemas).
@@ -25,7 +28,7 @@ BODY_HEX = "#E5960A"   # ámbar (tp-gold). Color por defecto → explorer.png
 SKIN_HEX = "#FFD4AD"
 
 # Fase 2 · variantes del selector de avatar. El orden IMPORTA: el índice de cada
-# hex es el que termina en explorer_{i}.png, así que debe coincidir 1:1 con
+# hex es el que termina en explorer_{i}.webp, así que debe coincidir 1:1 con
 # AVATAR_COLORS en src/components/world/AcademyWorld.tsx (fuente de verdad).
 # Si allá se reordenan o agregan colores, hay que reflejarlo acá y re-renderizar.
 AVATAR_HEXES = ["#F0C040", "#38BDF8", "#22C55E", "#F97316", "#D946EF"]
@@ -36,6 +39,9 @@ SKY_HEX = "#EAF4FE"    # luz de ambiente diurna (tp-base)
 
 RESOLUTION = (512, 640)
 SAMPLES = 96
+# 92 es el punto donde el lossy deja de notarse en el sprite (error medio 0,006
+# sobre los píxeles opacos) y el archivo baja de 255 KB a 21 KB.
+SPRITE_QUALITY = 92
 OUTLINE_THICKNESS = 4.5
 
 
@@ -206,8 +212,9 @@ def setup_render():
     scene.render.film_transparent = True
     scene.render.resolution_x, scene.render.resolution_y = RESOLUTION
     scene.render.resolution_percentage = 100
-    scene.render.image_settings.file_format = "PNG"
+    scene.render.image_settings.file_format = "WEBP"
     scene.render.image_settings.color_mode = "RGBA"
+    scene.render.image_settings.quality = SPRITE_QUALITY
     # Colores planos y punchy (evita el lavado de Filmic/AgX).
     try:
         scene.view_settings.view_transform = "Standard"
@@ -241,7 +248,7 @@ def output_path(filename):
         base = os.path.dirname(os.path.abspath(__file__))
     except NameError:
         base = bpy.path.abspath("//")
-    out_dir = os.path.normpath(os.path.join(base, "..", "public", "assets", "sprites"))
+    out_dir = os.path.normpath(os.path.join(base, "..", "..", "public", "assets", "sprites"))
     os.makedirs(out_dir, exist_ok=True)
     return os.path.join(out_dir, filename)
 
@@ -265,10 +272,10 @@ def render_variant(body_hex, filename):
 
 def main():
     # Sprite por defecto (tp-gold), el que consume EXPLORER_SPRITE_PATH hoy.
-    render_variant(BODY_HEX, "explorer.png")
+    render_variant(BODY_HEX, "explorer.webp")
     # Fase 2: una variante por color del selector de avatar.
     for i, body_hex in enumerate(AVATAR_HEXES):
-        render_variant(body_hex, f"explorer_{i}.png")
+        render_variant(body_hex, f"explorer_{i}.webp")
     print(f"[TraderPath] Listo: 1 sprite base + {len(AVATAR_HEXES)} variantes.")
 
 

@@ -8,17 +8,17 @@ import Phaser from "phaser";
 export const CHARACTER_INK = 0x1e2a44;
 
 // ─── Blender-rendered sprites (2.5D pipeline) ───────────────────────────────
-// Pre-rendered PNGs live in public/assets/sprites/ (see blender/README.md).
+// Pre-rendered WebPs live in public/assets/sprites/ (see renders/README.md).
 // When a sprite texture is present we use it; otherwise scenes fall back to the
 // vector drawing below, so the world keeps working before any render exists.
 
 export const EXPLORER_SPRITE_KEY = "explorer-sprite";
-export const EXPLORER_SPRITE_PATH = "/assets/sprites/explorer.png";
+export const EXPLORER_SPRITE_PATH = "/assets/sprites/explorer.webp";
 
 /**
- * Avatar colour variants rendered by blender/build_explorer.py (Fase 2).
+ * Avatar colour variants rendered by renders/blender/build_explorer.py (Fase 2).
  *
- * Order matters: index i is the sprite rendered to explorer_{i}.png, so this
+ * Order matters: index i is the sprite rendered to explorer_{i}.webp, so this
  * must stay in sync with AVATAR_COLORS in components/world/AcademyWorld.tsx.
  * It is duplicated rather than imported so Phaser code pulls in no React
  * modules; the same duplication exists on the Blender side (AVATAR_HEXES).
@@ -42,7 +42,7 @@ export const EXPLORER_VARIANT_HEXES = [
 
 export const explorerVariantKey = (index: number) => `explorer-sprite-${index}`;
 
-const explorerVariantPath = (index: number) => `/assets/sprites/explorer_${index}.png`;
+const explorerVariantPath = (index: number) => `/assets/sprites/explorer_${index}.webp`;
 
 /** Index of a colour within the variant list, or -1 when it isn't one of them. */
 export function explorerVariantIndex(color: string): number {
@@ -85,7 +85,7 @@ export function preloadExplorerSprite(scene: Phaser.Scene) {
     const key = file?.key;
     if (!key) return;
     if (key === EXPLORER_SPRITE_KEY || key.startsWith("explorer-sprite-")) {
-      // Expected until blender/build_explorer.py has been run; vector fallback used.
+      // Expected until renders/blender/build_explorer.py has been run; vector fallback used.
     }
   };
   scene.load.on("loaderror", swallow);

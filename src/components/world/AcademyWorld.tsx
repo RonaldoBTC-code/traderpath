@@ -555,13 +555,10 @@ export default function AcademyWorld() {
   const roomLabel = WORLD_ROOMS[room].label;
 
   return (
-    <section
-      className="relative h-dvh min-h-[520px] w-full overflow-hidden bg-[#8ecdea] bg-cover bg-center text-tp-text"
-      style={{
-        backgroundImage:
-          "linear-gradient(180deg, rgba(190, 227, 248, 0.18), rgba(234, 244, 254, 0.30)), url('/assets/traderpath-world-hero.png')",
-      }}
-    >
+    // El lienzo de Phaser cubre la sección entera y el velo de carga tapa lo
+    // que quede debajo: aquí basta un celeste plano. La postal de 2,1 MB que
+    // había antes se descargaba para no verse nunca.
+    <section className="relative h-dvh min-h-[520px] w-full overflow-hidden bg-[#8ecdea] text-tp-text">
       <div
         ref={mountRef}
         className="absolute inset-0 overflow-hidden [&_canvas]:!block"
