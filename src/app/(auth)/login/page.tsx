@@ -25,7 +25,11 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    router.push("/dashboard");
+    const requestedNext = new URLSearchParams(window.location.search).get("next");
+    const next = requestedNext?.startsWith("/") && !requestedNext.startsWith("//")
+      ? requestedNext
+      : "/world";
+    router.push(next);
   };
 
   return (
@@ -54,7 +58,7 @@ export default function LoginPage() {
               <div className="bg-tp-supply/10 border border-tp-supply/30 rounded-sm px-4 py-3 text-tp-supply text-sm">{error}</div>
             )}
             <button type="submit" disabled={loading}
-              className="w-full py-3 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed">
+              className="w-full py-3 bg-tp-gold text-tp-text font-display font-bold rounded-sm hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed">
               {loading ? "Iniciando sesión..." : "Iniciar sesión"}
             </button>
           </form>

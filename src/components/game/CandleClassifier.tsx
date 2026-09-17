@@ -175,7 +175,7 @@ export default function CandleClassifier({ onComplete }: Props) {
           <div className="px-3 py-2 rounded-sm bg-tp-surface border border-tp-border text-xs text-tp-text-muted">
             💡 {step.explanation}
           </div>
-          <button onClick={handleNext} className="px-5 py-2 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition">
+          <button onClick={handleNext} className="px-5 py-2 bg-tp-gold text-tp-text font-display font-bold rounded-sm hover:brightness-110 transition">
             {currentStep < CHART_STEPS.length - 1 ? "Siguiente paso →" : "Ver resultado"}
           </button>
         </div>

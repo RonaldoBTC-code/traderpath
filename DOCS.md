@@ -8,7 +8,7 @@
 
 TraderPath es un videojuego educativo web de trading financiero construido con Next.js 14. El jugador aprende a operar mercados financieros a través de misiones narrativas, mini-juegos interactivos, quizzes y un sistema de progresión RPG con capital virtual.
 
-**Estado actual**: MVP funcional con 3 niveles de contenido, sistema de progresión local (Zustand + localStorage), y 15 misiones jugables con mini-juegos interactivos.
+**Estado actual**: MVP funcional con 3 niveles, 16 misiones con contexto gráfico de velas, mini-juegos interactivos, progreso sincronizado con Supabase y simulador disciplinario con replay de mercado. La especialización cripto comienza con Ciudad Origen: Bitcoin.
 
 ---
 
@@ -20,8 +20,8 @@ TraderPath es un videojuego educativo web de trading financiero construido con N
 | Lenguaje | TypeScript | 5.3+ |
 | Estilos | Tailwind CSS | 3.4+ |
 | Estado | Zustand (persist middleware) | 4.4+ |
-| DB (futuro) | Supabase | Schema listo |
-| Gráficos (futuro) | Lightweight Charts | Instalado |
+| DB | Supabase | Conectado + RLS |
+| Gráficos | Lightweight Charts | Implementado |
 | Animaciones (futuro) | Framer Motion | Instalado |
 | Fuentes | Space Grotesk + DM Sans + JetBrains Mono | Google Fonts |
 
@@ -48,7 +48,8 @@ src/
 │   │   ├── QuizEngine.tsx          ← Motor de preguntas (feedback + explicación)
 │   │   ├── MatchTermMinigame.tsx   ← Conectar términos ↔ definiciones
 │   │   ├── CandlestickBuilder.tsx  ← Armar velas con Open/Close
-│   │   ├── ChartTapGame.tsx        ← Clasificar tendencia en gráfico SVG
+│   │   ├── ChartTapGame.tsx        ← Clasificar tendencias sobre velas interactivas
+│   │   ├── MissionMarketChart.tsx  ← Contexto gráfico educativo por misión
 │   │   ├── RiskCalculator.tsx      ← Calcular tamaño de posición
 │   │   ├── CandleClassifier.tsx    ← Boss N1: análisis integrado 4 pasos
 │   │   ├── ZonePainter.tsx         ← Clasificar zonas oferta/demanda
@@ -65,7 +66,8 @@ src/
 │   │   ├── level2.ts              ← 5 misiones + 7 mercados
 │   │   └── level3-crypto.ts       ← 5 misiones ruta Crypto
 │   ├── game/
-│   │   └── constants.ts           ← Ranks, XP rewards, achievements
+│   │   ├── constants.ts           ← Ranks, XP rewards, achievements
+│   │   └── missionCharts.ts       ← Escenarios de velas para las 16 misiones
 │   ├── supabase/
 │   │   ├── client.ts              ← Browser Supabase client
 │   │   ├── server.ts              ← Server Component client
@@ -150,7 +152,7 @@ Nivel 1 (5 misiones) → Nivel 2 (5 misiones) → Gran Tour (elige mercado) → 
 | 4 | El Lenguaje de los Bloques | ATR, HTF/LTF, funding rate | TimeframeSwitcher* |
 | 5 | El Gran Reto Cripto (Boss) | Integración crypto completa | FearGreedSlider* |
 
-*Mini-juegos del N3 usan placeholder (pendientes de implementación visual).
+Los cinco mini-juegos del Nivel 3 son interactivos y exigen umbral de aprobación.
 
 ---
 
@@ -236,12 +238,9 @@ Cada tabla tiene Row Level Security: usuarios solo ven sus propios datos.
 ## 10. PENDIENTES (No implementado aún)
 
 ### Funcionalidad
-- [ ] Simulador de trading con TradingView charts
-- [ ] Diario de trading virtual
 - [ ] Sistema de logros con popups
-- [ ] Conexión real a Supabase (actualmente solo localStorage)
-- [ ] Mini-juegos del Nivel 3 Crypto (5 componentes)
 - [ ] Escenas educativas visuales (Apple Market, Bounce Room, etc.)
+- [ ] WorldMap explorable con siete ciudades de mercado
 
 ### Visual (VDD Fases 1-5)
 - [ ] WorldMap con nodos de misión

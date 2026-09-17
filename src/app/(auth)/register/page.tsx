@@ -30,12 +30,7 @@ export default function RegisterPage() {
     }
     if (!authData.user) { setError("Error al crear la cuenta."); setLoading(false); return; }
 
-    const { error: profileError } = await supabase.from("profiles").insert({ id: authData.user.id, username });
-    if (profileError) { setError("Error al crear perfil: " + profileError.message); setLoading(false); return; }
-
-    await supabase.from("player_progress").insert({ user_id: authData.user.id, level_id: 1, mission_id: "M1", xp: 0, rank: "Novato", virtual_capital: 1000.0, trade_coins: 0, streak_days: 0 });
-
-    router.push("/dashboard");
+    router.push("/world");
   };
 
   return (
@@ -69,7 +64,7 @@ export default function RegisterPage() {
               <div className="bg-tp-supply/10 border border-tp-supply/30 rounded-sm px-4 py-3 text-tp-supply text-sm">{error}</div>
             )}
             <button type="submit" disabled={loading}
-              className="w-full py-3 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed">
+              className="w-full py-3 bg-tp-gold text-tp-text font-display font-bold rounded-sm hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed">
               {loading ? "Creando cuenta..." : "Crear cuenta"}
             </button>
           </form>

@@ -2,20 +2,39 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { level1 } from "@/lib/content/level1";
 import { level2 } from "@/lib/content/level2";
-import { level3Crypto } from "@/lib/content/level3-crypto";
+import {
+  LEVEL3_REGISTRY,
+  getLevel3ConfigByLevelId,
+  isLevel3Market,
+  type Level3ConfigLike,
+} from "@/lib/content/level3Registry";
+import { RANKS } from "@/lib/game/constants";
 
 // ─── TYPES ──────────────────────────────────────────────────
 
 export type MissionStatus = "locked" | "available" | "completed";
 
-interface CompletedMissionEntry {
+export interface CompletedMissionEntry {
   levelId: string;
   missionId: string;
   score: number;
   completedAt: string;
 }
 
-interface GameState {
+export interface GameProgressSnapshot {
+  xp: number;
+  virtualCapital: number;
+  rank: string;
+  currentLevelId: string;
+  currentMissionId: string;
+  completedMissions: CompletedMissionEntry[];
+  streakDays: number;
+  lastActivity: string | null;
+  marketSpecialization: string | null;
+  marketChangeUsed: boolean;
+}
+
+interface GameState extends GameProgressSnapshot {
   // Player data
   xp: number;
   virtualCapital: number;
@@ -28,34 +47,35 @@ interface GameState {
   marketSpecialization: string | null;
   marketChangeUsed: boolean;
 
+  // World exploration progress (flags keyed by station/target id)
+  worldFlags: Record<string, boolean>;
+  worldReturnRoom: string | null;
+
   // Actions
   completeMission: (levelId: string, missionId: string, score: number) => void;
   isMissionCompleted: (levelId: string, missionId: string) => boolean;
   isMissionUnlocked: (levelId: string, missionId: string) => boolean;
   getCurrentMission: () => { levelId: string; missionId: string };
-  getCurrentLevel: () => typeof level1 | typeof level2 | typeof level3Crypto;
+  getCurrentLevel: () => typeof level1 | typeof level2 | Level3ConfigLike;
   getMissionStatus: (levelId: string, missionId: string) => MissionStatus;
   calculateRank: (totalXp: number) => string;
   setMarketSpecialization: (market: string) => void;
   useMarketChange: (newMarket: string) => void;
+  applyCapitalChange: (amount: number) => void;
+  setWorldFlag: (flag: string) => void;
+  clearWorldFlag: (flag: string) => void;
+  setWorldReturnRoom: (room: string | null) => void;
+  consumeWorldReturnRoom: () => string | null;
+  importLegacyWorldProgress: () => void;
+  hydrateProgress: (progress: GameProgressSnapshot) => void;
   resetProgress: () => void;
 }
 
 // ─── HELPERS ────────────────────────────────────────────────
 
-const RANK_THRESHOLDS = [
-  { name: "Leyenda", minXP: 25000 },
-  { name: "Profesional", minXP: 18500 },
-  { name: "Trader", minXP: 13000 },
-  { name: "Operador", minXP: 8500 },
-  { name: "Estratega", minXP: 5000 },
-  { name: "Analista", minXP: 2500 },
-  { name: "Aprendiz", minXP: 1000 },
-  { name: "Novato", minXP: 0 },
-];
-
 function calculateRankFromXP(xp: number): string {
-  for (const rank of RANK_THRESHOLDS) {
+  for (let index = RANKS.length - 1; index >= 0; index -= 1) {
+    const rank = RANKS[index];
     if (xp >= rank.minXP) return rank.name;
   }
   return "Novato";
@@ -65,8 +85,7 @@ function calculateRankFromXP(xp: number): string {
 function getLevelConfig(levelId: string) {
   if (levelId === "level_1") return level1;
   if (levelId === "level_2") return level2;
-  if (levelId === "level_3_crypto") return level3Crypto;
-  return level1;
+  return getLevel3ConfigByLevelId(levelId) ?? level1;
 }
 
 /** Get ordered missions for a level */
@@ -86,12 +105,12 @@ function getNextMission(levelId: string, missionId: string) {
 function getNextLevelId(levelId: string, specialization: string | null): string | null {
   if (levelId === "level_1") return "level_2";
   if (levelId === "level_2") {
-    // After level 2, go to specialization
-    if (specialization === "crypto") return "level_3_crypto";
-    // Default to crypto for MVP
+    // After level 2, route to the chosen specialization's level 3
+    if (specialization && LEVEL3_REGISTRY[specialization]) return `level_3_${specialization}`;
+    // No specialization recorded (shouldn't happen post m2_5) — MVP fallback.
     return "level_3_crypto";
   }
-  if (levelId === "level_3_crypto") return null; // Future: level_4
+  if (levelId.startsWith("level_3_")) return null; // Future: level_4
   return null;
 }
 
@@ -104,8 +123,9 @@ function isLevelUnlocked(levelId: string, completedMissions: CompletedMissionEnt
       completedMissions.some((c) => c.levelId === "level_1" && c.missionId === m.id)
     );
   }
-  if (levelId === "level_3_crypto") {
-    if (specialization !== "crypto") return false;
+  if (levelId.startsWith("level_3_")) {
+    const market = levelId.slice("level_3_".length);
+    if (specialization !== market || !LEVEL3_REGISTRY[market]) return false;
     const l2Missions = getLevelMissions("level_2");
     return l2Missions.every((m) =>
       completedMissions.some((c) => c.levelId === "level_2" && c.missionId === m.id)
@@ -125,7 +145,28 @@ const INITIAL_STATE = {
   lastActivity: null as string | null,
   marketSpecialization: null as string | null,
   marketChangeUsed: false,
+  worldFlags: {} as Record<string, boolean>,
+  worldReturnRoom: null as string | null,
 };
+
+// Legacy per-flag localStorage keys used by the world before the flags moved
+// into this store. Imported once (and removed) by importLegacyWorldProgress so
+// existing players keep their exploration progress.
+const LEGACY_WORLD_FLAG_KEYS: Record<string, string> = {
+  "traderpath-world-intro-v1": "intro-completed",
+  "traderpath-world-intro-reward-v1": "intro-reward-claimed",
+  "traderpath-market-seller-v1": "market-seller",
+  "traderpath-market-buyer-v1": "market-buyer",
+  "traderpath-candle-open-v1": "candle-open",
+  "traderpath-candle-high-v1": "candle-high",
+  "traderpath-candle-low-v1": "candle-low",
+  "traderpath-candle-close-v1": "candle-close",
+  "traderpath-candle-direction-v1": "candle-direction",
+  "traderpath-candle-body-v1": "candle-body",
+  "traderpath-candle-upper-wick-v1": "candle-upper-wick",
+  "traderpath-candle-lower-wick-v1": "candle-lower-wick",
+};
+const LEGACY_RETURN_ROOM_KEY = "traderpath-world-return-room-v1";
 
 // ─── STORE ──────────────────────────────────────────────────
 
@@ -153,7 +194,7 @@ export const useGameStore = create<GameState>()(
 
         // Calculate new values
         const xpReward = mission.rewards.xp;
-        const capitalReward = mission.rewards.virtualCapital;
+        const capitalReward = mission.rewards.virtualCapital + (mission.minigame?.virtualCapitalReward ?? 0);
         const newXP = state.xp + xpReward;
         const newCapital = state.virtualCapital + capitalReward;
         const newRank = calculateRankFromXP(newXP);
@@ -253,6 +294,12 @@ export const useGameStore = create<GameState>()(
       },
 
       setMarketSpecialization: (market: string) => {
+        // Only markets with a built level 3 are selectable. Anything else would
+        // route the player into a level that has no missions.
+        if (!isLevel3Market(market)) {
+          console.warn("Market specialization rejected (no level 3 built):", market);
+          return;
+        }
         console.log("Market specialization set:", market);
         set({ marketSpecialization: market });
       },
@@ -261,6 +308,10 @@ export const useGameStore = create<GameState>()(
         const state = get();
         if (state.marketChangeUsed) {
           console.log("Market change already used — cannot change again.");
+          return;
+        }
+        if (!isLevel3Market(newMarket)) {
+          console.warn("Market change rejected (no level 3 built):", newMarket);
           return;
         }
         console.log("Market changed from", state.marketSpecialization, "to", newMarket);
@@ -274,7 +325,66 @@ export const useGameStore = create<GameState>()(
           completedMissions: filteredMissions,
           // Reset to first mission of new level 3
           currentLevelId: `level_3_${newMarket}`,
-          currentMissionId: `m3${newMarket.charAt(0)}_1`,
+          // First mission from the registry: crypto starts at m3c_0, not _1.
+          currentMissionId: LEVEL3_REGISTRY[newMarket].missions[0]?.id ?? "",
+        });
+      },
+
+      applyCapitalChange: (amount: number) => {
+        set((state) => ({
+          virtualCapital: Math.max(0, Math.round((state.virtualCapital + amount) * 100) / 100),
+          lastActivity: new Date().toISOString().split("T")[0],
+        }));
+      },
+
+      setWorldFlag: (flag: string) => {
+        set((state) =>
+          state.worldFlags[flag] ? state : { worldFlags: { ...state.worldFlags, [flag]: true } }
+        );
+      },
+
+      clearWorldFlag: (flag: string) => {
+        set((state) => {
+          if (!(flag in state.worldFlags)) return state;
+          const nextFlags = { ...state.worldFlags };
+          delete nextFlags[flag];
+          return { worldFlags: nextFlags };
+        });
+      },
+
+      setWorldReturnRoom: (room: string | null) => {
+        set({ worldReturnRoom: room });
+      },
+
+      consumeWorldReturnRoom: () => {
+        const room = get().worldReturnRoom;
+        if (room !== null) set({ worldReturnRoom: null });
+        return room;
+      },
+
+      importLegacyWorldProgress: () => {
+        if (typeof window === "undefined") return;
+        const imported: Record<string, boolean> = {};
+        for (const [legacyKey, flag] of Object.entries(LEGACY_WORLD_FLAG_KEYS)) {
+          if (window.localStorage.getItem(legacyKey) !== null) {
+            imported[flag] = true;
+            window.localStorage.removeItem(legacyKey);
+          }
+        }
+        const legacyReturnRoom = window.localStorage.getItem(LEGACY_RETURN_ROOM_KEY);
+        if (legacyReturnRoom !== null) window.localStorage.removeItem(LEGACY_RETURN_ROOM_KEY);
+        if (Object.keys(imported).length === 0 && legacyReturnRoom === null) return;
+        set((state) => ({
+          // Store values win over legacy ones: the store is the source of truth
+          worldFlags: { ...imported, ...state.worldFlags },
+          worldReturnRoom: state.worldReturnRoom ?? legacyReturnRoom,
+        }));
+      },
+
+      hydrateProgress: (progress: GameProgressSnapshot) => {
+        set({
+          ...progress,
+          rank: calculateRankFromXP(progress.xp),
         });
       },
 

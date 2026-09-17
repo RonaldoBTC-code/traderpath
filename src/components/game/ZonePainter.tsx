@@ -73,7 +73,7 @@ export default function ZonePainter({ correctZones, requiredCorrect, onComplete 
         </button>
       </div>
 
-      <p className="text-xs text-tp-text-muted">Selecciona "{mode === "demand" ? "Demanda" : "Oferta"}" y haz clic en cada zona para clasificarla.</p>
+      <p className="text-xs text-tp-text-muted">Selecciona &quot;{mode === "demand" ? "Demanda" : "Oferta"}&quot; y haz clic en cada zona para clasificarla.</p>
 
       {/* Zones as buttons */}
       <div className="space-y-2">

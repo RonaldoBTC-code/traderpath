@@ -53,7 +53,7 @@ export default function MissionTutorial({ tutorial, onContinue }: Props) {
           </div>
         )}
         <button onClick={onContinue}
-          className="w-full px-5 py-2.5 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition">
+          className="w-full px-5 py-2.5 bg-tp-gold text-tp-text font-display font-bold rounded-sm hover:brightness-110 transition">
           ¡Estoy listo! Comenzar →
         </button>
       </div>
@@ -97,7 +97,7 @@ export default function MissionTutorial({ tutorial, onContinue }: Props) {
           </button>
         )}
         <button onClick={() => setStep((s) => s + 1)}
-          className="flex-1 px-5 py-2 bg-tp-gold text-tp-base font-display font-bold rounded-sm hover:brightness-110 transition">
+          className="flex-1 px-5 py-2 bg-tp-gold text-tp-text font-display font-bold rounded-sm hover:brightness-110 transition">
           {step < sections.length - 1 ? "Siguiente →" : "Ver instrucciones →"}
         </button>
       </div>

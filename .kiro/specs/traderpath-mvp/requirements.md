@@ -2,7 +2,7 @@
 
 ## Introduction
 
-TraderPath is a web-based educational trading video game that teaches financial market trading through RPG mechanics (levels, progression, missions, rewards) combined with a real-time trading simulator using virtual capital. The MVP covers authentication, three complete levels (Novato, Aprendiz, and Analista — Crypto route), a Grand Tour of Markets transition module, a basic trading simulator with TradingView Lightweight Charts, XP/rank progression, a virtual trading diary, and 7 unlockable achievements. The core pedagogical principle is that the player cannot execute an action they do not understand — missions unlock mechanics sequentially.
+TraderPath is a web-based educational open-world trading video game for Spanish-speaking players aged 16 and older, from complete beginners to experienced traders. It teaches financial markets through exploration, NPC interactions, visual analogies, RPG progression, evaluations, and a disciplined trading simulator using virtual capital. The core pedagogical principle is that the player cannot execute an action they do not understand — missions unlock mechanics sequentially.
 
 ## Glossary
 
@@ -95,7 +95,7 @@ TraderPath is a web-based educational trading video game that teaches financial 
 
 1. WHEN a player completes a mission, THE XP_System SHALL award XP based on the mission difficulty and update the player total
 2. WHEN accumulated XP crosses a rank threshold, THE XP_System SHALL promote the player to the new rank and display a rank-up notification
-3. THE XP_System SHALL recognize 8 ranks: Novato (0 XP), Iniciado (500 XP), Aprendiz (1,500 XP), Analista (3,500 XP), Trader (7,000 XP), Experto (12,000 XP), Maestro (18,000 XP), and Leyenda (25,000 XP)
+3. THE XP_System SHALL recognize 8 ranks: Novato (0 XP), Aprendiz (1,000 XP), Analista (2,500 XP), Estratega (5,000 XP), Operador (8,500 XP), Trader (13,000 XP), Profesional (18,500 XP), and Leyenda (25,000 XP)
 4. THE XP_System SHALL persist XP and rank to Supabase so that values remain consistent across sessions
 
 ### Requirement 7: Virtual Capital Management
@@ -117,8 +117,8 @@ TraderPath is a web-based educational trading video game that teaches financial 
 
 #### Acceptance Criteria
 
-1. WHILE a player has not completed Mission 6 of Level 1, THE Trading_Simulator SHALL remain locked and display a message explaining that risk management knowledge is required
-2. WHEN a player completes Mission 6 of Level 1, THE Trading_Simulator SHALL unlock and become accessible for simulator-type missions
+1. WHILE a player has not completed Mission 4 of Level 1, THE Trading_Simulator SHALL remain locked and display a message explaining that risk management knowledge is required
+2. WHEN a player completes Mission 4 of Level 1, THE Trading_Simulator SHALL unlock and become accessible for simulator-type missions
 3. WHEN a player accesses the Trading_Simulator, THE Trading_Simulator SHALL display a TradingView Lightweight Charts widget with real-time-style price data and the Order_Panel
 
 ### Requirement 9: Trade Execution Validation
@@ -215,7 +215,7 @@ TraderPath is a web-based educational trading video game that teaches financial 
 
 #### Acceptance Criteria
 
-1. WHEN a player completes Mission 6 of Level 2, THE Mission_Engine SHALL unlock the Pattern_Card collection feature
+1. WHEN a player completes Level 2, THE Mission_Engine SHALL unlock the Pattern_Card collection feature
 2. WHEN Pattern_Cards are unlocked, THE Dashboard SHALL display a "Pattern Cards" section showing all collected cards
 3. WHEN a player earns a new Pattern_Card through mission completion, THE Mission_Engine SHALL display the card with its pattern name, visual diagram, and key characteristics
 
@@ -250,3 +250,15 @@ TraderPath is a web-based educational trading video game that teaches financial 
 2. THE Trading_Simulator SHALL adapt the chart and Order_Panel layout for mobile viewports (below 768px width) without losing functionality
 3. THE Dashboard SHALL apply the dark theme using background colors #0D1B2A, #1A2B3C, and #0A1628, accent colors green #00C896, gold #FFD700, red #FF4757, and blue #4A90E2 consistently across all screens
 4. THE Dashboard SHALL use Inter font for body text and JetBrains Mono font for price and numerical displays
+
+### Requirement 21: Open-World Educational Map
+
+**User Story:** As a player, I want to explore representative financial cities and discover lessons through NPC and visual interactions, so that learning feels like an adventure rather than a traditional course.
+
+#### Acceptance Criteria
+
+1. THE World_Map SHALL represent Cryptocurrency, Forex, Stocks, Commodities, Indices, Futures, and ETFs as visually distinct cities or districts
+2. THE World_Map SHALL expose educational points of interest and NPC interactions while preserving sequential prerequisite rules
+3. WHEN a player enters an educational point, THE Mission_Engine SHALL present a visual analogy, a guided interaction, randomized practice, and a final block assessment
+4. WHEN a player passes the assessment, THE World_Map SHALL unlock the corresponding mechanic, mission, or destination
+5. THE first complete vertical slice SHALL teach supply, demand, and price through an interactive apple market scene

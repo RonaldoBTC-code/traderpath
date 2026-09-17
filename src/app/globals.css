@@ -2,59 +2,89 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* ─── DESIGN TOKENS (VDD v1.0) ─────────────────────────────── */
+/* ─── DESIGN TOKENS (VDD v2.0 — "Día de Mercado" light cartoon) ── */
 
 :root {
   /* Base */
-  --tp-base: #0A0E1A;
-  --tp-surface: #131827;
-  --tp-surface-alt: #1C2233;
-  --tp-border: #1E2D45;
+  --tp-base: #EAF4FE;
+  --tp-surface: #FFFFFF;
+  --tp-surface-alt: #F1F8FF;
+  --tp-border: #C9DCEF;
 
   /* Text */
-  --tp-text: #E8EAF0;
-  --tp-text-muted: #8894A8;
+  --tp-text: #1E2A44;
+  --tp-text-muted: #5D6E8C;
 
   /* Accents */
-  --tp-gold: #F0C040;
-  --tp-gold-muted: #B8922E;
-  --tp-demand: #22C55E;
-  --tp-supply: #EF4444;
-  --tp-warning: #F59E0B;
-  --tp-info: #60A5FA;
+  --tp-gold: #E5960A;
+  --tp-gold-muted: #A66B00;
+  --tp-demand: #16A34A;
+  --tp-supply: #DC2626;
+  --tp-warning: #D97706;
+  --tp-info: #2563EB;
 
-  /* Market cities */
+  /* Market cities — source of truth: MARKET_CITIES[].accent in
+     src/lib/game/marketCities.ts. Keep both files and tailwind.config.ts in
+     sync; the Blender city renders are lit from these same hex values. */
   --tp-crypto: #F7931A;
-  --tp-forex: #00B4D8;
+  --tp-forex: #38BDF8;
   --tp-stocks: #22C55E;
   --tp-commodities: #EAB308;
-  --tp-indices: #818CF8;
+  /* NOT aligned on purpose. marketCities uses #818CF8 for Observatorio Global,
+     but this token is currently Don Pánico's dialogue colour in
+     CharacterDialogue.tsx — a market token doing double duty as a character
+     token. Aligning it would restyle the character. Needs its own token first. */
+  --tp-indices: #6366F1;
   --tp-futures: #F97316;
-  --tp-etfs: #06B6D4;
+  --tp-etfs: #D946EF;
 
   /* Shadows */
-  --tp-shadow-gold: 0 4px 24px rgba(240, 192, 64, 0.15);
-  --tp-shadow-demand: 0 4px 24px rgba(34, 197, 94, 0.15);
-  --tp-shadow-supply: 0 4px 24px rgba(239, 68, 68, 0.15);
-  --tp-shadow-info: 0 4px 24px rgba(96, 165, 250, 0.15);
+  --tp-shadow-gold: 0 6px 20px rgba(229, 150, 10, 0.22);
+  --tp-shadow-demand: 0 6px 20px rgba(22, 163, 74, 0.2);
+  --tp-shadow-supply: 0 6px 20px rgba(220, 38, 38, 0.2);
+  --tp-shadow-info: 0 6px 20px rgba(37, 99, 235, 0.2);
 }
 
 /* ─── BASE STYLES ──────────────────────────────────────────── */
 
 body {
   background-color: var(--tp-base);
+  background-image:
+    radial-gradient(circle at 12% -4%, rgba(255, 214, 102, 0.22), transparent 34%),
+    radial-gradient(circle at 88% 0%, rgba(125, 211, 252, 0.28), transparent 40%);
+  background-attachment: fixed;
   color: var(--tp-text);
   font-family: 'DM Sans', -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+::selection {
+  background: rgba(229, 150, 10, 0.28);
+  color: var(--tp-text);
+}
+
+.tp-panel {
+  border: 2px solid var(--tp-border);
+  background: var(--tp-surface);
+  box-shadow: 0 10px 30px rgba(30, 42, 68, 0.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* ─── TYPOGRAPHY UTILITY CLASSES ───────────────────────────── */
 
 .font-display {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: 'Baloo 2', 'DM Sans', sans-serif;
 }
 
 .font-body {
@@ -81,6 +111,23 @@ body {
   to { stroke-dashoffset: -20; }
 }
 
+@keyframes bounce-in {
+  0% { transform: scale(0.92); opacity: 0; }
+  60% { transform: scale(1.04); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Minimapa: entra escalando desde su esquina (el botón que lo abre). El bloque
+   global de prefers-reduced-motion de arriba lo neutraliza a 0.01ms. */
+@keyframes minimap-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.minimap-panel {
+  animation: minimap-in 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
@@ -91,6 +138,10 @@ body {
 
 .animate-dash-flow {
   animation: dash-flow 1s linear infinite;
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 /* ─── SCROLLBAR STYLING ────────────────────────────────────── */

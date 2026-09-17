@@ -11,39 +11,37 @@ export default function LaSeñoritaFomo({ size = 48 }: { size?: number }) {
       className="shrink-0"
     >
       {/* Background circle */}
-      <circle cx="50" cy="50" r="48" fill="#1A2B3C" stroke="#FB923C" strokeWidth="2" />
+      <circle cx="50" cy="50" r="48" fill="#FCE7F3" stroke="#EC4899" strokeWidth="3" />
+      {/* Flying ponytail */}
+      <path d="M68 34 Q84 26 88 40 Q80 38 72 44 Z" fill="#7C3AED" stroke="#1E2A44" strokeWidth="2.5" />
       {/* Face */}
-      <ellipse cx="50" cy="54" rx="22" ry="24" fill="#2A3F55" />
-      {/* Hair - wild, energetic */}
-      <path
-        d="M28 45 Q30 20, 50 18 Q70 20, 72 45"
-        fill="#0D1B2A"
-        stroke="#FB923C"
-        strokeWidth="1"
-      />
-      <path d="M30 35 Q28 25, 33 22" stroke="#FB923C" strokeWidth="1.5" opacity="0.6" />
-      <path d="M70 35 Q72 25, 67 22" stroke="#FB923C" strokeWidth="1.5" opacity="0.6" />
-      <path d="M40 20 Q42 14, 48 16" stroke="#FB923C" strokeWidth="1" opacity="0.5" />
-      <path d="M55 18 Q58 13, 62 16" stroke="#FB923C" strokeWidth="1" opacity="0.5" />
-      {/* Eyes - wide open, anxious */}
-      <ellipse cx="42" cy="50" rx="6" ry="7" fill="#0D1B2A" stroke="#FB923C" strokeWidth="0.8" />
-      <ellipse cx="58" cy="50" rx="6" ry="7" fill="#0D1B2A" stroke="#FB923C" strokeWidth="0.8" />
-      {/* Pupils - dilated, looking up */}
-      <circle cx="42" cy="48" r="3" fill="#FB923C" opacity="0.9" />
-      <circle cx="58" cy="48" r="3" fill="#FB923C" opacity="0.9" />
-      <circle cx="43" cy="47" r="1" fill="white" opacity="0.6" />
-      <circle cx="59" cy="47" r="1" fill="white" opacity="0.6" />
-      {/* Eyebrows - raised, worried */}
-      <path d="M36 40 Q42 36, 48 40" stroke="#FB923C" strokeWidth="1.5" fill="none" opacity="0.7" />
-      <path d="M52 40 Q58 36, 64 40" stroke="#FB923C" strokeWidth="1.5" fill="none" opacity="0.7" />
-      {/* Mouth - open, gasping */}
-      <ellipse cx="50" cy="65" rx="6" ry="4" fill="#0D1B2A" stroke="#FB923C" strokeWidth="0.8" />
-      {/* Sweat drops */}
-      <path d="M72 44 Q73 48, 72 50" stroke="#FB923C" strokeWidth="1" opacity="0.5" />
-      <circle cx="72" cy="51" r="1.5" fill="#FB923C" opacity="0.4" />
-      {/* Phone in hand hint */}
-      <rect x="70" y="68" width="8" height="14" rx="2" fill="#0D1B2A" stroke="#FB923C" strokeWidth="0.8" opacity="0.5" />
-      <rect x="71" y="70" width="6" height="8" rx="1" fill="#FB923C" opacity="0.2" />
+      <circle cx="48" cy="52" r="25" fill="#FBD7B0" stroke="#1E2A44" strokeWidth="2.5" />
+      {/* Hair with bangs */}
+      <path d="M25 50 Q23 26 48 24 Q73 26 71 50 Q68 34 58 34 Q52 30 44 33 Q30 34 25 50Z" fill="#7C3AED" stroke="#1E2A44" strokeWidth="2.5" />
+      {/* Eyes - wide and sparkly, looking sideways */}
+      <circle cx="40" cy="51" r="7.5" fill="#FFFFFF" stroke="#1E2A44" strokeWidth="2.2" />
+      <circle cx="58" cy="51" r="7.5" fill="#FFFFFF" stroke="#1E2A44" strokeWidth="2.2" />
+      <circle cx="42.5" cy="51" r="3.6" fill="#1E2A44" />
+      <circle cx="60.5" cy="51" r="3.6" fill="#1E2A44" />
+      <circle cx="43.5" cy="49.5" r="1.4" fill="#FFFFFF" />
+      <circle cx="61.5" cy="49.5" r="1.4" fill="#FFFFFF" />
+      {/* Worried raised eyebrows */}
+      <path d="M34 41 Q40 38 46 41" stroke="#1E2A44" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+      <path d="M52 41 Q58 38 64 41" stroke="#1E2A44" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+      {/* Blush */}
+      <ellipse cx="32" cy="59" rx="4" ry="2.5" fill="#F9A8D4" opacity="0.9" />
+      <ellipse cx="64" cy="59" rx="4" ry="2.5" fill="#F9A8D4" opacity="0.9" />
+      {/* Excited open mouth */}
+      <ellipse cx="49" cy="65" rx="5.5" ry="4" fill="#1E2A44" />
+      <ellipse cx="49" cy="66.5" rx="3" ry="1.8" fill="#F87171" />
+      {/* Phone in hand */}
+      <rect x="70" y="60" width="13" height="21" rx="3.5" fill="#FFFFFF" stroke="#1E2A44" strokeWidth="2.2" transform="rotate(12 76 70)" />
+      <path d="M73 66 L79 66 M73 70 L79 70" stroke="#EC4899" strokeWidth="1.8" transform="rotate(12 76 70)" />
+      {/* Notification ping */}
+      <circle cx="83" cy="56" r="4" fill="#DC2626" stroke="#1E2A44" strokeWidth="1.5" />
+      <text x="83" y="58.5" textAnchor="middle" fontSize="6" fontWeight="800" fill="#FFFFFF">!</text>
+      {/* Motion lines */}
+      <path d="M16 46 L24 46 M13 53 L21 53 M16 60 L23 60" stroke="#EC4899" strokeWidth="2.2" strokeLinecap="round" opacity="0.7" />
     </svg>
   );
 }

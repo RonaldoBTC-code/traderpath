@@ -1,0 +1,357 @@
+"use client";
+
+import { useMemo, useState } from "react";
+
+import { useImageReady } from "@/components/game/labKit";
+
+// ── Laboratorio de Oferta y Demanda ────────────────────────────────
+// Minijuego de DESCUBRIMIENTO donde la ESCENA es la visualización: el
+// deslizador de clientes hace aparecer figuras de cliente una a una frente al
+// puesto; el de manzanas, manzanas en el mostrador. El precio se escribe en vivo
+// sobre un cartel dentro de la escena (verde si sube, rojo si baja respecto al
+// inicio). La regla nunca se enuncia — se induce jugando.
+//
+// Cada pieza (puesto, cliente, manzana, cartel) tiene un slot de arte opcional:
+// si el WebP de Blender existe, se usa; si no, se dibuja una forma provisional.
+// Un asset faltante nunca rompe la misión.
+
+export interface SupplyDemandChallenge {
+  id: string;
+  prompt: string;
+  lock: "apples" | "clients";
+  compare: "gte" | "lte";
+  target: number;
+  successNote: string;
+}
+
+export interface SupplyDemandQuestionOption {
+  id: string;
+  text: string;
+  correct: boolean;
+  feedback: string;
+}
+
+export interface SupplyDemandLabConfig {
+  /** Precio = basePrice × clientes / manzanas. */
+  basePrice: number;
+  clients: { min: number; max: number; start: number };
+  apples: { min: number; max: number; start: number };
+  challenges: SupplyDemandChallenge[];
+  question: { prompt: string; options: SupplyDemandQuestionOption[] };
+  /**
+   * Arte de escena por piezas, todo opcional. Ronaldo las dibuja en Blender y
+   * las exporta a `public/assets/missions/`. Cada pieza faltante cae con gracia
+   * a su forma provisional; la mecánica no depende del arte.
+   */
+  scene?: {
+    alt?: string;
+    stall?: { image?: string };
+    client?: { image?: string };
+    apple?: { image?: string };
+    sign?: { image?: string };
+  };
+}
+
+interface Props {
+  config: SupplyDemandLabConfig;
+  onComplete: (score: number) => void;
+}
+
+const POP = "bounce-in 200ms cubic-bezier(0.23,1,0.32,1)";
+
+/** Figura de cliente: arte si existe, si no una silueta simple. Entra con pop. */
+function ClientFigure({ url, ready }: { url?: string; ready: boolean }) {
+  const art = !!url && ready;
+  return (
+    <div
+      aria-hidden
+      className="h-10 w-6 shrink-0 bg-bottom bg-no-repeat"
+      style={{ animation: POP, ...(art ? { backgroundImage: `url(${url})`, backgroundSize: "contain" } : {}) }}
+    >
+      {!art && (
+        <svg viewBox="0 0 24 40" className="h-full w-full text-tp-info">
+          <circle cx="12" cy="8" r="6" fill="currentColor" />
+          <path d="M3 40 C3 23 21 23 21 40 Z" fill="currentColor" />
+        </svg>
+      )}
+    </div>
+  );
+}
+
+/** Manzana: arte si existe, si no un círculo con tallo y hoja. Entra con pop. */
+function AppleFigure({ url, ready }: { url?: string; ready: boolean }) {
+  const art = !!url && ready;
+  return (
+    <div
+      aria-hidden
+      className="h-5 w-5 shrink-0 bg-center bg-no-repeat"
+      style={{ animation: POP, ...(art ? { backgroundImage: `url(${url})`, backgroundSize: "contain" } : {}) }}
+    >
+      {!art && (
+        <svg viewBox="0 0 24 24" className="h-full w-full">
+          <circle cx="12" cy="14" r="9" fill="#e5960a" />
+          <rect x="11" y="4" width="2" height="5" rx="1" fill="#7a5230" />
+          <path d="M13 6 q4 -2.5 5.5 0.4 q-4 1.6 -5.5 -0.4 Z" fill="#16a34a" />
+        </svg>
+      )}
+    </div>
+  );
+}
+
+export default function SupplyDemandLab({ config, onComplete }: Props) {
+  const [clients, setClients] = useState(config.clients.start);
+  const [apples, setApples] = useState(config.apples.start);
+  const [stage, setStage] = useState(0);
+  const [phase, setPhase] = useState<"challenge" | "question">("challenge");
+  const [solved, setSolved] = useState(false);
+  const [wrongTries, setWrongTries] = useState(0);
+  const [picked, setPicked] = useState<string | null>(null);
+
+  const stallOk = useImageReady(config.scene?.stall?.image);
+  const clientOk = useImageReady(config.scene?.client?.image);
+  const appleOk = useImageReady(config.scene?.apple?.image);
+  const signOk = useImageReady(config.scene?.sign?.image);
+  const stallImg = config.scene?.stall?.image;
+  const clientImg = config.scene?.client?.image;
+  const appleImg = config.scene?.apple?.image;
+  const signImg = config.scene?.sign?.image;
+
+  const price = useMemo(() => (config.basePrice * clients) / apples, [config.basePrice, clients, apples]);
+  const baseline = config.basePrice; // cada reto arranca equilibrado en este precio
+  const challenge = config.challenges[stage];
+
+  // Color del precio relativo al equilibrio de partida: siempre refleja el
+  // estado real — nunca miente.
+  const dir = price > baseline + 0.001 ? "up" : price < baseline - 0.001 ? "down" : "flat";
+  const priceColor = dir === "up" ? "text-tp-demand" : dir === "down" ? "text-tp-supply" : "text-tp-text";
+
+  const lockedApples = phase === "challenge" && challenge?.lock === "apples";
+  const lockedClients = phase === "challenge" && challenge?.lock === "clients";
+
+  const maybeSolve = (c: number, a: number) => {
+    if (solved || phase !== "challenge" || !challenge) return;
+    const p = (config.basePrice * c) / a;
+    const ok = challenge.compare === "gte" ? p >= challenge.target : p <= challenge.target;
+    if (ok) setSolved(true);
+  };
+
+  const changeClients = (v: number) => {
+    if (lockedClients) return;
+    setClients(v);
+    maybeSolve(v, apples);
+  };
+  const changeApples = (v: number) => {
+    if (lockedApples) return;
+    setApples(v);
+    maybeSolve(clients, v);
+  };
+
+  const advance = () => {
+    if (stage < config.challenges.length - 1) {
+      setStage((s) => s + 1);
+      setClients(config.clients.start);
+      setApples(config.apples.start);
+      setSolved(false);
+    } else {
+      setPhase("question");
+    }
+  };
+
+  const pickAnswer = (opt: SupplyDemandQuestionOption) => {
+    if (picked && config.question.options.find((o) => o.id === picked)?.correct) return;
+    setPicked(opt.id);
+    if (!opt.correct) setWrongTries((w) => w + 1);
+  };
+
+  const pickedOption = config.question.options.find((o) => o.id === picked) ?? null;
+  const answeredCorrectly = pickedOption?.correct ?? false;
+  const finish = () => onComplete(Math.max(40, 100 - wrongTries * 15));
+
+  const targetLabel = challenge ? `${challenge.compare === "gte" ? "≥" : "≤"} $${challenge.target.toFixed(2)}` : "";
+
+  return (
+    <div className="space-y-5">
+      {/* La escena ES la visualización: puesto + clientes + manzanas + cartel */}
+      <div
+        role="img"
+        aria-label={`Puesto de manzanas: ${clients} clientes frente al puesto y ${apples} manzanas en el mostrador. Precio ${price.toFixed(2)} dólares por manzana.`}
+        className="relative w-full overflow-hidden rounded-2xl border-2 border-tp-border"
+        style={{
+          aspectRatio: "4 / 3",
+          ...(stallOk && stallImg
+            ? { backgroundImage: `url(${stallImg})`, backgroundSize: "cover", backgroundPosition: "center" }
+            : { background: "linear-gradient(#eaf4fe, #f1f8ff)" }),
+        }}
+      >
+        {/* Mostrador provisional (solo si no hay arte de puesto) */}
+        {!stallOk && (
+          <div
+            className="absolute left-0 right-0 border-t-2 border-tp-border bg-tp-surface"
+            style={{ top: "52%", height: "7%" }}
+          />
+        )}
+
+        {/* Cartel con el precio, dentro de la escena */}
+        <div className="absolute" style={{ top: "5%", left: "50%", transform: "translateX(-50%)", width: "46%" }}>
+          <div
+            className={`grid place-items-center rounded-lg ${signOk ? "" : "border-2 border-tp-border bg-tp-surface shadow-sm"}`}
+            style={{
+              aspectRatio: "5 / 2",
+              ...(signOk && signImg ? { backgroundImage: `url(${signImg})`, backgroundSize: "contain", backgroundRepeat: "no-repeat", backgroundPosition: "center" } : {}),
+            }}
+          >
+            <span
+              className={`font-data font-bold tabular-nums transition-colors duration-150 ease-out ${priceColor}`}
+              style={{ fontSize: "clamp(14px, 5vw, 26px)" }}
+            >
+              ${price.toFixed(2)}
+            </span>
+          </div>
+        </div>
+
+        {/* Manzanas en el mostrador */}
+        <div
+          className="absolute flex flex-wrap content-end items-end justify-center gap-1"
+          style={{ left: "6%", right: "6%", top: "26%", height: "26%" }}
+        >
+          {Array.from({ length: apples }).map((_, i) => (
+            <AppleFigure key={i} url={appleImg} ready={appleOk} />
+          ))}
+        </div>
+
+        {/* Clientes frente al puesto */}
+        <div
+          className="absolute flex flex-wrap content-end items-end justify-center gap-1.5"
+          style={{ left: "5%", right: "5%", top: "60%", bottom: "3%" }}
+        >
+          {Array.from({ length: clients }).map((_, i) => (
+            <ClientFigure key={i} url={clientImg} ready={clientOk} />
+          ))}
+        </div>
+      </div>
+
+      {/* Controles */}
+      <div className="space-y-4 rounded-2xl border-2 border-tp-border bg-tp-base p-5">
+        <div className={lockedClients ? "opacity-45" : ""}>
+          <div className="mb-1 flex items-center justify-between">
+            <label htmlFor="sd-clients" className="text-sm font-semibold text-tp-text">
+              Clientes que quieren manzanas {lockedClients && <span className="text-tp-text-muted">· bloqueado</span>}
+            </label>
+            <span className="font-data text-sm text-tp-info">{clients}</span>
+          </div>
+          <input
+            id="sd-clients"
+            type="range"
+            min={config.clients.min}
+            max={config.clients.max}
+            value={clients}
+            disabled={lockedClients}
+            onChange={(e) => changeClients(Number(e.target.value))}
+            className="w-full cursor-pointer accent-[#2563eb] disabled:cursor-not-allowed"
+          />
+        </div>
+
+        <div className={lockedApples ? "opacity-45" : ""}>
+          <div className="mb-1 flex items-center justify-between">
+            <label htmlFor="sd-apples" className="text-sm font-semibold text-tp-text">
+              Manzanas en el puesto {lockedApples && <span className="text-tp-text-muted">· bloqueado</span>}
+            </label>
+            <span className="font-data text-sm text-tp-gold">{apples}</span>
+          </div>
+          <input
+            id="sd-apples"
+            type="range"
+            min={config.apples.min}
+            max={config.apples.max}
+            value={apples}
+            disabled={lockedApples}
+            onChange={(e) => changeApples(Number(e.target.value))}
+            className="w-full cursor-pointer accent-[#e5960a] disabled:cursor-not-allowed"
+          />
+        </div>
+      </div>
+
+      {/* Reto en curso */}
+      {phase === "challenge" && challenge && (
+        <div className="rounded-2xl border-2 border-tp-border bg-tp-surface p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-tp-info">
+              Reto {stage + 1} de {config.challenges.length}
+            </p>
+            <p className="font-data text-xs text-tp-text-muted">Meta: {targetLabel}</p>
+          </div>
+          <p className="mt-1 text-sm font-semibold text-tp-text">{challenge.prompt}</p>
+
+          {solved ? (
+            <div
+              className="mt-4 rounded-xl border-2 border-tp-demand/40 bg-tp-demand/10 p-4"
+              style={{ animation: "bounce-in 260ms cubic-bezier(0.23,1,0.32,1)" }}
+            >
+              <p className="font-display text-sm font-bold text-tp-demand">¡Lo lograste!</p>
+              <p className="mt-1 text-xs leading-relaxed text-tp-text-muted">{challenge.successNote}</p>
+              <button
+                type="button"
+                onClick={advance}
+                className="mt-3 rounded-lg bg-tp-gold px-4 py-2 font-display text-xs font-bold text-tp-text transition-transform duration-150 ease-out active:scale-[0.97]"
+              >
+                {stage < config.challenges.length - 1 ? "Siguiente reto →" : "Responder →"}
+              </button>
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-tp-text-muted">Mueve el control que no está bloqueado y mira el cartel del precio.</p>
+          )}
+        </div>
+      )}
+
+      {/* Pregunta final: nombrar lo observado */}
+      {phase === "question" && (
+        <div className="rounded-2xl border-2 border-tp-border bg-tp-surface p-5">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-tp-gold">Lo que viste</p>
+          <p className="mt-1 text-sm font-semibold text-tp-text">{config.question.prompt}</p>
+          <div className="mt-3 space-y-2">
+            {config.question.options.map((opt) => {
+              const isPicked = picked === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => pickAnswer(opt)}
+                  disabled={answeredCorrectly}
+                  className={`w-full rounded-xl border-2 px-4 py-3 text-left text-sm transition-colors duration-150 ease-out active:scale-[0.99] ${
+                    isPicked && opt.correct
+                      ? "border-tp-demand bg-tp-demand/10"
+                      : isPicked && !opt.correct
+                        ? "border-tp-supply bg-tp-supply/10"
+                        : "border-tp-border bg-tp-base hover:border-tp-gold/50"
+                  }`}
+                >
+                  {opt.text}
+                </button>
+              );
+            })}
+          </div>
+          {pickedOption && (
+            <div
+              className={`mt-3 rounded-xl border-2 p-4 ${answeredCorrectly ? "border-tp-demand/40 bg-tp-demand/10" : "border-tp-supply/40 bg-tp-supply/10"}`}
+              style={{ animation: "bounce-in 220ms cubic-bezier(0.23,1,0.32,1)" }}
+            >
+              <p className={`font-display text-sm font-bold ${answeredCorrectly ? "text-tp-demand" : "text-tp-supply"}`}>
+                {answeredCorrectly ? "Correcto" : "Todavía no"}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-tp-text-muted">{pickedOption.feedback}</p>
+              {answeredCorrectly && (
+                <button
+                  type="button"
+                  onClick={finish}
+                  className="mt-3 rounded-lg bg-tp-gold px-4 py-2 font-display text-xs font-bold text-tp-text transition-transform duration-150 ease-out active:scale-[0.97]"
+                >
+                  Terminar →
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
