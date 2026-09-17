@@ -291,7 +291,33 @@ function execute(jobs) {
   const needBlender = todo.filter((j) => !j.passthrough);
   if (needBlender.length) done.push(...runBlenderJobs(needBlender));
 
+  for (const job of done) {
+    if (!job.failed) retireGeneratedSheet(job);
+  }
   return [...done, ...jobs.filter((j) => j.skip)];
+}
+
+/**
+ * A hand-made static explorer must be what the player sees. The game prefers
+ * the animated sheet (explorer_walk[_i].webp) over the static pose, so a
+ * generated sheet left in place would hide the new drawing. Remove it unless
+ * the artist also supplied their own sheet.
+ */
+function retireGeneratedSheet(job) {
+  const m = job.rel.match(/^sprites\/explorer(_\d+)?\.[^./]+$/);
+  if (!m) return;
+  const suffix = m[1] ?? "";
+  const manualSheet = walk(path.join(SRC_DIR, "sprites"), path.join(SRC_DIR, "sprites"))
+    .some((f) => f.replace(/\.[^.]+$/, "") === `explorer_walk${suffix}`);
+  if (manualSheet) return;
+  const generated = path.join(OUT_DIR, "sprites", `explorer_walk${suffix}.webp`);
+  if (!fs.existsSync(generated)) return;
+  fs.rmSync(generated);
+  job.warnings = [
+    ...(job.warnings ?? []),
+    `se retiró la animación generada explorer_walk${suffix}.webp para que se vea tu dibujo ` +
+      `(entrega también explorer_walk${suffix} si lo quieres animado)`,
+  ];
 }
 
 function report(results) {

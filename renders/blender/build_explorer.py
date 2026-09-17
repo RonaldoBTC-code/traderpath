@@ -9,10 +9,15 @@
 #   Opción B (para iterar viendo el modelo):
 #     Abre Blender → pestaña Scripting → abre este archivo → Run Script (Alt+P)
 #
-# Salida: public/assets/sprites/explorer.webp
+# Salida (public/assets/sprites/), por cada color (base + 5 del selector):
+#   explorer_walk[_i].webp  hoja animada 3×9 (frente/perfil/espalda × quieto+8)
+#   explorer[_i].webp       pose fija, respaldo si falta la hoja
 #
-# WebP y no PNG: el mismo sprite pesa 21 KB en vez de 255 KB, y el mundo
-# precarga seis (base + cinco variantes de color) en cada escena.
+#   -- --sheets-only   solo las hojas (~80 s por color)
+#   -- --static-only   solo las poses fijas
+#
+# El juego precarga únicamente el color elegido, así que el peso de las seis
+# hojas no se suma en la carga inicial.
 #
 # Probado con Blender 3.6 LTS, 4.x y 5.2 LTS. Usa Cycles (renderiza headless
 # sin problemas).
@@ -285,16 +290,238 @@ def render_variant(body_hex, filename):
     return path
 
 
+# ─── HOJA DE CAMINAR (Fase 3 · sprites animados) ─────────────────────────────
+# Una hoja por color con 3 filas × 9 columnas de cuadros de 192×240:
+#
+#   fila 0 · "down"  camina hacia la cámara (frente, girado 30° a la derecha)
+#   fila 1 · "side"  perfil hacia la derecha de la pantalla
+#   fila 2 · "up"    se aleja (espalda, girado 30° a la derecha)
+#   columna 0 = quieto · columnas 1–8 = ciclo de caminar
+#
+# La izquierda NO se renderiza: Phaser voltea la fila correspondiente. Es exacto
+# porque el modelo es simétrico y el volteo refleja respecto del plano vertical
+# de la cámara. El mismo volteo en "down"/"up" da las diagonales hacia la
+# izquierda, así que con 3 filas el personaje mira hacia 6 lados.
+#
+# ESTE LAYOUT ES UN CONTRATO con src/game/phaser/characterArt.ts
+# (EXPLORER_SHEET). Si lo cambias aquí, cámbialo allá. Una hoja dibujada a mano
+# con el mismo layout funciona igual (renders/assets/sprites/explorer_walk.png).
+SHEET_FRAME = (192, 240)          # misma proporción 4:5 que el sprite fijo
+SHEET_ROWS = ("down", "side", "up")
+WALK_FRAMES = 8
+SHEET_COLS = 1 + WALK_FRAMES
+SHEET_SAMPLES = 24                # cuadros pequeños: el denoiser basta
+SHEET_QUALITY = 82                # el cuadro se ve a ~55 % de su tamaño: el lossy no se nota
+LEG_SWING = math.radians(32)
+ARM_SWING = math.radians(26)
+BOB = 0.05                        # rebote del cuerpo, en unidades de mundo
+DIAGONAL_TURN = math.radians(30)  # conserva volumen en frente/espalda
+
+# Pivotes, en las coordenadas de build_explorer(): cadera y hombro.
+HIP_Z = 0.38
+SHOULDER_Z = 1.12
+LEG_PARTS = {"l": ("leg_l", "foot_l"), "r": ("leg_r", "foot_r")}
+ARM_PARTS = {"l": ("arm_l", "hand_l"), "r": ("arm_r", "hand_r")}
+
+
+def _add_empty(name, location, parent=None):
+    empty = bpy.data.objects.new(name, None)
+    empty.location = location
+    bpy.context.scene.collection.objects.link(empty)
+    if parent is not None:
+        empty.parent = parent
+    return empty
+
+
+def _parent_keep(child, parent):
+    """Emparenta sin mover: el hijo queda donde estaba en el mundo."""
+    bpy.context.view_layer.update()
+    child.parent = parent
+    child.matrix_parent_inverse = parent.matrix_world.inverted()
+
+
+def rig_explorer(parts):
+    """Raíz (giro + rebote) → caderas y hombros (balanceo) → piezas.
+
+    No es un esqueleto: el modelo son primitivas sueltas, así que basta con
+    colgar cada extremidad de un empty en su articulación y girar el empty.
+    """
+    by_name = {obj.name: obj for obj in parts}
+    root = _add_empty("rig_root", (0, 0, 0))
+    joints = {}
+    for side, x in (("l", -0.24), ("r", 0.24)):
+        hip = _add_empty(f"hip_{side}", (x, 0, HIP_Z), root)
+        joints[f"hip_{side}"] = hip
+    for side, x in (("l", -0.66), ("r", 0.66)):
+        shoulder = _add_empty(f"shoulder_{side}", (x, -0.05, SHOULDER_Z), root)
+        joints[f"shoulder_{side}"] = shoulder
+
+    limb_parts = set()
+    for side, names in LEG_PARTS.items():
+        for name in names:
+            _parent_keep(by_name[name], joints[f"hip_{side}"])
+            limb_parts.add(name)
+    for side, names in ARM_PARTS.items():
+        for name in names:
+            _parent_keep(by_name[name], joints[f"shoulder_{side}"])
+            limb_parts.add(name)
+    for obj in parts:
+        if obj.name not in limb_parts:
+            _parent_keep(obj, root)
+    return {"root": root, **joints}
+
+
+def camera_axes():
+    """Direcciones horizontales de la cámara: hacia ella y a su derecha."""
+    cam = bpy.context.scene.camera
+    forward = cam.matrix_world.to_quaternion() @ mathutils.Vector((0, 0, -1))
+    forward.z = 0
+    forward.normalize()
+    right = mathutils.Vector((forward.y, -forward.x, 0))
+    return -forward, forward, right
+
+
+def facing_yaw(direction):
+    """Giro en Z para que el personaje (que mira a +Y) mire hacia `direction`."""
+    toward, away, right = camera_axes()
+    turn = math.tan(DIAGONAL_TURN)
+    target = {
+        "down": toward + right * turn,
+        "side": right,
+        "up": away + right * turn,
+    }[direction].normalized()
+    return math.atan2(-target.x, target.y)
+
+
+def pose_explorer(rig, yaw, frame):
+    """frame None = quieto; 0..WALK_FRAMES-1 = fase del ciclo de caminar."""
+    root = rig["root"]
+    root.rotation_euler = (0, 0, yaw)
+    if frame is None:
+        swing = 0.0
+        lift = 0.0
+    else:
+        phase = 2 * math.pi * frame / WALK_FRAMES
+        swing = math.sin(phase)
+        # El cuerpo sube cuando las piernas pasan por la vertical (swing≈0) y
+        # baja en el apoyo, con las piernas abiertas.
+        lift = BOB * (1 - abs(swing)) - BOB / 2
+    root.location = (0, 0, lift)
+    # Eje X local = lateral: el giro lleva la pierna hacia delante/atrás (±Y).
+    rig["hip_l"].rotation_euler = (LEG_SWING * swing, 0, 0)
+    rig["hip_r"].rotation_euler = (-LEG_SWING * swing, 0, 0)
+    # Brazos en contrafase con la pierna del mismo lado, como al caminar.
+    rig["shoulder_l"].rotation_euler = (-ARM_SWING * swing, 0, 0)
+    rig["shoulder_r"].rotation_euler = (ARM_SWING * swing, 0, 0)
+    bpy.context.view_layer.update()
+
+
+def compose_sheet(frames, out_path):
+    """Pega los cuadros en una hoja. Fila 0 arriba (pixels de Blender van de abajo arriba)."""
+    import numpy as np
+
+    fw, fh = SHEET_FRAME
+    width, height = fw * SHEET_COLS, fh * len(SHEET_ROWS)
+    sheet = np.zeros((height, width, 4), dtype=np.float32)
+    for (row, col), path in frames.items():
+        img = bpy.data.images.load(path, check_existing=False)
+        px = np.empty(fw * fh * 4, dtype=np.float32)
+        img.pixels.foreach_get(px)
+        bpy.data.images.remove(img)
+        y0 = height - (row + 1) * fh
+        sheet[y0:y0 + fh, col * fw:(col + 1) * fw] = px.reshape(fh, fw, 4)
+
+    out = bpy.data.images.new("explorer_sheet", width, height, alpha=True)
+    out.pixels.foreach_set(sheet.ravel())
+    settings = bpy.context.scene.render.image_settings
+    settings.file_format = "WEBP"
+    settings.color_mode = "RGBA"
+    settings.quality = SHEET_QUALITY
+    out.save_render(out_path, scene=bpy.context.scene)
+    bpy.data.images.remove(out)
+
+    # Verificación: tamaño de la hoja, alfa en la esquina y que cada cuadro
+    # tenga personaje (un cuadro vacío es un fotograma que parpadea en el juego).
+    check = bpy.data.images.load(out_path, check_existing=False)
+    w, h = check.size
+    px = np.empty(w * h * 4, dtype=np.float32)
+    check.pixels.foreach_get(px)
+    bpy.data.images.remove(check)
+    px = px.reshape(h, w, 4)
+    empty_cells = [
+        (r, c)
+        for r in range(len(SHEET_ROWS))
+        for c in range(SHEET_COLS)
+        if px[h - (r + 1) * fh:h - r * fh, c * fw:(c + 1) * fw, 3].max() < 0.5
+    ]
+    ok = (w, h) == (width, height) and px[0, 0, 3] == 0 and not empty_cells
+    kb = os.path.getsize(out_path) / 1024
+    print(f"[TraderPath] {os.path.basename(out_path)} {w}x{h} {kb:.0f}KB "
+          f"cuadros_vacios={empty_cells or 0} {'OK' if ok else 'REVISAR'}")
+
+
+def render_sheet(body_hex, filename):
+    reset_scene()
+    parts = build_explorer(body_hex)
+    rig = rig_explorer(parts)
+    setup_camera()
+    setup_lights()
+    setup_world()
+    setup_render()
+    scene = bpy.context.scene
+    scene.render.resolution_x, scene.render.resolution_y = SHEET_FRAME
+    scene.cycles.samples = SHEET_SAMPLES
+    # El contorno se autoró para 512 px de alto: escalarlo mantiene el trazo.
+    lineset = scene.view_layers[0].freestyle_settings.linesets[0]
+    lineset.linestyle.thickness = OUTLINE_THICKNESS * SHEET_FRAME[1] / RESOLUTION[1]
+    scene.render.image_settings.file_format = "PNG"
+    scene.render.image_settings.color_mode = "RGBA"
+
+    tmp_dir = os.path.join(bpy.app.tempdir, "explorer_sheet")
+    os.makedirs(tmp_dir, exist_ok=True)
+    frames = {}
+    for row, direction in enumerate(SHEET_ROWS):
+        yaw = facing_yaw(direction)
+        for col in range(SHEET_COLS):
+            pose_explorer(rig, yaw, None if col == 0 else col - 1)
+            path = os.path.join(tmp_dir, f"{row}_{col}.png")
+            scene.render.filepath = path
+            bpy.ops.render.render(write_still=True)
+            frames[(row, col)] = path
+    compose_sheet(frames, output_path(filename))
+
+
+def _skip_sheet(suffix):
+    # Un explorador fijo dibujado a mano también manda sobre la hoja generada:
+    # si no, el juego mostraría la animación por código en vez de su dibujo.
+    return skip_generated("sprites", f"explorer_walk{suffix}", FORCE) or \
+        skip_generated("sprites", f"explorer{suffix}", FORCE)
+
+
 def main():
-    # Sprite por defecto (tp-gold), el que consume EXPLORER_SPRITE_PATH hoy.
-    if not skip_generated("sprites", "explorer", FORCE):
-        render_variant(BODY_HEX, "explorer.webp")
-    # Fase 2: una variante por color del selector de avatar.
-    for i, body_hex in enumerate(AVATAR_HEXES):
-        if skip_generated("sprites", f"explorer_{i}", FORCE):
-            continue
-        render_variant(body_hex, f"explorer_{i}.webp")
-    print(f"[TraderPath] Listo: 1 sprite base + {len(AVATAR_HEXES)} variantes.")
+    sheets_only = "--sheets-only" in sys.argv
+    static_only = "--static-only" in sys.argv
+
+    if not sheets_only:
+        # Sprite por defecto (tp-gold), el que consume EXPLORER_SPRITE_PATH hoy.
+        if not skip_generated("sprites", "explorer", FORCE):
+            render_variant(BODY_HEX, "explorer.webp")
+        # Fase 2: una variante por color del selector de avatar.
+        for i, body_hex in enumerate(AVATAR_HEXES):
+            if skip_generated("sprites", f"explorer_{i}", FORCE):
+                continue
+            render_variant(body_hex, f"explorer_{i}.webp")
+        print(f"[TraderPath] Listo: 1 sprite base + {len(AVATAR_HEXES)} variantes.")
+
+    if not static_only:
+        # Fase 3: hojas de caminar. El sprite fijo sigue existiendo como
+        # respaldo si falta la hoja.
+        if not _skip_sheet(""):
+            render_sheet(BODY_HEX, "explorer_walk.webp")
+        for i, body_hex in enumerate(AVATAR_HEXES):
+            if not _skip_sheet(f"_{i}"):
+                render_sheet(body_hex, f"explorer_walk_{i}.webp")
+        print(f"[TraderPath] Listo: {1 + len(AVATAR_HEXES)} hojas de caminar.")
 
 
 main()

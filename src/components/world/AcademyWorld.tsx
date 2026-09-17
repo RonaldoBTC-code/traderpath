@@ -225,6 +225,10 @@ export default function AcademyWorld() {
   const [passportOpen, setPassportOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
+  // Read when a room's game is created, without making the colour a dependency
+  // of that effect (changing colour must not rebuild the scene).
+  const avatarColorRef = useRef(avatarColor);
+  avatarColorRef.current = avatarColor;
 
   const {
     xp,
@@ -406,7 +410,12 @@ export default function AcademyWorld() {
 
     void import("@/game/phaser/createAcademyGame").then(({ createAcademyGame }) => {
       if (disposed || !mountRef.current) return;
-      gameRef.current = createAcademyGame(mountRef.current, handleWorldEvent, room) as GameHandle;
+      gameRef.current = createAcademyGame(
+        mountRef.current,
+        handleWorldEvent,
+        room,
+        avatarColorRef.current
+      ) as GameHandle;
     });
 
     return () => {

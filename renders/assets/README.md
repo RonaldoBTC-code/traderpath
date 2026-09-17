@@ -71,6 +71,41 @@ tamaño y misma transparencia. Es lo normal.
 - **«el arte anterior tenía transparencia y este no»** — te saldrá un rectángulo
   opaco encima de la escena. Exporta con alfa.
 
+## El explorador (personaje del jugador)
+
+Cada color del selector usa dos archivos:
+
+| Archivo | Qué es |
+|---|---|
+| `sprites/explorer_walk.<ext>` · `explorer_walk_0` … `_4` | **Hoja animada** (lo que se ve al caminar) |
+| `sprites/explorer.<ext>` · `explorer_0` … `_4` | Pose fija de respaldo |
+
+El número es el color del selector, en orden: `0` amarillo, `1` celeste,
+`2` verde, `3` naranja, `4` magenta. Sin número = color base (ámbar), que solo
+se usa si falta el del color elegido.
+
+### Formato de la hoja animada
+
+```
+          col 0     col 1 … col 8
+         (quieto)  (ciclo de caminar, 8 cuadros)
+fila 0   frente →  camina hacia la cámara
+fila 1   perfil →  camina hacia la DERECHA de la pantalla
+fila 2   espalda → se aleja
+```
+
+- Cada cuadro mide **192 × 240 px** → la hoja completa mide **1728 × 720 px**.
+- Fondo transparente. Los pies, a la misma altura en todos los cuadros.
+- **No dibujes la izquierda:** el juego voltea la fila 1 (y también las filas
+  0 y 2 cuando camina en diagonal hacia la izquierda). Por eso frente y espalda
+  van ligeramente girados hacia la derecha.
+- Para empezar, abre la hoja actual como plantilla:
+  `public/assets/sprites/explorer_walk.webp`.
+
+Si solo entregas la **pose fija** (`explorer.png`), el juego la muestra sin
+animación: `npm run art` retira la hoja generada de ese color para que se vea tu
+dibujo, y te lo avisa. Si la quieres animada, entrega también `explorer_walk`.
+
 ## ¿Y los scripts de Blender?
 
 Siguen ahí (`renders/blender/`) y generan todo lo que no hayas hecho a mano. En

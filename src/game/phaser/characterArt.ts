@@ -8,30 +8,57 @@ import Phaser from "phaser";
 export const CHARACTER_INK = 0x1e2a44;
 
 // ─── Blender-rendered sprites (2.5D pipeline) ───────────────────────────────
-// Pre-rendered WebPs live in public/assets/sprites/ (see renders/README.md).
-// When a sprite texture is present we use it; otherwise scenes fall back to the
-// vector drawing below, so the world keeps working before any render exists.
+// Art lives in public/assets/sprites/ (see renders/README.md). Each colour has
+// two files:
+//
+//   explorer_walk[_i].webp  animated sheet (EXPLORER_SHEET layout)
+//   explorer[_i].webp       single static pose, used only if the sheet is missing
+//
+// and when neither loads the scenes draw the vector body below, so the world
+// keeps working whatever subset of the art exists. A static sprite drawn by
+// hand (renders/assets/sprites/explorer.png) wins over the generated sheet:
+// build_explorer.py and `npm run art` both drop the sheet in that case.
 
 export const EXPLORER_SPRITE_KEY = "explorer-sprite";
 export const EXPLORER_SPRITE_PATH = "/assets/sprites/explorer.webp";
 
 /**
- * Avatar colour variants rendered by renders/blender/build_explorer.py (Fase 2),
+ * Walk sheet layout — a contract with renders/blender/build_explorer.py
+ * (SHEET_* constants). Rows are directions, column 0 is the idle pose and
+ * columns 1..walkFrames are the walk cycle. Left-facing views are not in the
+ * sheet: the side row (and the diagonals of down/up) are mirrored with flipX,
+ * which is exact because the model is symmetric.
+ */
+export const EXPLORER_SHEET = {
+  frameWidth: 192,
+  frameHeight: 240,
+  columns: 9,
+  walkFrames: 8,
+  frameRate: 12,
+  rows: { down: 0, side: 1, up: 2 },
+} as const;
+
+export type ExplorerDirection = keyof typeof EXPLORER_SHEET.rows;
+
+/**
+ * Game registry key holding the avatar colour chosen before the scene started.
+ * createAcademyGame sets it so preload() fetches only that colour's sheet
+ * instead of all six (~140 KB each).
+ */
+export const AVATAR_COLOR_REGISTRY_KEY = "avatar-color";
+
+/**
+ * Avatar colour variants rendered by renders/blender/build_explorer.py,
  * or hand-made and published with `npm run art` (renders/assets/sprites/).
  *
- * Order matters: index i is the sprite rendered to explorer_{i}.webp, so this
- * must stay in sync with AVATAR_COLORS in components/world/AcademyWorld.tsx.
- * It is duplicated rather than imported so Phaser code pulls in no React
- * modules; the same duplication exists on the Blender side (AVATAR_HEXES).
+ * Order matters: index i is the art rendered to explorer_walk_{i}.webp and
+ * explorer_{i}.webp, so this must stay in sync with AVATAR_COLORS in
+ * components/world/AcademyWorld.tsx. It is duplicated rather than imported so
+ * Phaser code pulls in no React modules; the same duplication exists on the
+ * Blender side (AVATAR_HEXES).
  *
- * On the default sprite: explorer.png is its own render in tp-gold (#E5960A)
- * and is NOT one of these five — the selector's first colour is #F0C040. In
- * practice it is never seen in AcademyAgoraScene: AcademyWorld runs an effect
- * on [avatarColor, ready] that emits AVATAR_COLORS[0] as soon as the scene is
- * ready, so the base texture is replaced by explorer_0 within a frame of
- * createPlayer. explorer.png therefore serves only as the fallback for scenes
- * or states where no colour has been emitted yet — it is not the visible
- * default. Verified in runtime on /world.
+ * The base art (explorer_walk.webp / explorer.webp, tp-gold #E5960A) is not one
+ * of these five: it is the fallback when a colour's own art is missing.
  */
 export const EXPLORER_VARIANT_HEXES = [
   "#F0C040",
@@ -43,69 +70,162 @@ export const EXPLORER_VARIANT_HEXES = [
 
 export const explorerVariantKey = (index: number) => `explorer-sprite-${index}`;
 
-const explorerVariantPath = (index: number) => `/assets/sprites/explorer_${index}.webp`;
-
 /** Index of a colour within the variant list, or -1 when it isn't one of them. */
 export function explorerVariantIndex(color: string): number {
   const target = color.trim().toLowerCase();
   return EXPLORER_VARIANT_HEXES.findIndex((hex) => hex.toLowerCase() === target);
 }
 
-/**
- * Resolve a colour to a loaded texture key, falling back to the base sprite and
- * then to undefined (which means: caller should draw the vector body). Every
- * step degrades gracefully, so a missing or half-rendered sprite set never
- * breaks the world.
- */
-export function explorerTextureKey(scene: Phaser.Scene, color?: string): string | undefined {
-  if (color) {
-    const index = explorerVariantIndex(color);
-    if (index >= 0) {
-      const key = explorerVariantKey(index);
-      if (scene.textures.exists(key)) return key;
-    }
+type Variant = number | "base";
+
+interface ArtEntry {
+  key: string;
+  path: string;
+  sheet: boolean;
+}
+
+function variantArt(variant: Variant): ArtEntry[] {
+  if (variant === "base") {
+    return [
+      { key: "explorer-walk", path: "/assets/sprites/explorer_walk.webp", sheet: true },
+      { key: EXPLORER_SPRITE_KEY, path: EXPLORER_SPRITE_PATH, sheet: false },
+    ];
   }
-  return scene.textures.exists(EXPLORER_SPRITE_KEY) ? EXPLORER_SPRITE_KEY : undefined;
+  return [
+    { key: `explorer-walk-${variant}`, path: `/assets/sprites/explorer_walk_${variant}.webp`, sheet: true },
+    { key: explorerVariantKey(variant), path: `/assets/sprites/explorer_${variant}.webp`, sheet: false },
+  ];
+}
+
+/** Try order for a colour: its sheet, its static pose, then the base pair. */
+function artChain(variant: Variant): ArtEntry[] {
+  return variant === "base" ? variantArt("base") : [...variantArt(variant), ...variantArt("base")];
+}
+
+function variantFor(color?: string | null): Variant {
+  const index = color ? explorerVariantIndex(color) : -1;
+  return index >= 0 ? index : "base";
 }
 
 /**
- * Queue the explorer sprites in a scene's preload(). Safe if the PNGs are
- * absent: Phaser emits 'loaderror', the textures simply won't exist, and
- * callers fall back to the vector body. We swallow those errors to avoid scary
- * console 404s before the artist has rendered anything.
+ * Keys that already failed to load in this page. Assets don't appear mid
+ * session (a reload picks up new art), so a miss is remembered to avoid
+ * re-requesting a 404 on every colour change or room switch.
  */
-export function preloadExplorerSprite(scene: Phaser.Scene) {
-  scene.load.image(EXPLORER_SPRITE_KEY, EXPLORER_SPRITE_PATH);
-  EXPLORER_VARIANT_HEXES.forEach((_, index) => {
-    scene.load.image(explorerVariantKey(index), explorerVariantPath(index));
-  });
+const failedArt = new Set<string>();
 
-  // 'on' rather than 'once': there are six files now, and one missing PNG must
-  // not leave the remaining five unhandled.
-  const swallow = (file: { key?: string }) => {
-    const key = file?.key;
-    if (!key) return;
-    if (key === EXPLORER_SPRITE_KEY || key.startsWith("explorer-sprite-")) {
-      // Expected until the sprite exists (render script or `npm run art`); vector fallback used.
-    }
-  };
-  scene.load.on("loaderror", swallow);
-  scene.load.once("complete", () => scene.load.off("loaderror", swallow));
+/** Which colour chain a queued file belongs to, so an error knows what to try next. */
+const queuedVariant = new Map<string, Variant>();
+
+/** The best art already loaded for a colour, or undefined (→ vector body). */
+function resolveArt(scene: Phaser.Scene, variant: Variant): ArtEntry | undefined {
+  return artChain(variant).find((entry) => scene.textures.exists(entry.key));
 }
 
 /**
- * The player avatar as the world scenes use it: the Blender sprite when its PNG
- * loaded, the vector drawing otherwise. Exactly one of `sprite`/`body` is set,
- * which is what lets colour changes know which path to take — the earlier bug
- * was a scene calling the vector redraw while the sprite branch was active.
+ * Next file worth requesting: the first entry of the chain that is neither
+ * loaded nor known to be missing — unless something earlier in the chain is
+ * already loaded, in which case nothing better can be fetched.
+ */
+function nextArtToLoad(scene: Phaser.Scene, variant: Variant): ArtEntry | undefined {
+  for (const entry of artChain(variant)) {
+    if (scene.textures.exists(entry.key)) return undefined;
+    if (!failedArt.has(entry.key)) return entry;
+  }
+  return undefined;
+}
+
+/**
+ * Queue the next art file for a colour. On a load error the watcher marks it
+ * failed and calls this again, walking down the chain one file at a time so
+ * the fallbacks are only downloaded when actually needed.
+ */
+function queueArt(scene: Phaser.Scene, variant: Variant): boolean {
+  const entry = nextArtToLoad(scene, variant);
+  if (!entry) return false;
+  if (entry.sheet) {
+    scene.load.spritesheet(entry.key, entry.path, {
+      frameWidth: EXPLORER_SHEET.frameWidth,
+      frameHeight: EXPLORER_SHEET.frameHeight,
+    });
+  } else {
+    scene.load.image(entry.key, entry.path);
+  }
+  queuedVariant.set(entry.key, variant);
+  return true;
+}
+
+/**
+ * One loader listener per scene: a missing file is expected (the artist may not
+ * have produced it yet), so it is recorded and the next fallback is queued.
+ * Phaser accepts files added while it is loading.
+ */
+function watchArtErrors(scene: Phaser.Scene) {
+  const onError = (file: { key?: string }) => {
+    const key = file?.key;
+    if (!key || !queuedVariant.has(key)) return;
+    failedArt.add(key);
+    const variant = queuedVariant.get(key) as Variant;
+    queuedVariant.delete(key);
+    queueArt(scene, variant);
+  };
+  scene.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, onError);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    scene.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, onError);
+  });
+}
+
+/** Queue the explorer art in a scene's preload(): only the chosen colour. */
+export function preloadExplorerSprite(scene: Phaser.Scene) {
+  watchArtErrors(scene);
+  queueArt(scene, variantFor(scene.registry.get(AVATAR_COLOR_REGISTRY_KEY)));
+}
+
+function walkAnimKey(textureKey: string, direction: ExplorerDirection) {
+  return `${textureKey}:walk-${direction}`;
+}
+
+function idleFrame(direction: ExplorerDirection) {
+  return EXPLORER_SHEET.rows[direction] * EXPLORER_SHEET.columns;
+}
+
+/** Walk animations live in the game-wide manager: created once per sheet. */
+function ensureWalkAnims(scene: Phaser.Scene, textureKey: string) {
+  for (const direction of Object.keys(EXPLORER_SHEET.rows) as ExplorerDirection[]) {
+    const key = walkAnimKey(textureKey, direction);
+    if (scene.anims.exists(key)) continue;
+    const start = idleFrame(direction) + 1;
+    scene.anims.create({
+      key,
+      frames: scene.anims.generateFrameNumbers(textureKey, {
+        start,
+        end: start + EXPLORER_SHEET.walkFrames - 1,
+      }),
+      frameRate: EXPLORER_SHEET.frameRate,
+      repeat: -1,
+    });
+  }
+}
+
+/**
+ * The player avatar as the world scenes use it: an animated sheet, a static
+ * sprite, or the vector drawing. Exactly one of `sprite`/`body` is set, which
+ * is what lets colour changes know which path to take.
  */
 export interface ExplorerAvatar {
   /** Display object to add to the scene's player container. */
-  object: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics;
-  sprite?: Phaser.GameObjects.Image;
+  object: Phaser.GameObjects.Sprite | Phaser.GameObjects.Graphics;
+  sprite?: Phaser.GameObjects.Sprite;
   body?: Phaser.GameObjects.Graphics;
-  /** Sprite height in px, kept so colour swaps can re-apply it. */
+  /** Sprite height in px, kept so texture swaps can re-apply it. */
   height: number;
+  /** Current art has a walk cycle (false for a static pose or the vector). */
+  animated: boolean;
+  direction: ExplorerDirection;
+  flipped: boolean;
+  walking: boolean;
+  /** Last colour requested; a slow load for an older pick must not win. */
+  color?: string;
 }
 
 export interface ExplorerAvatarOptions {
@@ -121,73 +241,129 @@ export interface ExplorerAvatarOptions {
   fallbackColor: number;
 }
 
-/** Build the avatar, preferring the sprite and degrading to the vector body. */
+/** Build the avatar with the best art already loaded for the chosen colour. */
 export function createExplorerAvatar(
   scene: Phaser.Scene,
   options: ExplorerAvatarOptions,
 ): ExplorerAvatar {
   const { x = 0, y = 0, height, fallbackColor } = options;
-  const textureKey = explorerTextureKey(scene);
-  if (textureKey) {
-    const sprite = scene.add.image(x, y, textureKey);
+  const color = scene.registry.get(AVATAR_COLOR_REGISTRY_KEY) as string | undefined;
+  const art = resolveArt(scene, variantFor(color));
+  const state = { height, direction: "down" as ExplorerDirection, flipped: false, walking: false, color };
+  if (art) {
+    const sprite = scene.add.sprite(x, y, art.key, art.sheet ? idleFrame("down") : undefined);
+    const avatar: ExplorerAvatar = { object: sprite, sprite, animated: art.sheet, ...state };
+    if (art.sheet) ensureWalkAnims(scene, art.key);
     sizeExplorerSprite(sprite, height);
-    return { object: sprite, sprite, height };
+    return avatar;
   }
   const body = scene.add.graphics();
-  drawExplorerBody(body, fallbackColor);
-  return { object: body, body, height };
+  drawExplorerBody(body, color ? Phaser.Display.Color.HexStringToColor(color).color : fallbackColor);
+  return { object: body, body, animated: false, ...state };
 }
 
-/** Apply a selector colour: swap texture on the sprite, or redraw the vector. */
+/** Re-apply texture, frame, flip and animation from the avatar's state. */
+function refreshSprite(scene: Phaser.Scene, avatar: ExplorerAvatar, art: ArtEntry) {
+  const sprite = avatar.sprite;
+  if (!sprite) return;
+  avatar.animated = art.sheet;
+  if (art.sheet) {
+    ensureWalkAnims(scene, art.key);
+    if (avatar.walking) {
+      sprite.play(walkAnimKey(art.key, avatar.direction), true);
+    } else {
+      sprite.stop();
+      sprite.setTexture(art.key, idleFrame(avatar.direction));
+    }
+  } else {
+    sprite.stop();
+    sprite.setTexture(art.key);
+  }
+  // A static pose only has one (right-facing 3/4) view, so it can only mirror
+  // for left; a sheet mirrors side and the down/up diagonals.
+  sprite.setFlipX(avatar.flipped);
+  sizeExplorerSprite(sprite, avatar.height);
+}
+
+/**
+ * Apply a selector colour. If its art isn't loaded yet it is fetched first and
+ * the avatar keeps its current look meanwhile; a vector avatar just redraws.
+ */
 export function setExplorerAvatarColor(
   scene: Phaser.Scene,
   avatar: ExplorerAvatar | undefined,
   color: string,
 ) {
   if (!avatar) return;
-  const textureKey = explorerTextureKey(scene, color);
-  if (avatar.sprite && textureKey) {
-    avatar.sprite.setTexture(textureKey);
-    // Defensive: Phaser keeps the display size across setTexture (verified in
-    // runtime), and every variant is currently 512x640, so this is a no-op
-    // today. It only earns its keep if a future variant ships at a different
-    // resolution, which would otherwise resize the avatar mid-game.
-    sizeExplorerSprite(avatar.sprite, avatar.height);
-    return;
-  }
+  avatar.color = color;
   if (avatar.body) {
     drawExplorerBody(avatar.body, Phaser.Display.Color.HexStringToColor(color).color);
+    return;
   }
+  const variant = variantFor(color);
+  const apply = () => {
+    // Scene gone, or the player picked another colour while this one loaded.
+    if (!avatar.sprite?.scene || avatar.color !== color) return;
+    const art = resolveArt(scene, variant);
+    if (art) refreshSprite(scene, avatar, art);
+  };
+  if (!queueArt(scene, variant)) {
+    apply();
+    return;
+  }
+  scene.load.once(Phaser.Loader.Events.COMPLETE, apply);
+  if (!scene.load.isLoading()) scene.load.start();
 }
 
 /**
- * Face the avatar left (-1) or right (1) while walking.
+ * Start (or keep) walking towards a screen-space direction.
  *
  * Only the avatar flips. Scenes must NOT scale the player container to turn the
  * character: the container also holds the name label and the ground shadow, so
  * a negative scaleX renders "Explorador" backwards.
- *
- * Mirroring the 3/4 render is sound here because the Blender model is
- * bilaterally symmetric (centred backpack, symmetric straps, arms and legs), so
- * the flip reads as the opposite 3/4 view. Only the key light lands on the
- * other side, which is invisible at this size. If the character art ever gains
- * a lateralised detail, this is the place that would need a dedicated
- * left-facing render instead.
  */
-export function setExplorerAvatarFacing(avatar: ExplorerAvatar | undefined, facing: 1 | -1) {
+export function walkExplorerAvatar(avatar: ExplorerAvatar | undefined, dx: number, dy: number) {
   if (!avatar) return;
-  if (avatar.sprite) {
-    // setFlipX, not a negative scaleX: the sprite's scale carries its display
-    // size, so flipping the scale would fight sizeExplorerSprite.
-    avatar.sprite.setFlipX(facing < 0);
+  const length = Math.hypot(dx, dy);
+  if (length >= 1) {
+    // Diagonals use the down/up rows: they are rendered turned 30° already, so
+    // a 45° heading reads better there than as a sideways profile.
+    avatar.direction = Math.abs(dx) > Math.abs(dy) * SIDE_RATIO ? "side" : dy > 0 ? "down" : "up";
+    // A near-vertical heading keeps the previous flip instead of snapping.
+    if (Math.abs(dx) > length * FLIP_MIN_SHARE) avatar.flipped = dx < 0;
+  }
+  avatar.walking = true;
+
+  if (avatar.body) {
+    avatar.body.scaleX = avatar.flipped ? -1 : 1;
     return;
   }
-  if (avatar.body) {
-    avatar.body.scaleX = facing;
+  const sprite = avatar.sprite;
+  if (!sprite) return;
+  // setFlipX, not a negative scaleX: the sprite's scale carries its display
+  // size, so flipping the scale would fight sizeExplorerSprite.
+  sprite.setFlipX(avatar.flipped);
+  if (avatar.animated) {
+    sprite.play(walkAnimKey(sprite.texture.key, avatar.direction), true);
   }
 }
 
-function sizeExplorerSprite(sprite: Phaser.GameObjects.Image, height: number) {
+/** Horizontal must beat vertical by this much before the profile row is used. */
+const SIDE_RATIO = 1.2;
+/** Share of the heading that must be horizontal before the avatar mirrors. */
+const FLIP_MIN_SHARE = 0.25;
+
+/** Stop on the idle pose of the last direction walked. */
+export function stopExplorerAvatar(avatar: ExplorerAvatar | undefined) {
+  if (!avatar) return;
+  avatar.walking = false;
+  const sprite = avatar.sprite;
+  if (!sprite || !avatar.animated) return;
+  sprite.stop();
+  sprite.setFrame(idleFrame(avatar.direction));
+}
+
+function sizeExplorerSprite(sprite: Phaser.GameObjects.Sprite, height: number) {
   sprite.setDisplaySize((sprite.width / sprite.height) * height, height);
 }
 

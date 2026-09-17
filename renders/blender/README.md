@@ -40,7 +40,7 @@ paleta VDD v2.0, contorno navy (Freestyle), ángulo 3/4, luz diurna.
 
 | Script | Salida | Estado |
 |---|---|---|
-| `build_explorer.py` | `public/assets/sprites/explorer*.webp` | ✅ Explorador + 5 variantes de color |
+| `build_explorer.py` | `public/assets/sprites/explorer_walk*.webp` + `explorer*.webp` | ✅ Explorador animado (hoja 3×9: frente/perfil/espalda × quieto + 8 pasos) + pose fija de respaldo, en 6 colores. `-- --sheets-only` / `-- --static-only` |
 | `build_overworld.py` | `public/assets/world/overworld*` | ✅ Diorama del overworld + máscara de caminabilidad |
 | `build_mission_art.py` | `public/assets/missions/*.webp` | ✅ Contrato completo: Niveles 1, 2 y 3 (Crypto, Forex, Stocks, Commodities) · 29 piezas |
 
@@ -60,7 +60,15 @@ puesto de m1_1 imprime dónde caen sus anclas respecto a las líneas del lab. Lo
 objetos en la colección `NoInk` (brillos, juntas, adoquines) no llevan contorno
 Freestyle: con tinta, un brillo se lee como agujero.
 
-Pendiente: Fase 2 de personajes (ARIA, Elena, Leo como sprites renderizados).
+Pendiente: ARIA, Elena y Leo como sprites renderizados (hoy son dibujo vectorial).
+
+### Explorador animado
+
+El personaje es de primitivas sueltas, así que no lleva esqueleto: `rig_explorer()`
+cuelga piernas y brazos de empties en cadera y hombro, y cada cuadro gira esos
+empties (`pose_explorer()`). La izquierda no se renderiza: Phaser voltea el
+perfil. El layout de la hoja es un contrato con `EXPLORER_SHEET` en
+`src/game/phaser/characterArt.ts` y está explicado en `renders/assets/README.md`.
 
 ## Convenciones
 

@@ -9,7 +9,8 @@ import {
   createExplorerAvatar,
   preloadExplorerSprite,
   setExplorerAvatarColor,
-  setExplorerAvatarFacing,
+  stopExplorerAvatar,
+  walkExplorerAvatar,
   type ExplorerAvatar,
 } from "@/game/phaser/characterArt";
 import { WalkMask } from "@/game/phaser/WalkMask";
@@ -41,6 +42,9 @@ export const VIEWPORT_HEIGHT = 720;
  */
 export const WORLD_WIDTH = VIEWPORT_WIDTH;
 export const WORLD_HEIGHT = VIEWPORT_HEIGHT;
+
+/** How far ahead on the route the explorer looks to decide where it faces (px). */
+const WALK_LOOKAHEAD = 140;
 
 /**
  * A clickable region in a room.
@@ -353,8 +357,7 @@ export abstract class BaseWorldScene extends Phaser.Scene {
     const player = this.add.container(config.x, config.y);
     const shadow = this.add.ellipse(0, 38, 64, 20, config.shadowColor, config.shadowAlpha);
 
-    // Prefer the Blender-rendered sprite; fall back to the vector body so the
-    // world keeps working before build_explorer.py has produced the PNG.
+    // Walk sheet, then static sprite, then vector body — whatever art exists.
     const avatar = createExplorerAvatar(this, {
       y: -6,
       height: 132,
@@ -492,7 +495,10 @@ export abstract class BaseWorldScene extends Phaser.Scene {
       this.walkSegment(waypoints, index + 1);
       return;
     }
-    setExplorerAvatarFacing(this.avatar, step.x < player.x ? -1 : 1);
+    const heading = this.routeLookahead(waypoints, index, player);
+    walkExplorerAvatar(this.avatar, heading.x - player.x, heading.y - player.y);
+    // The wobble stands in for a walk cycle; with a real one it would fight it.
+    const wobble = !this.avatar?.animated;
     this.movementTween = this.tweens.add({
       targets: player,
       x: step.x,
@@ -504,17 +510,44 @@ export abstract class BaseWorldScene extends Phaser.Scene {
       onUpdate: () => {
         if (!this.player) return;
         this.player.setDepth(this.player.y);
-        this.player.rotation = Math.sin(this.time.now / 75) * 0.025;
+        this.player.rotation = wobble ? Math.sin(this.time.now / 75) * 0.025 : 0;
       },
       onComplete: () => this.walkSegment(waypoints, index + 1),
     });
   }
 
+  /**
+   * Point WALK_LOOKAHEAD px further along the route. The walk-mask path zigzags
+   * across its 8 px grid (45° nudges, short sideways steps), and facing each
+   * segment made the explorer flip and swap rows mid-stride. Aiming at a point
+   * ahead follows real detours around water but ignores that noise.
+   */
+  private routeLookahead(
+    waypoints: { x: number; y: number }[],
+    index: number,
+    from: { x: number; y: number }
+  ): { x: number; y: number } {
+    let remaining = WALK_LOOKAHEAD;
+    let prev = { x: from.x, y: from.y };
+    for (let i = index; i < waypoints.length; i += 1) {
+      const next = waypoints[i];
+      const distance = Phaser.Math.Distance.Between(prev.x, prev.y, next.x, next.y);
+      if (distance >= remaining) {
+        const t = remaining / distance;
+        return { x: prev.x + (next.x - prev.x) * t, y: prev.y + (next.y - prev.y) * t };
+      }
+      remaining -= distance;
+      prev = next;
+    }
+    return prev;
+  }
+
   private finishWalk() {
     if (!this.player) return;
     this.player.rotation = 0;
-    // Facing is deliberately kept: the explorer stays looking the way it
+    // Facing is deliberately kept: the explorer idles looking the way it
     // last walked.
+    stopExplorerAvatar(this.avatar);
     this.onWorldEvent({ type: "moving", moving: false });
     if (!this.pendingTarget) return;
     const target = this.pendingTarget;
