@@ -94,13 +94,49 @@ fila 1   perfil →  camina hacia la DERECHA de la pantalla
 fila 2   espalda → se aleja
 ```
 
-- Cada cuadro mide **192 × 240 px** → la hoja completa mide **1728 × 720 px**.
-- Fondo transparente. Los pies, a la misma altura en todos los cuadros.
+- La hoja se publica a **1728 × 720 px** (cuadros de 192 × 240). Puedes dibujar
+  más grande siempre que sea **la misma proporción 12:5** (p. ej. 3456 × 1440):
+  `npm run art` la escala.
+- Fondo transparente. Los pies, sobre la línea roja de la plantilla.
 - **No dibujes la izquierda:** el juego voltea la fila 1 (y también las filas
   0 y 2 cuando camina en diagonal hacia la izquierda). Por eso frente y espalda
   van ligeramente girados hacia la derecha.
-- Para empezar, abre la hoja actual como plantilla:
-  `public/assets/sprites/explorer_walk.webp`.
+
+### Dibuja UNA hoja: los 6 colores salen solos
+
+Dibuja solo `sprites/explorer_walk.png` con la **ropa y la gorra en ámbar**.
+`npm run art` genera `explorer_walk_0` … `_4` cambiando ese ámbar por el color
+de cada botón del selector. Si dibujas a mano un color concreto
+(`explorer_walk_3.png`), ese se respeta y no se genera.
+
+Para que el cambio de color funcione:
+
+| Usa | Hex | Para |
+|---|---|---|
+| Sombra fuerte | `#8A5608` | pliegues, contorno interior |
+| Sombra | `#B8740A` | lado en sombra |
+| **Base** | **`#E5960A`** | color de la ropa y la gorra |
+| Brillo | `#F7B23B` | lado iluminado |
+| Brillo fuerte | `#FBC55E` | reflejos |
+
+- **No uses beige ni amarillo pálido** para los brillos de la ropa: el
+  programa no los distingue de la piel y quedarían sin cambiar de color
+  (`npm run art` avisa con "brillos ámbar poco saturados").
+- **No uses esos ámbares fuera de la ropa** (piel, mochila, fondo…): también
+  cambiarían de color.
+- La piel (`#FFD4AD`), el rubor y la tinta navy no se tocan.
+
+### Plantilla y paleta
+
+`renders/templates/`:
+
+- `explorer_walk_plantilla.png` (3456 × 1440): la hoja actual como calco al
+  30 %, rejilla de cuadros, **línea roja = suelo**, línea azul = eje del
+  personaje. Ponla como capa de fondo, dibuja en otra capa encima y exporta
+  **solo tu capa**.
+- `explorer_paleta.png`: los 5 tonos de la tabla, para el cuentagotas.
+
+Se regeneran con `blender -b --python renders/blender/make_explorer_template.py`.
 
 Si solo entregas la **pose fija** (`explorer.png`), el juego la muestra sin
 animación: `npm run art` retira la hoja generada de ese color para que se vea tu

@@ -491,11 +491,19 @@ def render_sheet(body_hex, filename):
     compose_sheet(frames, output_path(filename))
 
 
+def _skip_static(suffix):
+    # Los colores se recolorean desde una base dibujada a mano (npm run art):
+    # si existe esa base, las variantes también son "suyas".
+    return skip_generated("sprites", f"explorer{suffix}", FORCE) or \
+        (suffix != "" and skip_generated("sprites", "explorer", FORCE))
+
+
 def _skip_sheet(suffix):
     # Un explorador fijo dibujado a mano también manda sobre la hoja generada:
     # si no, el juego mostraría la animación por código en vez de su dibujo.
     return skip_generated("sprites", f"explorer_walk{suffix}", FORCE) or \
-        skip_generated("sprites", f"explorer{suffix}", FORCE)
+        (suffix != "" and skip_generated("sprites", "explorer_walk", FORCE)) or \
+        _skip_static(suffix)
 
 
 def main():
@@ -504,11 +512,11 @@ def main():
 
     if not sheets_only:
         # Sprite por defecto (tp-gold), el que consume EXPLORER_SPRITE_PATH hoy.
-        if not skip_generated("sprites", "explorer", FORCE):
+        if not _skip_static(""):
             render_variant(BODY_HEX, "explorer.webp")
         # Fase 2: una variante por color del selector de avatar.
         for i, body_hex in enumerate(AVATAR_HEXES):
-            if skip_generated("sprites", f"explorer_{i}", FORCE):
+            if _skip_static(f"_{i}"):
                 continue
             render_variant(body_hex, f"explorer_{i}.webp")
         print(f"[TraderPath] Listo: 1 sprite base + {len(AVATAR_HEXES)} variantes.")

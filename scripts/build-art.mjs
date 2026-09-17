@@ -36,6 +36,47 @@ const RASTER = new Set([".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".bmp
 const MODELS = new Set([".gltf", ".glb", ".fbx", ".obj", ".dae", ".stl", ".ply"]);
 const IGNORED = new Set([".md", ".json", ".txt", ".gitkeep", ".blend1", ".blend2"]);
 
+// ── Explorador: tamaños fijos y paleta ──────────────────────────────────────
+// El juego corta la hoja en cuadros de 192×240 (EXPLORER_SHEET en
+// characterArt.ts): una hoja dibujada a otra resolución se escala a esta, o los
+// cuadros saldrían partidos. La pose fija se normaliza igual por coherencia.
+const EXPLORER_SHEET_SIZE = [1728, 720];
+const EXPLORER_STATIC_SIZE = [512, 640];
+const EXPLORER_SHEET_RX = /^sprites\/explorer_walk(_\d+)?\.[^./]+$/;
+const EXPLORER_STATIC_RX = /^sprites\/explorer(_\d+)?\.[^./]+$/;
+
+function forcedSize(rel) {
+  if (EXPLORER_SHEET_RX.test(rel)) return EXPLORER_SHEET_SIZE;
+  if (EXPLORER_STATIC_RX.test(rel)) return EXPLORER_STATIC_SIZE;
+  return null;
+}
+
+/**
+ * Base colour and selector colours, read from where they are defined so the
+ * recolour never drifts from the game: EXPLORER_VARIANT_HEXES (characterArt.ts)
+ * and BODY_HEX (build_explorer.py).
+ */
+function explorerPalette() {
+  const ts = fs.readFileSync(path.join(ROOT, "src", "game", "phaser", "characterArt.ts"), "utf8");
+  const py = fs.readFileSync(path.join(ROOT, "renders", "blender", "build_explorer.py"), "utf8");
+  const list = ts.match(/EXPLORER_VARIANT_HEXES\s*=\s*\[([^\]]+)\]/);
+  const base = py.match(/^BODY_HEX\s*=\s*"(#[0-9A-Fa-f]{6})"/m);
+  if (!list || !base) throw new Error("no encuentro EXPLORER_VARIANT_HEXES o BODY_HEX para recolorear");
+  return { base: base[1], variants: [...list[1].matchAll(/"(#[0-9A-Fa-f]{6})"/g)].map((m) => m[1]) };
+}
+
+/** Hand-made explorer files: name without extension → path relative to renders/assets. */
+function manualExplorer() {
+  const dir = path.join(SRC_DIR, "sprites");
+  const names = new Map();
+  for (const rel of walk(dir, dir)) {
+    const ext = path.extname(rel).toLowerCase();
+    if (IGNORED.has(ext) || rel.includes("/")) continue;
+    names.set(rel.replace(/\.[^.]+$/, ""), `sprites/${rel}`);
+  }
+  return names;
+}
+
 const argv = process.argv.slice(2);
 const FLAG = (f) => argv.includes(f);
 const VALUE = (f) => (argv.indexOf(f) >= 0 ? argv[argv.indexOf(f) + 1] : undefined);
@@ -226,6 +267,11 @@ function plan() {
     const transparent = cfg.transparent ?? (current ? current.alpha : kind !== "image" || (source?.alpha ?? false));
 
     const fresh = dstStat && dstStat.mtimeMs >= srcStat.mtimeMs;
+    const size = cfg.size ?? forcedSize(rel) ?? (kind === "image" ? null : current ? [current.width, current.height] : null);
+    const sameSize = !size || (source && source.width === size[0] && source.height === size[1]);
+    if (source && size && !sameSize && Math.abs(source.width / source.height - size[0] / size[1]) > 0.01) {
+      warnings.push(`se escala a ${size[0]}×${size[1]} pero la proporción no coincide: los cuadros quedarán deformados`);
+    }
     jobs.push({
       rel,
       src: srcAbs,
@@ -234,14 +280,59 @@ function plan() {
       kind,
       transparent,
       lossless: cfg.lossless ?? isMask,
-      quality: cfg.quality ?? 92,
-      size: cfg.size ?? (kind === "image" ? null : current ? [current.width, current.height] : null),
+      quality: cfg.quality ?? (EXPLORER_SHEET_RX.test(rel) ? 82 : 92),
+      size,
       warnings,
       skip: !opts.force && fresh ? "sin cambios" : null,
-      passthrough: kind === "image" && ext === ".webp" && !cfg.size && !cfg.quality,
+      passthrough: kind === "image" && ext === ".webp" && !cfg.quality && sameSize,
     });
   }
+  jobs.push(...recolorJobs(jobs));
   return jobs;
+}
+
+/**
+ * One hand-drawn explorer in the base colour → the five selector colours.
+ * Runs after the base itself is published (same batch, later in the list), and
+ * reads that published WebP, so it works whatever format the base came in.
+ * A colour the artist drew separately is left alone.
+ */
+function recolorJobs(jobs) {
+  const manual = manualExplorer();
+  const out = [];
+  let palette;
+  for (const [base, prefix, quality] of [["explorer_walk", "explorer_walk_", 82], ["explorer", "explorer_", 92]]) {
+    const baseRel = manual.get(base);
+    if (!baseRel || (opts.only && !baseRel.includes(opts.only))) continue;
+    palette ??= explorerPalette();
+    const baseJob = jobs.find((j) => j.rel === baseRel);
+    const baseSrc = path.join(SRC_DIR, baseRel);
+    const published = path.join(OUT_DIR, "sprites", `${base}.webp`);
+    const srcMtime = fs.statSync(baseSrc).mtimeMs;
+    palette.variants.forEach((hex, i) => {
+      if (manual.has(`${prefix}${i}`)) return;
+      const dst = path.join(OUT_DIR, "sprites", `${prefix}${i}.webp`);
+      const fresh = fs.existsSync(dst) && fs.statSync(dst).mtimeMs >= srcMtime;
+      out.push({
+        rel: `${baseRel} → color ${i}`,
+        src: published,
+        dst,
+        served: `/assets/sprites/${prefix}${i}.webp`,
+        kind: "recolor",
+        key_hex: palette.base,
+        target_hex: hex,
+        transparent: true,
+        lossless: false,
+        quality,
+        size: null,
+        warnings: [],
+        // Si la base no se pudo publicar, no hay de dónde recolorear.
+        skip: baseJob?.error ? "la base no se pudo publicar" : !opts.force && fresh && baseJob?.skip ? "sin cambios" : null,
+        passthrough: false,
+      });
+    });
+  }
+  return out;
 }
 
 // ── Ejecución ───────────────────────────────────────────────────────────────
@@ -256,8 +347,8 @@ function runBlenderJobs(jobs) {
     return jobs.map((j) => ({ ...j, failed: "sin Blender" }));
   }
   const jobFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "tp-art-")), "jobs.json");
-  fs.writeFileSync(jobFile, JSON.stringify(jobs.map(({ src, dst, kind, transparent, lossless, quality, size }) => ({
-    src, dst, kind, transparent, lossless, quality, size,
+  fs.writeFileSync(jobFile, JSON.stringify(jobs.map(({ src, dst, kind, transparent, lossless, quality, size, key_hex, target_hex }) => ({
+    src, dst, kind, transparent, lossless, quality, size, key_hex, target_hex,
   })), null, 2));
 
   const res = spawnSync(blender, ["--background", "--python", HELPER, "--", "--jobs", jobFile], {
@@ -291,33 +382,32 @@ function execute(jobs) {
   const needBlender = todo.filter((j) => !j.passthrough);
   if (needBlender.length) done.push(...runBlenderJobs(needBlender));
 
-  for (const job of done) {
-    if (!job.failed) retireGeneratedSheet(job);
-  }
-  return [...done, ...jobs.filter((j) => j.skip)];
+  const results = [...done, ...jobs.filter((j) => j.skip)];
+  results.retired = retireGeneratedSheets();
+  return results;
 }
 
 /**
  * A hand-made static explorer must be what the player sees. The game prefers
  * the animated sheet (explorer_walk[_i].webp) over the static pose, so a
- * generated sheet left in place would hide the new drawing. Remove it unless
- * the artist also supplied their own sheet.
+ * generated sheet left in place would hide the drawing. A colour counts as
+ * hand-made when the artist drew it or drew the base it is recoloured from.
  */
-function retireGeneratedSheet(job) {
-  const m = job.rel.match(/^sprites\/explorer(_\d+)?\.[^./]+$/);
-  if (!m) return;
-  const suffix = m[1] ?? "";
-  const manualSheet = walk(path.join(SRC_DIR, "sprites"), path.join(SRC_DIR, "sprites"))
-    .some((f) => f.replace(/\.[^.]+$/, "") === `explorer_walk${suffix}`);
-  if (manualSheet) return;
-  const generated = path.join(OUT_DIR, "sprites", `explorer_walk${suffix}.webp`);
-  if (!fs.existsSync(generated)) return;
-  fs.rmSync(generated);
-  job.warnings = [
-    ...(job.warnings ?? []),
-    `se retiró la animación generada explorer_walk${suffix}.webp para que se vea tu dibujo ` +
-      `(entrega también explorer_walk${suffix} si lo quieres animado)`,
-  ];
+function retireGeneratedSheets() {
+  const manual = manualExplorer();
+  if (manual.size === 0) return [];
+  const suffixes = ["", ...explorerPalette().variants.map((_, i) => `_${i}`)];
+  const retired = [];
+  for (const suffix of suffixes) {
+    const staticIsManual = manual.has(`explorer${suffix}`) || (suffix !== "" && manual.has("explorer"));
+    const sheetIsManual = manual.has(`explorer_walk${suffix}`) || (suffix !== "" && manual.has("explorer_walk"));
+    if (!staticIsManual || sheetIsManual) continue;
+    const generated = path.join(OUT_DIR, "sprites", `explorer_walk${suffix}.webp`);
+    if (!fs.existsSync(generated)) continue;
+    fs.rmSync(generated);
+    retired.push(`explorer_walk${suffix}.webp`);
+  }
+  return retired;
 }
 
 function report(results) {
@@ -342,6 +432,10 @@ function report(results) {
   }
   for (const r of fallos) {
     console.log(`  ✖ ${pad(r.rel, 34)} ${r.failed ?? r.skip}`);
+  }
+  if (results.retired?.length) {
+    console.log(`  ⚠ Se retiró la animación generada (${results.retired.join(", ")}) para que se vea tu`);
+    console.log(`    explorador fijo. Si lo quieres animado, dibuja también explorer_walk.`);
   }
   console.log(`  ${"-".repeat(74)}`);
   console.log(`  ${publicados.length} publicados · ${saltados.length} sin cambios · ${fallos.length} con problemas`);

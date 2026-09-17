@@ -7,6 +7,8 @@
 #   kind "image"  convierte una imagen (png/jpg/tif/bmp/tga/webp) a WebP
 #   kind "blend"  abre TU .blend y lo renderiza con SU cámara y SU escena
 #   kind "model"  importa un .gltf/.glb/.fbx/.obj/.dae al set cartoon del juego
+#   kind "recolor" cambia el ámbar de un explorador dibujado a mano por el color
+#                  de un botón del selector (key_hex → target_hex)
 #
 # Regla que no se rompe: **el .blend nunca se guarda ni se modifica**. Se abre,
 # se renderiza y se sale. Tu archivo es tuyo; el juego solo consume el WebP.
@@ -262,7 +264,106 @@ def do_model(job):
     bpy.ops.render.render(write_still=True)
 
 
-HANDLERS = {"image": do_image, "blend": do_blend, "model": do_model}
+# ── kind "recolor" ──────────────────────────────────────────────────────────
+# Un dibujo a mano en el color base (ámbar) → las variantes del selector.
+# Solo se tocan los píxeles del tono base y muy saturados: la piel (#FFD4AD)
+# está a 10° de tono del ámbar pero con saturación 0,32 frente a 0,96, y el
+# rubor a 0,48, así que la puerta de saturación los deja fuera.
+HUE_WINDOW = 14 / 360        # distancia de tono máxima al color base
+HUE_SOFT = 6 / 360           # transición suave (bordes antialiaseados)
+SAT_MIN = 0.55               # por debajo, no es "ropa ámbar"
+SAT_SOFT = 0.12
+
+
+def _hex_hsv(value):
+    import colorsys
+    r, g, b = hexrgb(value)
+    return colorsys.rgb_to_hsv(r, g, b)
+
+
+def _rgb_to_hsv(rgb):
+    import numpy as np
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    mx = rgb.max(axis=-1)
+    mn = rgb.min(axis=-1)
+    d = mx - mn
+    safe = np.where(d == 0, 1, d)
+    h = np.where(mx == r, ((g - b) / safe) % 6,
+                 np.where(mx == g, (b - r) / safe + 2, (r - g) / safe + 4)) / 6
+    h = np.where(d == 0, 0, h)
+    s = np.where(mx == 0, 0, d / np.where(mx == 0, 1, mx))
+    return h, s, mx
+
+
+def _hsv_to_rgb(h, s, v):
+    import numpy as np
+    i = np.floor(h * 6).astype(int) % 6
+    f = h * 6 - np.floor(h * 6)
+    p, q, t = v * (1 - s), v * (1 - f * s), v * (1 - (1 - f) * s)
+    choices = [(v, t, p), (q, v, p), (p, v, t), (p, q, v), (t, p, v), (v, p, q)]
+    out = np.zeros(h.shape + (3,), dtype=np.float32)
+    for k, (cr, cg, cb) in enumerate(choices):
+        m = i == k
+        out[..., 0] = np.where(m, cr, out[..., 0])
+        out[..., 1] = np.where(m, cg, out[..., 1])
+        out[..., 2] = np.where(m, cb, out[..., 2])
+    return out
+
+
+def do_recolor(job):
+    import numpy as np
+    scene = bpy.context.scene
+    neutral_view_transform(scene)
+    img = bpy.data.images.load(job["src"], check_existing=False)
+    img.colorspace_settings.name = "sRGB"
+    size = job.get("size")
+    if size and tuple(img.size) != tuple(size):
+        img.scale(int(size[0]), int(size[1]))
+    w, h = img.size
+    px = np.empty(w * h * 4, dtype=np.float32)
+    img.pixels.foreach_get(px)  # bytes/255, sin conversión de color
+    px = px.reshape(h, w, 4)
+
+    kh, ks, kv = _hex_hsv(job["key_hex"])
+    th, ts, tv = _hex_hsv(job["target_hex"])
+    hue, sat, val = _rgb_to_hsv(px[..., :3])
+
+    dist = np.abs(hue - kh)
+    dist = np.minimum(dist, 1 - dist)
+    hue_w = np.clip((HUE_WINDOW + HUE_SOFT - dist) / HUE_SOFT, 0, 1)
+    sat_w = np.clip((sat - (SAT_MIN - SAT_SOFT)) / SAT_SOFT, 0, 1)
+    weight = (hue_w * sat_w * (px[..., 3] > 0))[..., None]
+
+    # Sombras y brillos del dibujo se conservan como proporción respecto del
+    # color base: una sombra al 70 % del ámbar queda al 70 % del nuevo color.
+    new_rgb = _hsv_to_rgb(
+        np.full_like(hue, th),
+        np.clip(sat * (ts / ks), 0, 1),
+        np.clip(val * (tv / kv), 0, 1),
+    )
+    px[..., :3] = px[..., :3] * (1 - weight) + new_rgb * weight
+
+    # Brillos claros y poco saturados del tono base: no se recolorean (se
+    # confundirían con la piel) y quedarían beige sobre la ropa nueva. Se
+    # cuentan para avisar al artista, que puede usar la paleta del README.
+    doubtful = (dist <= HUE_WINDOW) & (sat >= 0.25) & (sat < SAT_MIN - SAT_SOFT) & (val > 0.85)
+    doubtful &= px[..., 3] > 0.5
+    opaque = max(int((px[..., 3] > 0.5).sum()), 1)
+    share = 100.0 * int(doubtful.sum()) / opaque
+
+    out = bpy.data.images.new("recolor", w, h, alpha=True)
+    out.pixels.foreach_set(px.ravel())
+    output_settings(scene, job["transparent"], job["lossless"], job["quality"])
+    os.makedirs(os.path.dirname(job["dst"]), exist_ok=True)
+    out.save_render(job["dst"], scene=scene)
+    bpy.data.images.remove(out)
+    bpy.data.images.remove(img)
+    if share >= 0.5:
+        return f"{share:.1f}% de brillos ámbar poco saturados quedaron sin recolorear (usa los tonos de la paleta)"
+    return None
+
+
+HANDLERS = {"image": do_image, "blend": do_blend, "model": do_model, "recolor": do_recolor}
 
 
 def main():
@@ -276,8 +377,10 @@ def main():
     for job in jobs:
         dst = job["dst"]
         try:
-            HANDLERS[job["kind"]](job)
+            note = HANDLERS[job["kind"]](job)
             ok, detail = verify(dst, job["transparent"])
+            if note:
+                detail += f" · AVISO: {note}"
             print(f"[art] {'OK' if ok else 'FALLO'} {dst} | {detail}")
         except Exception as err:  # el CLI necesita el motivo, no un traceback
             print(f"[art] FALLO {dst} | {type(err).__name__}: {err}")
