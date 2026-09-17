@@ -5,10 +5,11 @@ const nextConfig = {
   distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
   images: {
     // The game never uses next/image: art is CSS backgrounds and Phaser
-    // textures served straight from public/. Turning the optimizer off makes
-    // /_next/image answer 404, which closes the Image Optimization API RCE
-    // (GHSA-2xp9-vwfh-vxw4) that Next 14 has no patch for. Remove once the app
-    // is on a patched Next (>= 15.5.24) — and only if next/image is adopted.
+    // textures served straight from public/. With the optimizer off,
+    // /_next/image answers 404 — less attack surface for an endpoint nothing
+    // needs. It was the only defence against GHSA-2xp9-vwfh-vxw4 on Next 14;
+    // on 15.5.25 it is patched, so this is kept as hardening. Turn it back on
+    // only if next/image is adopted.
     unoptimized: true,
   },
 };

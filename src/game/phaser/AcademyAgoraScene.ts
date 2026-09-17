@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+import * as Phaser from "phaser";
 import {
   ACADEMY_GAME_EVENTS,
   type AcademyTarget,

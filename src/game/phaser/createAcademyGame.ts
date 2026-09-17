@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+import * as Phaser from "phaser";
 import AcademyAgoraScene from "@/game/phaser/AcademyAgoraScene";
 import WelcomeHarborScene from "@/game/phaser/WelcomeHarborScene";
 import MarketPlazaScene from "@/game/phaser/MarketPlazaScene";

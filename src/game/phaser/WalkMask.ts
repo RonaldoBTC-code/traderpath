@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+import * as Phaser from "phaser";
 
 /**
  * Zona caminable de una sala, leída de la máscara que produce Blender.
