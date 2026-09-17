@@ -31,17 +31,25 @@ export const LEVEL3_REGISTRY: Record<string, Level3ConfigLike> = {
   commodities: level3Commodities,
 }
 
-// Reemplaza el heurístico `newMarket.charAt(0)` usado antes en
-// useMarketChange, que colisiona entre commodities/crypto ("c") y
-// futures/forex ("f"). Se completa un mercado a la vez, según se construye.
-export const LEVEL3_MISSION_PREFIX: Record<string, string> = {
-  crypto: "c",
-  forex: "f",
-  stocks: "s",
-  commodities: "o",
-}
-
 export function getLevel3ConfigByLevelId(levelId: string): Level3ConfigLike | undefined {
   if (!levelId.startsWith("level_3_")) return undefined
   return LEVEL3_REGISTRY[levelId.slice("level_3_".length)]
+}
+
+export function isLevel3Market(market: string | null | undefined): market is string {
+  return !!market && Object.prototype.hasOwnProperty.call(LEVEL3_REGISTRY, market)
+}
+
+/**
+ * Market that owns a level-3 mission id (`m3f_2` → "forex"), or undefined.
+ *
+ * The database stores level 3 as the bare integer 3, so the mission id is the
+ * only place the market survives a round trip. Looked up in the registry rather
+ * than by prefix so a market with a non-obvious prefix can't be misread.
+ */
+export function getLevel3MarketForMission(missionId: string): string | undefined {
+  for (const [market, config] of Object.entries(LEVEL3_REGISTRY)) {
+    if (config.missions.some((mission) => mission.id === missionId)) return market
+  }
+  return undefined
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { buildDemoCandles } from "@/lib/market/demoCandles";
 import type { MarketCandle } from "@/types/simulator";
 
 const SYMBOLS = new Set(["BTCUSDT", "ETHUSDT", "SOLUSDT"]);
@@ -56,9 +57,16 @@ export async function GET(request: NextRequest) {
       candles,
     });
   } catch {
-    return NextResponse.json(
-      { error: "No se pudieron cargar las velas del proveedor de mercado." },
-      { status: 503 }
-    );
+    // Provider unreachable (403/451 by region, timeout, outage). Serve the
+    // fixed educational replay so the lesson still works, and say so plainly:
+    // the page prints `source` next to the chart.
+    return NextResponse.json({
+      symbol,
+      interval,
+      source: "Demo educativa sin conexión (serie fija de 2024, no son precios actuales)",
+      delayed: true,
+      demo: true,
+      candles: buildDemoCandles(symbol, interval),
+    });
   }
 }

@@ -4,8 +4,8 @@ import { level1 } from "@/lib/content/level1";
 import { level2 } from "@/lib/content/level2";
 import {
   LEVEL3_REGISTRY,
-  LEVEL3_MISSION_PREFIX,
   getLevel3ConfigByLevelId,
+  isLevel3Market,
   type Level3ConfigLike,
 } from "@/lib/content/level3Registry";
 import { RANKS } from "@/lib/game/constants";
@@ -294,6 +294,12 @@ export const useGameStore = create<GameState>()(
       },
 
       setMarketSpecialization: (market: string) => {
+        // Only markets with a built level 3 are selectable. Anything else would
+        // route the player into a level that has no missions.
+        if (!isLevel3Market(market)) {
+          console.warn("Market specialization rejected (no level 3 built):", market);
+          return;
+        }
         console.log("Market specialization set:", market);
         set({ marketSpecialization: market });
       },
@@ -302,6 +308,10 @@ export const useGameStore = create<GameState>()(
         const state = get();
         if (state.marketChangeUsed) {
           console.log("Market change already used — cannot change again.");
+          return;
+        }
+        if (!isLevel3Market(newMarket)) {
+          console.warn("Market change rejected (no level 3 built):", newMarket);
           return;
         }
         console.log("Market changed from", state.marketSpecialization, "to", newMarket);
@@ -315,7 +325,8 @@ export const useGameStore = create<GameState>()(
           completedMissions: filteredMissions,
           // Reset to first mission of new level 3
           currentLevelId: `level_3_${newMarket}`,
-          currentMissionId: `m3${LEVEL3_MISSION_PREFIX[newMarket] ?? newMarket.charAt(0)}_1`,
+          // First mission from the registry: crypto starts at m3c_0, not _1.
+          currentMissionId: LEVEL3_REGISTRY[newMarket].missions[0]?.id ?? "",
         });
       },
 

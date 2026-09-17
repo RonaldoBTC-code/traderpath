@@ -580,7 +580,7 @@ export default function MissionPage() {
         <h2 className="font-display text-xl font-bold text-tp-supply">Misión bloqueada</h2>
         <p className="text-tp-text-muted">Debes completar las misiones anteriores para desbloquear esta.</p>
         <button onClick={() => router.push("/world")} className="px-6 py-2 bg-tp-gold text-tp-text font-display font-bold rounded-sm hover:brightness-110 transition">
-          Volver al Dashboard
+          Volver al mundo
         </button>
       </div>
     );
@@ -952,7 +952,7 @@ export default function MissionPage() {
             </ul>
           </div>
           <button onClick={() => router.push("/world")} className="px-6 py-3 bg-tp-gold text-tp-text font-display font-bold rounded-sm hover:brightness-110 transition">
-            Volver al Dashboard
+            Volver al mundo
           </button>
         </div>
       )}
