@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+import * as Phaser from "phaser";
 
 /**
  * Shared cartoon character art for every world scene.
